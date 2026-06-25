@@ -1,0 +1,80 @@
+import { apiGet, apiPost, api } from './api';
+import type { Paged } from './admin.api';
+
+async function getPaged<T>(url: string, params?: object): Promise<Paged<T>> {
+  const { data } = await api.get(url, { params });
+  return { items: data.data as T[], meta: data.meta };
+}
+
+/** Fetch a binary export and trigger a browser download. */
+async function download(url: string, params: object, fallbackName: string) {
+  const res = await api.get(url, { params, responseType: 'blob' });
+  const disposition = res.headers['content-disposition'] || '';
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] || fallbackName;
+  const blobUrl = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(blobUrl);
+}
+
+export const companyApi = {
+  overview: () => apiGet<any>('/company/overview'),
+
+  // Jobs
+  jobs: (params?: object) => getPaged<any>('/jobs', params),
+  job: (id: string) => apiGet<any>(`/jobs/${id}`),
+  createJob: (body: object) => apiPost<any>('/jobs', body),
+  updateJob: (id: string, body: object) => api.patch(`/jobs/${id}`, body).then((r) => r.data.data),
+  deleteJob: (id: string) => api.delete(`/jobs/${id}`).then((r) => r.data),
+  cloneJob: (id: string) => apiPost<any>(`/jobs/${id}/clone`),
+
+  // Candidates
+  candidates: (params?: object) => getPaged<any>('/candidates', params),
+  candidate: (id: string) => apiGet<any>(`/candidates/${id}`),
+  createCandidate: (body: object) => apiPost<any>('/candidates', body),
+  updateCandidate: (id: string, body: object) => api.patch(`/candidates/${id}`, body).then((r) => r.data.data),
+  deleteCandidate: (id: string) => api.delete(`/candidates/${id}`).then((r) => r.data),
+  importCandidates: (file: File, job?: string) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/candidates/import', fd, { params: { job } }).then((r) => r.data.data);
+  },
+  uploadResume: (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append('resume', file);
+    return api.post(`/candidates/${id}/resume`, fd).then((r) => r.data.data);
+  },
+  moveStage: (id: string, stage: string) => api.patch(`/candidates/${id}/stage`, { stage }).then((r) => r.data.data),
+
+  // Interviews
+  interviews: (params?: object) => getPaged<any>('/interviews', params),
+  interview: (id: string) => apiGet<any>(`/interviews/${id}`),
+  recordings: (params?: object) => getPaged<any>('/recordings', params),
+  schedule: (body: object) => apiPost<any>('/interviews', body),
+  autoSchedule: (body: object) => apiPost<any>('/interviews/auto', body),
+  invite: (id: string) => apiPost<any>(`/interviews/${id}/invite`),
+  cancelInterview: (id: string) => apiPost<any>(`/interviews/${id}/cancel`),
+
+  // Pipeline
+  pipeline: (job?: string) => apiGet<any>('/pipeline', { job }),
+
+  // Billing
+  billing: () => apiGet<any>('/billing'),
+  billingInvoices: () => apiGet<any[]>('/billing/invoices'),
+  checkout: (body: object) => apiPost<any>('/billing/checkout', body),
+  verifyRazorpay: (body: object) => apiPost<any>('/billing/razorpay/verify', body),
+  cancelBilling: () => apiPost<any>('/billing/cancel'),
+
+  // Reports
+  reports: (params?: object) => getPaged<any>('/reports', params),
+  report: (id: string) => apiGet<any>(`/reports/${id}`),
+  ranking: (job?: string) => apiGet<any[]>('/reports/ranking', { job }),
+  reportAnalytics: () => apiGet<any>('/reports/analytics'),
+  exportReport: (id: string) => download(`/reports/${id}/export`, { format: 'pdf' }, 'report.pdf'),
+  exportRanking: (job?: string) => download('/reports/ranking/export', { job }, 'ranking.xlsx'),
+};
+
+export default companyApi;

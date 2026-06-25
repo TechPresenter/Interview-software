@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# env
+.env
+.env.local
+.env.*.local
+server/.env
+client/.env.local
+
+# builds
+dist/
+build/
+.next/
+out/
+
+# logs
+*.log
+npm-debug.log*
+logs/
+
+# misc
+.DS_Store
+coverage/
+.vscode/
+.idea/
+*.pem
+uploads/
+
+# runtime / generated artifacts
+*.rdb
+dump.rdb
+*.tsbuildinfo
+next-env.d.ts
+.turbo/
+Thumbs.db

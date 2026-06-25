@@ -1,0 +1,133 @@
+import { nanoid } from 'nanoid';
+import { stripeProvider } from './stripe.provider.js';
+import { razorpayProvider } from './razorpay.provider.js';
+import { Company } from '../../models/Company.js';
+import { Plan } from '../../models/Plan.js';
+import { Subscription } from '../../models/Subscription.js';
+import { Payment } from '../../models/Payment.js';
+import { Coupon } from '../../models/Coupon.js';
+import { ApiError } from '../../utils/ApiError.js';
+import { logActivity } from '../audit.service.js';
+
+const PROVIDERS = { stripe: stripeProvider, razorpay: razorpayProvider };
+
+/** Resolve a provider by name, ensuring it's enabled. */
+export function getProvider(name) {
+  const provider = PROVIDERS[name];
+  if (!provider) throw ApiError.badRequest(`Unknown payment provider: ${name}`);
+  return provider;
+}
+
+/** Which providers are currently configured (for the UI). */
+export function availableProviders() {
+  return Object.values(PROVIDERS)
+    .filter((p) => p.enabled())
+    .map((p) => p.name);
+}
+
+/** Compute the price for a plan/cycle, applying an optional coupon. */
+export async function priceFor(plan, billingCycle, couponCode) {
+  let amount = billingCycle === 'yearly' ? plan.pricing.yearly : plan.pricing.monthly;
+  const currency = plan.pricing.currency || 'USD';
+  let coupon = null;
+
+  if (couponCode) {
+    coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+    if (!coupon || !coupon.isRedeemable()) throw ApiError.badRequest('Invalid or expired coupon');
+    if (coupon.appliesToPlans?.length && !coupon.appliesToPlans.includes(plan.key)) {
+      throw ApiError.badRequest('Coupon does not apply to this plan');
+    }
+    amount = coupon.type === 'percent' ? Math.round(amount * (1 - coupon.value / 100)) : Math.max(0, amount - coupon.value);
+  }
+  return { amount, currency, coupon };
+}
+
+/**
+ * Create a checkout for a company to subscribe to a plan via the chosen provider.
+ */
+export async function startCheckout({ companyId, providerName, planKey, billingCycle = 'monthly', couponCode, customerEmail, baseUrl }) {
+  const [company, plan] = await Promise.all([Company.findById(companyId), Plan.findOne({ key: planKey, isActive: true })]);
+  if (!company) throw ApiError.notFound('Company not found');
+  if (!plan) throw ApiError.notFound('Plan not found');
+  if (!plan.pricing.monthly && !plan.pricing.yearly) {
+    throw ApiError.badRequest('This plan is not self-serve — contact sales');
+  }
+
+  const provider = getProvider(providerName);
+  const { amount, currency } = await priceFor(plan, billingCycle, couponCode);
+
+  return provider.createCheckout({
+    planName: plan.name,
+    amount,
+    currency,
+    billingCycle,
+    company: company._id,
+    customerEmail: customerEmail || company.billingEmail || company.contactEmail,
+    successUrl: `${baseUrl}/dashboard/billing?status=success`,
+    cancelUrl: `${baseUrl}/dashboard/billing?status=cancelled`,
+  });
+}
+
+/**
+ * Activate a paid plan after a successful payment (called from webhooks/callbacks).
+ * Updates the Subscription, snapshots plan limits onto the Company, and records
+ * a Payment/invoice. Idempotent on providerPaymentId.
+ */
+export async function applyPaidPlan({ companyId, planKey, billingCycle, provider, amount, currency, providerPaymentId, providerOrderId, providerCustomerId, providerSubscriptionId, raw }) {
+  if (providerPaymentId && (await Payment.exists({ providerPaymentId }))) {
+    return { duplicate: true };
+  }
+
+  const [company, plan] = await Promise.all([Company.findById(companyId), Plan.findOne({ key: planKey })]);
+  if (!company || !plan) throw ApiError.notFound('Company or plan not found');
+
+  const now = new Date();
+  const periodEnd = new Date(now);
+  if (billingCycle === 'yearly') periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+  else periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+  const subscription = await Subscription.findOneAndUpdate(
+    { company: company._id },
+    {
+      $set: {
+        plan: plan.key,
+        status: 'active',
+        billingCycle,
+        provider,
+        amount,
+        currency,
+        providerCustomerId,
+        providerSubscriptionId,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+      },
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  );
+
+  // Snapshot plan limits onto the company.
+  company.plan = plan.key;
+  company.subscription = subscription._id;
+  company.limits = plan.limits;
+  await company.save();
+
+  const payment = await Payment.create({
+    company: company._id,
+    subscription: subscription._id,
+    provider,
+    providerPaymentId,
+    providerOrderId,
+    amount,
+    currency,
+    status: 'paid',
+    invoiceNumber: `INV-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`,
+    description: `${plan.name} (${billingCycle})`,
+    paidAt: now,
+    raw,
+  });
+
+  await logActivity({ company: company._id, action: 'billing.paid', entityType: 'Payment', entityId: payment._id, summary: `Upgraded to ${plan.name}` });
+  return { subscription, payment };
+}
+
+export default { getProvider, availableProviders, startCheckout, applyPaidPlan, priceFor };
