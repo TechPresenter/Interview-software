@@ -3,6 +3,7 @@ import { config } from '../../config/index.js';
 import { logger } from '../../config/logger.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { AiUsage } from '../../models/AiUsage.js';
+import { runChat } from './registry.js';
 
 /**
  * Thin, reliability-focused wrapper over the Anthropic SDK.
@@ -80,6 +81,18 @@ export async function complete({
   company,
   interview,
 }) {
+  // If an admin has configured AI provider(s) for this module, route through the
+  // registry (with failover). When none are configured it returns null and we use
+  // the built-in Claude SDK below — so default behaviour is unchanged.
+  try {
+    const routed = await runChat({ module: feature, feature, company, system, messages, maxTokens, temperature });
+    if (routed?.text != null) {
+      return { text: routed.text, usage: { input_tokens: routed.usage?.inputTokens || 0, output_tokens: routed.usage?.outputTokens || 0 }, raw: routed };
+    }
+  } catch (err) {
+    logger.warn({ err: err?.message }, 'routed AI provider failed; falling back to Claude SDK');
+  }
+
   const c = getClient();
   const start = Date.now();
   const maxAttempts = 3;

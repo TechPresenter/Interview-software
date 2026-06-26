@@ -15,6 +15,8 @@ import {
   User,
   CalendarCheck,
   Film,
+  BookOpen,
+  Mail,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/store/auth.store';
@@ -34,6 +36,8 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Subscriptions', href: '/dashboard/subscriptions', icon: CreditCard },
     { label: 'Question Bank', href: '/dashboard/questions', icon: Database },
     { label: 'AI Management', href: '/dashboard/ai', icon: Bot },
+    { label: 'Knowledge Base', href: '/dashboard/knowledge', icon: BookOpen },
+    { label: 'Email', href: '/dashboard/email', icon: Mail },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'White Label', href: '/dashboard/branding', icon: Palette },
     { label: 'CMS', href: '/dashboard/cms', icon: Newspaper },
@@ -46,6 +50,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Interviews', href: '/dashboard/interviews', icon: CalendarClock },
     { label: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
     { label: 'Reports', href: '/dashboard/reports', icon: FileBarChart },
+    { label: 'Knowledge Base', href: '/dashboard/knowledge', icon: BookOpen },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   ],
@@ -56,6 +61,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Interviews', href: '/dashboard/interviews', icon: CalendarClock },
     { label: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
+    { label: 'Knowledge Base', href: '/dashboard/knowledge', icon: BookOpen },
   ],
   hr_manager: [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -63,6 +69,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Reports', href: '/dashboard/reports', icon: FileBarChart },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
+    { label: 'Knowledge Base', href: '/dashboard/knowledge', icon: BookOpen },
   ],
   candidate: [
     { label: 'My Dashboard', href: '/dashboard', icon: LayoutDashboard },

@@ -100,6 +100,46 @@ export async function rankingToExcel({ rows, jobTitle }) {
   };
 }
 
+/** Render a payment/invoice as a branded PDF buffer. */
+export async function invoiceToPdf({ payment, company, branding }) {
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  const chunks = [];
+  doc.on('data', (c) => chunks.push(c));
+  const done = new Promise((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
+
+  const name = branding?.platformName || 'HireSense';
+  const amount = ((payment.amount || 0) / 100).toFixed(2);
+  const cur = payment.currency || 'USD';
+
+  doc.fontSize(22).fillColor('#6366f1').text(name);
+  doc.fontSize(10).fillColor('#666').text('Invoice / Payment Receipt');
+  doc.moveDown();
+
+  doc.fillColor('#111').fontSize(12).text(`Invoice #: ${payment.invoiceNumber || payment._id}`);
+  doc.fontSize(10).fillColor('#666').text(`Date: ${new Date(payment.paidAt || payment.createdAt).toLocaleDateString()}`);
+  doc.text(`Status: ${formatRec(payment.status)}`);
+  doc.text(`Payment method: ${formatRec(payment.provider)}`);
+  doc.moveDown();
+
+  doc.fontSize(11).fillColor('#111').text('Billed to:');
+  doc.fontSize(10).fillColor('#666').text(company?.name || '—');
+  const billEmail = company?.billingEmail || company?.contactEmail;
+  if (billEmail) doc.text(billEmail);
+  doc.moveDown();
+
+  doc.fontSize(12).fillColor('#6366f1').text('Description');
+  doc.fontSize(10).fillColor('#111').text(`${payment.description || 'Subscription'}`);
+  doc.moveDown(0.5);
+  doc.fontSize(14).fillColor('#111').text(`Total: ${cur} ${amount}`, { align: 'right' });
+
+  doc.moveDown(2);
+  doc.fontSize(8).fillColor('#999').text(`${name} · Generated ${new Date().toLocaleString()}`, { align: 'center' });
+
+  doc.end();
+  const buffer = await done;
+  return { buffer, filename: `invoice-${payment.invoiceNumber || payment._id}.pdf`, contentType: 'application/pdf' };
+}
+
 /* ── helpers ───────────────────────────────────────────── */
 function section(doc, title, items) {
   if (!items?.length) return;

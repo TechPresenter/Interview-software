@@ -12,6 +12,7 @@ const schema = z.object({
   PORT: z.coerce.number().default(5000),
   API_PREFIX: z.string().default('/api/v1'),
   CLIENT_URL: z.string().url().default('http://localhost:3000'),
+  API_PUBLIC_URL: z.string().optional(), // public API base for email tracking links
 
   MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
@@ -25,6 +26,7 @@ const schema = z.object({
   AI_MODEL: z.string().default('claude-opus-4-8'),
   AI_MODEL_FAST: z.string().default('claude-haiku-4-5-20251001'),
   AI_MAX_TOKENS: z.coerce.number().default(4096),
+  AI_ENCRYPTION_KEY: z.string().optional(), // encrypts stored provider API keys
 
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
@@ -41,6 +43,10 @@ const schema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  CASHFREE_APP_ID: z.string().optional(),
+  CASHFREE_SECRET_KEY: z.string().optional(),
+  CASHFREE_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+  CASHFREE_WEBHOOK_SECRET: z.string().optional(),
 
   SMS_PROVIDER: z.string().optional(), // e.g. 'twilio'
   TWILIO_ACCOUNT_SID: z.string().optional(),
@@ -73,6 +79,7 @@ export const config = {
   port: env.PORT,
   apiPrefix: env.API_PREFIX,
   clientUrl: env.CLIENT_URL,
+  apiPublicUrl: env.API_PUBLIC_URL,
   mongoUri: env.MONGO_URI,
   redisUrl: env.REDIS_URL,
   jwt: {
@@ -87,6 +94,7 @@ export const config = {
     modelFast: env.AI_MODEL_FAST,
     maxTokens: env.AI_MAX_TOKENS,
     enabled: Boolean(env.ANTHROPIC_API_KEY),
+    encryptionKey: env.AI_ENCRYPTION_KEY,
   },
   mail: {
     host: env.SMTP_HOST,
@@ -106,6 +114,13 @@ export const config = {
       keyId: env.RAZORPAY_KEY_ID,
       keySecret: env.RAZORPAY_KEY_SECRET,
       enabled: Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET),
+    },
+    cashfree: {
+      appId: env.CASHFREE_APP_ID,
+      secretKey: env.CASHFREE_SECRET_KEY,
+      mode: env.CASHFREE_ENV,
+      webhookSecret: env.CASHFREE_WEBHOOK_SECRET,
+      enabled: Boolean(env.CASHFREE_APP_ID && env.CASHFREE_SECRET_KEY),
     },
   },
   sms: {

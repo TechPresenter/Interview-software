@@ -29,7 +29,7 @@
   --ring: 256 88% 60%;
 
   /* Glass + ambient (theme-aware) */
-  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-bg: rgba(255, 255, 255, 0.82);
   --glass-brd: rgba(15, 23, 42, 0.08);
   --glass-shadow: 0 10px 40px -12px rgba(2, 6, 23, 0.18);
   --grid-line: rgba(15, 23, 42, 0.05);
@@ -54,7 +54,7 @@
   --input: 240 8% 18%;
   --ring: 256 92% 68%;
 
-  --glass-bg: rgba(255, 255, 255, 0.045);
+  --glass-bg: rgba(22, 22, 31, 0.72);
   --glass-brd: rgba(255, 255, 255, 0.09);
   --glass-shadow: 0 18px 60px -18px rgba(0, 0, 0, 0.65);
   --grid-line: rgba(255, 255, 255, 0.04);
@@ -95,12 +95,22 @@ h1, h2, h3, h4, h5, h6, .font-display {
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
     box-shadow: var(--glass-shadow);
+    /* Own stacking context so neighbouring blurred panels never bleed/merge. */
+    isolation: isolate;
   }
   .glass-strong {
-    background: hsl(var(--card) / 0.85);
+    background: hsl(var(--card) / 0.92);
     border: 1px solid var(--glass-brd);
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
+    isolation: isolate;
+  }
+  /* Chromium disables backdrop-filter when an ancestor is transformed (framer-motion
+     does this across the dashboard). Fall back to a solid panel so cards stay opaque
+     and distinct instead of going see-through and visually overlapping. */
+  @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    .glass { background: hsl(var(--card)); }
+    .glass-strong { background: hsl(var(--card)); }
   }
 
   /* Gradient border wrapper (premium card edge) */

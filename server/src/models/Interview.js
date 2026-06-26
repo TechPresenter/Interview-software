@@ -34,6 +34,8 @@ const interviewSchema = new Schema(
     company: { type: Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
     job: { type: Schema.Types.ObjectId, ref: 'Job', index: true },
     candidate: { type: Schema.Types.ObjectId, ref: 'Candidate', required: true, index: true },
+    // Optional knowledge base grounding this interview's questions (overrides the job's).
+    knowledgeBase: { type: Schema.Types.ObjectId, ref: 'KnowledgeBase', default: null },
 
     // Public, unguessable token used in the candidate invite link.
     accessToken: { type: String, unique: true, default: () => nanoid(24), index: true },

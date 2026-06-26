@@ -28,12 +28,12 @@ export const prompts = {
   }),
 
   /** Generate the next question, adapting to difficulty and history. */
-  nextQuestion: ({ jobTitle, skills, interviewType, difficulty, askedQuestions, lastAnswer, transcriptSummary, language }) => ({
+  nextQuestion: ({ jobTitle, skills, interviewType, difficulty, askedQuestions, lastAnswer, transcriptSummary, language, knowledge }) => ({
     system: personaSystem(interviewType, language),
     messages: [
       {
         role: 'user',
-        content: `Role: ${jobTitle}\nKey skills: ${(skills || []).join(', ') || 'general'}\nDesired difficulty: ${difficulty}\nAlready asked: ${(askedQuestions || []).join(' | ') || 'none'}\nConversation so far: ${transcriptSummary || 'just started'}\n${lastAnswer ? `Candidate's last answer: "${lastAnswer}"` : ''}\n\nProduce the single best next ${interviewType} question. Do not repeat asked topics. ${language === 'hi' ? 'The "question" text MUST be written in Hindi (Devanagari). ' : ''}Return JSON: {"question": string, "competencies": string[], "rationale": string}`,
+        content: `Role: ${jobTitle}\nKey skills: ${(skills || []).join(', ') || 'general'}\nDesired difficulty: ${difficulty}\nAlready asked: ${(askedQuestions || []).join(' | ') || 'none'}\nConversation so far: ${transcriptSummary || 'just started'}\n${lastAnswer ? `Candidate's last answer: "${lastAnswer}"` : ''}${knowledge ? `\n\nKNOWLEDGE BASE — you MUST base your question ONLY on the following material. Do not ask about anything outside it:\n"""${String(knowledge).slice(0, 6000)}"""` : ''}\n\nProduce the single best next ${interviewType} question${knowledge ? ', grounded strictly in the knowledge base above' : ''}. Do not repeat asked topics. ${language === 'hi' ? 'The "question" text MUST be written in Hindi (Devanagari). ' : ''}Return JSON: {"question": string, "competencies": string[], "rationale": string}`,
       },
     ],
   }),

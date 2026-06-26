@@ -3,7 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import { rbac } from '../middleware/rbac.js';
 import { requireTenant } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
-import { uploadResume, uploadCsv } from '../middleware/upload.js';
+import { uploadResume, uploadCsv, uploadKnowledge } from '../middleware/upload.js';
 import { ROLES } from '../constants/enums.js';
 import {
   createJobSchema,
@@ -23,6 +23,7 @@ import * as interviews from '../controllers/company/interview.controller.js';
 import * as pipeline from '../controllers/company/pipeline.controller.js';
 import * as reports from '../controllers/company/report.controller.js';
 import * as billing from '../controllers/company/billing.controller.js';
+import * as kb from '../controllers/knowledgeBase.controller.js';
 
 export const router = Router();
 
@@ -73,9 +74,19 @@ router.get('/reports/ranking/export', reports.exportRanking);
 router.get('/reports/:id', reports.getOne);
 router.get('/reports/:id/export', reports.exportReport);
 
+/* ── Knowledge bases ───────────────────────────────────── */
+router.get('/knowledge-bases', kb.list);
+router.post('/knowledge-bases', uploadKnowledge, kb.create);
+router.get('/knowledge-bases/:id', kb.getOne);
+router.patch('/knowledge-bases/:id', kb.update);
+router.post('/knowledge-bases/:id/sources', uploadKnowledge, kb.addSources);
+router.post('/knowledge-bases/:id/toggle', kb.toggle);
+router.delete('/knowledge-bases/:id', kb.remove);
+
 /* ── Billing ───────────────────────────────────────────── */
 router.get('/billing', billing.summary);
 router.get('/billing/invoices', billing.invoices);
+router.get('/billing/invoices/:id/pdf', billing.invoicePdf);
 router.post('/billing/checkout', billing.checkout);
 router.post('/billing/razorpay/verify', billing.verifyRazorpay);
 router.post('/billing/cancel', billing.cancel);

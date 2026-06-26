@@ -9,6 +9,10 @@ import {
   Briefcase,
   CalendarCheck,
   FileBarChart,
+  CheckCircle2,
+  Circle,
+  PartyPopper,
+  ArrowRight,
 } from 'lucide-react';
 import { StatTile, type TileColor } from '@/components/ui/StatTile';
 import { AreaChart } from '@/components/ui/Charts';
@@ -18,7 +22,7 @@ import Link from 'next/link';
 import { adminApi } from '@/lib/admin.api';
 import { companyApi } from '@/lib/company.api';
 import { candidateApi } from '@/lib/candidate.api';
-import { relativeTime, dateTime } from '@/lib/format';
+import { relativeTime, dateTime, greetingIST } from '@/lib/format';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/store/auth.store';
 
@@ -47,7 +51,7 @@ function CandidateOverview({ name }: { name: string }) {
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-bold">
-          Welcome, <span className="text-gradient">{name?.split(' ')[0]}</span>
+          {greetingIST()}, <span className="text-gradient">{name?.split(' ')[0]}</span>
         </h1>
         <p className="mt-1 text-muted-foreground">Your interviews and updates.</p>
       </header>
@@ -99,10 +103,12 @@ function CompanyOverview({ name }: { name: string }) {
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-bold">
-          Welcome back, <span className="text-gradient">{name?.split(' ')[0]}</span>
+          {greetingIST()}, <span className="text-gradient">{name?.split(' ')[0]}</span>
         </h1>
         <p className="mt-1 text-muted-foreground">Your hiring at a glance.</p>
       </header>
+
+      <OnboardingCard ob={data?.onboarding} />
 
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((c, i) => (
@@ -156,6 +162,51 @@ function Usage({ label, used = 0, limit }: { label: string; used?: number; limit
   );
 }
 
+/* ── Onboarding checklist (company) ────────────────────── */
+function OnboardingCard({ ob }: { ob?: any }) {
+  if (!ob) return null;
+  if (ob.complete) {
+    return (
+      <GlassCard className="border-accent/40">
+        <div className="flex items-center gap-3">
+          <PartyPopper className="h-7 w-7 shrink-0 text-accent" />
+          <div>
+            <h2 className="text-lg font-semibold">Congratulations! Your setup is complete. 🎉</h2>
+            <p className="text-sm text-muted-foreground">You’ve finished onboarding — your workspace is fully set up and ready to hire.</p>
+          </div>
+        </div>
+      </GlassCard>
+    );
+  }
+  return (
+    <GlassCard>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Finish setting up your workspace</h2>
+          <p className="text-sm text-muted-foreground">{ob.done} of {ob.total} steps complete</p>
+        </div>
+        <span className="text-2xl font-bold text-gradient tabular-nums">{ob.progress}%</span>
+      </div>
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-gradient-brand transition-all duration-500" style={{ width: `${ob.progress}%` }} />
+      </div>
+      <div className="space-y-2">
+        {ob.steps.map((s: any) => (
+          <Link
+            key={s.key}
+            href={s.href}
+            className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5 text-sm transition hover:bg-muted/40"
+          >
+            {s.done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-accent" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground" />}
+            <span className={s.done ? 'text-muted-foreground line-through' : ''}>{s.label}</span>
+            {!s.done && <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />}
+          </Link>
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
 /* ── Super admin: live data ────────────────────────────── */
 function SuperAdminOverview({ name }: { name: string }) {
   const { data, isLoading } = useQuery({ queryKey: ['admin-overview'], queryFn: adminApi.overview });
@@ -177,7 +228,7 @@ function SuperAdminOverview({ name }: { name: string }) {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">
-            Welcome back, <span className="text-gradient">{name?.split(' ')[0]}</span>
+            {greetingIST()}, <span className="text-gradient">{name?.split(' ')[0]}</span>
           </h1>
           <p className="mt-1 text-muted-foreground">Platform overview.</p>
         </div>
@@ -235,7 +286,7 @@ function PlaceholderOverview({ name }: { role?: string; name?: string }) {
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-bold">
-          Welcome back, <span className="text-gradient">{name?.split(' ')[0] ?? 'there'}</span>
+          {greetingIST()}, <span className="text-gradient">{name?.split(' ')[0] ?? 'there'}</span>
         </h1>
         <p className="mt-1 text-muted-foreground">Here&apos;s what&apos;s happening today.</p>
       </header>

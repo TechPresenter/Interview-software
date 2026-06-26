@@ -14,6 +14,7 @@ import { Navbar } from '@/components/landing/Navbar';
 import { AiDemo, Eyebrow } from '@/components/landing/AiDemo';
 import { Testimonials } from '@/components/landing/Testimonials';
 import { Faq } from '@/components/landing/Faq';
+import { CreditFooter } from '@/components/ui/CreditFooter';
 import { cn } from '@/lib/utils';
 
 const features = [
@@ -333,7 +334,10 @@ function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col items-center gap-4 border-t border-border pt-8 sm:flex-row sm:justify-between">
-          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} HireSense AI. Built on MERN + Claude.</p>
+          <div className="flex flex-col items-center gap-2 sm:items-start">
+            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} HireSense AI. Built on MERN + Claude.</p>
+            <CreditFooter />
+          </div>
           <div className="flex w-full max-w-sm gap-2">
             <input placeholder="Your email" className="h-10 flex-1 rounded-xl border border-input bg-card/60 px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/40" />
             <Button size="sm" magnetic={false}>Subscribe <ArrowUpRight className="h-4 w-4" /></Button>

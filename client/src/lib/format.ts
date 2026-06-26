@@ -35,3 +35,18 @@ export function relativeTime(d: string | Date | undefined) {
 export function titleCase(s: string) {
   return s.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/**
+ * Time-of-day greeting based on Indian Standard Time (Asia/Kolkata), regardless
+ * of the viewer's local timezone:
+ *   12:00 AM – 11:59 AM → Good Morning
+ *   12:00 PM – 3:59 PM  → Good Afternoon
+ *   4:00 PM – 11:59 PM  → Good Evening
+ */
+export function greetingIST(d: Date = new Date()) {
+  const hour =
+    Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', hour12: false }).format(d)) % 24;
+  if (hour < 12) return 'Good Morning';
+  if (hour < 16) return 'Good Afternoon';
+  return 'Good Evening';
+}

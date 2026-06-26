@@ -27,7 +27,9 @@ import * as branding from '../controllers/admin/branding.controller.js';
 import * as aiProviders from '../controllers/admin/aiProvider.controller.js';
 import { updateCandidateAdminSchema, createAiProviderSchema, updateAiProviderSchema } from '../validators/admin.validators.js';
 import { brandingSchema } from '../validators/branding.validators.js';
-import { uploadImage } from '../middleware/upload.js';
+import { uploadImage, uploadKnowledge } from '../middleware/upload.js';
+import * as knowledgeBase from '../controllers/knowledgeBase.controller.js';
+import * as email from '../controllers/admin/email.controller.js';
 import {
   pageSchema,
   pageUpdate,
@@ -107,14 +109,42 @@ router.get('/ai/usage/top-companies', ai.topConsumers);
 
 /* ── AI providers (multi-provider management) ──────────── */
 router.get('/ai-providers', aiProviders.list);
+router.get('/ai-providers/analytics', aiProviders.analytics);
+router.get('/ai-providers/export', aiProviders.exportConfig);
+router.post('/ai-providers/import', aiProviders.importConfig);
+router.post('/ai-providers/test', aiProviders.test);
 router.post('/ai-providers', validate(createAiProviderSchema), aiProviders.create);
 router.patch('/ai-providers/:id', validate(updateAiProviderSchema), aiProviders.update);
 router.post('/ai-providers/:id/default', aiProviders.setDefault);
+router.post('/ai-providers/:id/test', aiProviders.testExisting);
+router.get('/ai-providers/:id/balance', aiProviders.balance);
 router.delete('/ai-providers/:id', aiProviders.remove);
+
+/* ── Knowledge bases (platform-wide) ───────────────────── */
+router.get('/knowledge-bases', knowledgeBase.list);
+router.post('/knowledge-bases', uploadKnowledge, knowledgeBase.create);
+router.get('/knowledge-bases/:id', knowledgeBase.getOne);
+router.patch('/knowledge-bases/:id', knowledgeBase.update);
+router.post('/knowledge-bases/:id/sources', uploadKnowledge, knowledgeBase.addSources);
+router.post('/knowledge-bases/:id/toggle', knowledgeBase.toggle);
+router.delete('/knowledge-bases/:id', knowledgeBase.remove);
+
+/* ── Email system (templates, preview, test, history) ──── */
+router.get('/email/templates', email.listTemplates);
+router.get('/email/stats', email.stats);
+router.get('/email/logs', email.logs);
+router.post('/email/preview', email.preview);
+router.post('/email/test', email.sendTest);
+router.post('/email/logs/:id/resend', email.resend);
+router.get('/email/templates/:key', email.getTemplate);
+router.put('/email/templates/:key', email.upsertTemplate);
+router.delete('/email/templates/:key', email.resetTemplate);
 
 /* ── System settings + audit + backup ──────────────────── */
 router.get('/audit-logs', system.auditLogs);
+router.delete('/audit-logs', system.clearAuditLogs);
 router.post('/backup', system.triggerBackup);
+router.post('/system/test-email', system.testEmail);
 router.get('/system/:group', system.getSettingsGroup);
 router.put('/system/:group', validate(settingsGroupSchema), system.updateSettingsGroup);
 

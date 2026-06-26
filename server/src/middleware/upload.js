@@ -51,3 +51,15 @@ export const uploadMedia = multer({
     cb(ApiError.badRequest('Only audio or video recordings are allowed'));
   },
 }).single('recording');
+
+/** Knowledge-base documents (multiple). PDF/DOCX/TXT/MD/CSV/XLSX/PPTX/ZIP. */
+const KB_EXTS = ['.pdf', '.docx', '.doc', '.txt', '.md', '.csv', '.xlsx', '.xls', '.pptx', '.ppt', '.zip'];
+export const uploadKnowledge = multer({
+  storage,
+  limits: { fileSize: 25 * 1024 * 1024, files: 10 }, // 25 MB each, up to 10
+  fileFilter: (_req, file, cb) => {
+    const ext = (file.originalname.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+    if (KB_EXTS.includes(ext)) return cb(null, true);
+    cb(ApiError.badRequest(`Unsupported file type. Allowed: ${KB_EXTS.join(', ')}`));
+  },
+}).array('files', 10);

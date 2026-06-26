@@ -122,13 +122,21 @@ export const updateCandidateAdminSchema = z.object({
 /* ── AI providers ──────────────────────────────────────── */
 export const createAiProviderSchema = z.object({
   label: z.string().min(2),
-  type: z.enum(['claude', 'gemini', 'openai', 'azure_openai', 'groq', 'openrouter', 'custom']),
+  type: z.enum(['claude', 'openai', 'gemini', 'grok', 'deepseek', 'mistral', 'azure_openai', 'groq', 'openrouter', 'custom']),
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
+  apiVersion: z.string().optional(),
+  organization: z.string().optional(),
+  projectId: z.string().optional(),
   model: z.string().optional(),
+  modules: z.array(z.string()).optional(),
+  priority: z.number().int().optional(),
+  timeoutMs: z.number().int().positive().optional(),
+  maxRetries: z.number().int().min(0).optional(),
+  rateLimitPerMin: z.number().int().positive().optional(),
+  rateLimitPerDay: z.number().int().positive().optional(),
   isActive: z.boolean().optional(),
   isDefault: z.boolean().optional(),
-  rateLimitPerMin: z.number().int().positive().optional(),
   notes: z.string().optional(),
 });
 export const updateAiProviderSchema = createAiProviderSchema.partial();

@@ -9,9 +9,11 @@ const { Schema } = mongoose;
 const aiUsageSchema = new Schema(
   {
     company: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
+    provider: { type: Schema.Types.ObjectId, ref: 'AiProvider', index: true },
+    providerType: { type: String },
     feature: {
       type: String,
-      enum: ['interview', 'scoring', 'report', 'resume', 'other'],
+      enum: ['interview', 'scoring', 'report', 'resume', 'chat', 'content', 'image', 'embeddings', 'test', 'other'],
       required: true,
       index: true,
     },
@@ -29,6 +31,7 @@ const aiUsageSchema = new Schema(
 
 aiUsageSchema.index({ company: 1, createdAt: -1 });
 aiUsageSchema.index({ feature: 1, createdAt: -1 });
+aiUsageSchema.index({ provider: 1, createdAt: -1 });
 
 export const AiUsage = mongoose.model('AiUsage', aiUsageSchema);
 export default AiUsage;

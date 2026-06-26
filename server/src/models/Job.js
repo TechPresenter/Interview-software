@@ -51,6 +51,9 @@ const jobSchema = new Schema(
       maxSkips: { type: Number, default: 2 },
     },
 
+    // Optional knowledge base that grounds AI interview questions for this role.
+    knowledgeBase: { type: Schema.Types.ObjectId, ref: 'KnowledgeBase', default: null },
+
     status: { type: String, enum: JOB_STATUS, default: 'draft', index: true },
     openings: { type: Number, default: 1 },
 

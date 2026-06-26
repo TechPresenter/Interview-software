@@ -64,6 +64,7 @@ export const companyApi = {
   // Billing
   billing: () => apiGet<any>('/billing'),
   billingInvoices: () => apiGet<any[]>('/billing/invoices'),
+  downloadInvoice: (id: string) => download(`/billing/invoices/${id}/pdf`, {}, `invoice-${id}.pdf`),
   checkout: (body: object) => apiPost<any>('/billing/checkout', body),
   verifyRazorpay: (body: object) => apiPost<any>('/billing/razorpay/verify', body),
   cancelBilling: () => apiPost<any>('/billing/cancel'),

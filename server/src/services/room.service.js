@@ -10,6 +10,7 @@ import * as engine from './ai/interview.engine.js';
 import { scoreAnswer } from './ai/scoring.engine.js';
 import { generateReport } from './ai/report.engine.js';
 import { getAiWeightage } from './settings.service.js';
+import { contextFor } from './knowledgeBase.service.js';
 import { logActivity } from './audit.service.js';
 import { notify } from './notification.service.js';
 import { emitToCompany, emitToInterview } from '../socket/emitters.js';
@@ -317,12 +318,20 @@ export async function recordProctoring(interview, { type, severity, detail }) {
 async function generateQuestion(interview, job, lastAnswer) {
   if (config.ai.enabled) {
     try {
+      // Ground questions in the assigned knowledge base (interview overrides job).
+      let knowledge = null;
+      const kbId = interview.knowledgeBase || job?.knowledgeBase;
+      if (kbId) {
+        const ctx = await contextFor(kbId, { query: lastAnswer || job?.title || '', maxChars: 6000 });
+        knowledge = ctx?.text || null;
+      }
       const data = await engine.nextQuestion({
         interview,
         job,
         askedQuestions: interview.engineState.askedTexts,
         lastAnswer,
         transcriptSummary: interview.transcript.slice(-4).map((t) => `${t.role}: ${t.text}`).join(' | '),
+        knowledge,
       });
       if (data?.question) {
         return { text: data.question, competencies: data.competencies || ['technical', 'communication'], isFollowUp: false };

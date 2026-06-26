@@ -65,11 +65,18 @@ export const adminApi = {
   aiAnalytics: (days = 30) => apiGet<any>('/admin/ai/analytics', { days }),
   testAi: () => apiPost<any>('/admin/ai/test'),
 
-  // AI providers (multi-provider management)
-  aiProviders: () => apiGet<any[]>('/admin/ai-providers'),
+  // AI providers (multi-provider management) — returns { providers, catalog, modules }
+  aiProviders: () => apiGet<any>('/admin/ai-providers'),
   createAiProvider: (body: object) => apiPost<any>('/admin/ai-providers', body),
+  updateAiProvider: (id: string, body: object) => api.patch(`/admin/ai-providers/${id}`, body).then((r) => r.data.data),
   setDefaultAiProvider: (id: string) => apiPost<any>(`/admin/ai-providers/${id}/default`),
   deleteAiProvider: (id: string) => api.delete(`/admin/ai-providers/${id}`).then((r) => r.data),
+  testAiProvider: (body: object) => apiPost<any>('/admin/ai-providers/test', body),
+  testAiProviderById: (id: string) => apiPost<any>(`/admin/ai-providers/${id}/test`),
+  aiProviderAnalytics: (days = 30) => apiGet<any>('/admin/ai-providers/analytics', { days }),
+  exportAiProviders: () => apiGet<any>('/admin/ai-providers/export'),
+  importAiProviders: (providers: any[]) => apiPost<any>('/admin/ai-providers/import', { providers }),
+  aiProviderBalance: (id: string) => apiGet<any>(`/admin/ai-providers/${id}/balance`),
 
   // CMS (resource ∈ pages|blog|faqs|testimonials|announcements|templates)
   cmsList: (resource: string, params?: object) => getPaged<any>(`/admin/cms/${resource}`, params),
@@ -87,12 +94,26 @@ export const adminApi = {
     return api.post('/admin/branding/asset', fd, { params: { field } }).then((r) => r.data.data);
   },
 
+  // Email system
+  emailTemplates: () => apiGet<any[]>('/admin/email/templates'),
+  emailTemplate: (key: string) => apiGet<any>(`/admin/email/templates/${key}`),
+  saveEmailTemplate: (key: string, body: object) => api.put(`/admin/email/templates/${key}`, body).then((r) => r.data.data),
+  resetEmailTemplate: (key: string) => api.delete(`/admin/email/templates/${key}`).then((r) => r.data),
+  emailPreview: (key: string, vars?: object) => apiPost<any>('/admin/email/preview', { key, vars }),
+  emailTest: (key: string, to: string, vars?: object) => apiPost<any>('/admin/email/test', { key, to, vars }),
+  emailLogs: (params?: object) => getPaged<any>('/admin/email/logs', params),
+  resendEmail: (id: string) => apiPost<any>(`/admin/email/logs/${id}/resend`),
+  emailStats: () => apiGet<any>('/admin/email/stats'),
+
   // System
   runBackup: () => apiPost<any>('/admin/backup'),
+  testEmail: (to?: string) => apiPost<any>('/admin/system/test-email', { to }),
   settingsGroup: (group: string) => apiGet<any[]>(`/admin/system/${group}`),
   updateSettingsGroup: (group: string, entries: object[]) =>
     api.put(`/admin/system/${group}`, { entries }).then((r) => r.data.data),
   auditLogs: (params?: object) => getPaged<any>('/admin/audit-logs', params),
+  clearAuditLogs: (before?: string) =>
+    api.delete('/admin/audit-logs', { params: before ? { before } : {} }).then((r) => r.data),
 };
 
 export default adminApi;

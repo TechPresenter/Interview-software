@@ -39,8 +39,8 @@ export async function greet({ interview, candidate, job }) {
   return text;
 }
 
-/** Generate the next adaptive question. */
-export async function nextQuestion({ interview, job, askedQuestions, lastAnswer, transcriptSummary }) {
+/** Generate the next adaptive question (optionally grounded in a knowledge base). */
+export async function nextQuestion({ interview, job, askedQuestions, lastAnswer, transcriptSummary, knowledge }) {
   const { data } = await completeJson({
     ...prompts.nextQuestion({
       jobTitle: job?.title,
@@ -51,6 +51,7 @@ export async function nextQuestion({ interview, job, askedQuestions, lastAnswer,
       lastAnswer,
       transcriptSummary,
       language: interview.config.language,
+      knowledge,
     }),
     feature: 'interview',
     company: interview.company,

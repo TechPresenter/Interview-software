@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { stripeProvider } from './stripe.provider.js';
 import { razorpayProvider } from './razorpay.provider.js';
+import { cashfreeProvider } from './cashfree.provider.js';
 import { Company } from '../../models/Company.js';
 import { Plan } from '../../models/Plan.js';
 import { Subscription } from '../../models/Subscription.js';
@@ -9,7 +10,7 @@ import { Coupon } from '../../models/Coupon.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { logActivity } from '../audit.service.js';
 
-const PROVIDERS = { stripe: stripeProvider, razorpay: razorpayProvider };
+const PROVIDERS = { stripe: stripeProvider, razorpay: razorpayProvider, cashfree: cashfreeProvider };
 
 /** Resolve a provider by name, ensuring it's enabled. */
 export function getProvider(name) {

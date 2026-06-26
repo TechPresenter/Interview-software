@@ -31,6 +31,7 @@ export const createJobSchema = z.object({
       adaptiveDifficulty: z.boolean().optional(),
     })
     .optional(),
+  knowledgeBase: objectId.optional().nullable(),
   status: z.enum(JOB_STATUS).optional(),
   openings: z.number().int().positive().optional(),
 });
@@ -80,6 +81,7 @@ export const addNoteSchema = z.object({ body: z.string().min(1).max(2000) });
 export const scheduleInterviewSchema = z.object({
   candidate: objectId,
   job: objectId.optional(),
+  knowledgeBase: objectId.optional().nullable(),
   types: z.array(z.enum(INTERVIEW_TYPES)).optional(),
   scheduledAt: z.coerce.date().optional(),
   config: z

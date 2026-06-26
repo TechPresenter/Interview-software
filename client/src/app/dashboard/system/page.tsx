@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, DatabaseBackup, ShieldCheck, Activity } from 'lucide-react';
+import { Save, DatabaseBackup, ShieldCheck, Activity, Mail, Trash2 } from 'lucide-react';
 import { adminApi } from '@/lib/admin.api';
 import { dateTime, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -19,7 +19,7 @@ import { toast } from '@/components/ui/toast';
 const GROUP_TEMPLATES: Record<string, string[]> = {
   smtp: ['smtp.host', 'smtp.port', 'smtp.user', 'smtp.password', 'smtp.from'],
   sms: ['sms.provider', 'sms.apiKey', 'sms.sender'],
-  payment: ['payment.stripeKey', 'payment.stripeWebhookSecret', 'payment.razorpayKeyId', 'payment.razorpayKeySecret'],
+  payment: ['payment.stripeKey', 'payment.stripeWebhookSecret', 'payment.razorpayKeyId', 'payment.razorpayKeySecret', 'payment.cashfreeAppId', 'payment.cashfreeSecretKey', 'payment.cashfreeEnv'],
   security: ['security.maxLoginAttempts', 'security.sessionTimeoutMinutes', 'security.enforce2faForAdmins'],
 };
 const GROUPS = Object.keys(GROUP_TEMPLATES);
@@ -29,9 +29,10 @@ export default function SystemPage() {
     <div className="space-y-8">
       <PageHeader title="System" description="Platform configuration, integrations, security, and audit trail." />
       <GeneralSettings />
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Health />
+      <Health />
+      <div className="grid gap-6 lg:grid-cols-2">
         <Backup />
+        <TestEmail />
       </div>
       <SettingsEditor />
       <AuditLogs />
@@ -147,6 +148,41 @@ function Backup() {
   );
 }
 
+function TestEmail() {
+  const [to, setTo] = useState('');
+  const send = useMutation({
+    mutationFn: () => adminApi.testEmail(to.trim() || undefined),
+    onSuccess: (r: any) => {
+      if (r?.delivered) toast.success(`Test email sent to ${r.to}`);
+      else if (r?.mocked)
+        toast.info('SMTP is not configured — the email was logged on the server, not delivered. Add SMTP keys to send for real.');
+      else toast.error(`Send failed${r?.error ? `: ${r.error}` : ''}`);
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to send test email'),
+  });
+  return (
+    <GlassCard>
+      <div className="mb-4 flex items-center gap-2">
+        <Mail className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold">Test email</h2>
+      </div>
+      <p className="text-sm text-muted-foreground">Send a test message to verify your SMTP / email configuration.</p>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <input
+          type="email"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          placeholder="recipient@email.com (defaults to you)"
+          className="h-10 flex-1 rounded-xl border border-input bg-card/60 px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/40"
+        />
+        <Button magnetic={false} loading={send.isPending} onClick={() => send.mutate()}>
+          <Mail className="h-4 w-4" /> Send test
+        </Button>
+      </div>
+    </GlassCard>
+  );
+}
+
 function SettingsEditor() {
   const qc = useQueryClient();
   const [group, setGroup] = useState('smtp');
@@ -215,10 +251,20 @@ function SettingsEditor() {
 }
 
 function AuditLogs() {
+  const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const { data, isLoading } = useQuery({
     queryKey: ['audit-logs', page],
     queryFn: () => adminApi.auditLogs({ page, limit: 12 }),
+  });
+  const clear = useMutation({
+    mutationFn: () => adminApi.clearAuditLogs(),
+    onSuccess: (r: any) => {
+      toast.success(r?.message || 'Audit logs cleared');
+      setPage(1);
+      qc.invalidateQueries({ queryKey: ['audit-logs'] });
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to clear logs'),
   });
 
   const columns: Column<any>[] = [
@@ -231,7 +277,20 @@ function AuditLogs() {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold">Audit logs</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Audit logs</h2>
+        <Button
+          size="sm"
+          variant="ghost"
+          magnetic={false}
+          loading={clear.isPending}
+          onClick={() => {
+            if (window.confirm('Clear ALL audit logs? This cannot be undone. The clear action itself will be recorded.')) clear.mutate();
+          }}
+        >
+          <Trash2 className="h-4 w-4" /> Clear logs
+        </Button>
+      </div>
       <DataTable
         columns={columns}
         rows={data?.items ?? []}

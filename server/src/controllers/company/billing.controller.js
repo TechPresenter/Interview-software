@@ -6,7 +6,9 @@ import { Plan } from '../../models/Plan.js';
 import { Subscription } from '../../models/Subscription.js';
 import { Payment } from '../../models/Payment.js';
 import { Company } from '../../models/Company.js';
+import { Branding } from '../../models/Branding.js';
 import { usageReport } from '../../services/limits.service.js';
+import { invoiceToPdf } from '../../services/export.service.js';
 import * as payments from '../../services/payment/index.js';
 import { getProvider, applyPaidPlan } from '../../services/payment/index.js';
 
@@ -24,6 +26,17 @@ export const summary = asyncHandler(async (req, res) => {
 export const invoices = asyncHandler(async (req, res) => {
   const items = await Payment.find({ company: req.companyId }).sort('-createdAt').limit(100).lean();
   return ok(res, items);
+});
+
+/** GET /billing/invoices/:id/pdf — download a payment as a branded PDF invoice. */
+export const invoicePdf = asyncHandler(async (req, res) => {
+  const payment = await Payment.findOne({ _id: req.params.id, company: req.companyId }).lean();
+  if (!payment) throw ApiError.notFound('Invoice not found');
+  const [company, branding] = await Promise.all([Company.findById(req.companyId).lean(), Branding.getGlobal()]);
+  const { buffer, filename, contentType } = await invoiceToPdf({ payment, company, branding });
+  res.set('Content-Type', contentType);
+  res.set('Content-Disposition', `attachment; filename="${filename}"`);
+  return res.send(buffer);
 });
 
 /** POST /billing/checkout — start a provider checkout. */

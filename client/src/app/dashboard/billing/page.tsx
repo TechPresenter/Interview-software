@@ -52,11 +52,11 @@ export default function BillingPage() {
       key: 'actions',
       header: '',
       className: 'text-right',
-      render: (r) => r.invoiceUrl ? (
-        <a href={r.invoiceUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">
+      render: (r) => (
+        <button onClick={() => companyApi.downloadInvoice(r._id)} title="Download PDF invoice" className="ml-auto block text-muted-foreground transition hover:text-foreground">
           <Download className="ml-auto h-4 w-4" />
-        </a>
-      ) : null,
+        </button>
+      ),
     },
   ];
 
