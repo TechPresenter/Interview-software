@@ -23,7 +23,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const branding = useBranding((s) => s.branding);
-  const name = branding?.platformName || 'HireSense';
+  const name = branding?.platformName || 'AIPL Hire';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);

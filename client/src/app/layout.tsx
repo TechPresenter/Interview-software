@@ -7,12 +7,12 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swa
 const sora = Sora({ subsets: ['latin'], variable: '--font-display', display: 'swap', weight: ['400', '500', '600', '700', '800'] });
 
 export const metadata: Metadata = {
-  title: { default: 'HireSense — AI Interview Platform', template: '%s · HireSense' },
+  title: { default: 'AIPL Hire — AI Interview Platform', template: '%s · AIPL Hire' },
   description:
     'Enterprise AI interview platform. Screen, interview, score, and report on candidates with adaptive AI — faster and fairer hiring.',
   keywords: ['AI interview', 'hiring', 'recruitment', 'ATS', 'candidate screening'],
-  openGraph: { title: 'HireSense', type: 'website', description: 'AI-powered hiring, end to end.' },
-  metadataBase: new URL('https://hiresense.ai'),
+  openGraph: { title: 'AIPL Hire', type: 'website', description: 'AI-powered hiring, end to end.' },
+  metadataBase: new URL('https://aipl.online'),
 };
 
 // Set the theme class before paint to avoid a flash of the wrong theme.

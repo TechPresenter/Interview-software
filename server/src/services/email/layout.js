@@ -31,7 +31,7 @@ function socialRow(social = {}) {
  * @returns {string} full HTML document
  */
 export function renderBranded({ branding = {}, subject = '', bodyHtml = '', preheader = '', assetBase = '', trackingPixel = '' }) {
-  const name = branding.platformName || 'HireSense';
+  const name = branding.platformName || 'AIPL Hire';
   const primary = branding.theme?.primary || '#7c5cff';
   const accent = branding.theme?.accent || '#22d3ee';
   const year = new Date().getFullYear();

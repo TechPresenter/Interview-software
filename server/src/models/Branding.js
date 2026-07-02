@@ -13,12 +13,12 @@ const brandingSchema = new Schema(
     // null = global/platform branding; set = company override (future use).
     company: { type: Schema.Types.ObjectId, ref: 'Company', default: null, unique: true, sparse: true },
 
-    platformName: { type: String, default: 'HireSense' },
+    platformName: { type: String, default: 'AIPL Hire' },
     tagline: { type: String, default: 'AI-Powered Interview Platform' },
     logoUrl: { type: String },
     logoDarkUrl: { type: String },
     faviconUrl: { type: String },
-    footerText: { type: String, default: '© {year} HireSense. All rights reserved.' },
+    footerText: { type: String, default: '© {year} AIPL Hire. All rights reserved.' },
 
     theme: {
       primary: { type: String, default: '#7c5cff' }, // hex

@@ -335,7 +335,7 @@ function Footer() {
 
         <div className="mt-12 flex flex-col items-center gap-4 border-t border-border pt-8 sm:flex-row sm:justify-between">
           <div className="flex flex-col items-center gap-2 sm:items-start">
-            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} HireSense AI. Built on MERN + Claude.</p>
+            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} AIPL Hire. All rights reserved.</p>
             <CreditFooter />
           </div>
           <div className="flex w-full max-w-sm gap-2">

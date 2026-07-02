@@ -20,7 +20,7 @@ export function Sidebar() {
   const branding = useBranding((s) => s.branding);
   const [collapsed, setCollapsed] = useState(false);
   const items = user ? navByRole[user.role] : [];
-  const name = branding?.platformName || 'HireSense';
+  const name = branding?.platformName || 'AIPL Hire';
 
   return (
     <motion.aside

@@ -95,7 +95,7 @@ async function safeBranding() {
   try {
     return (await Branding.getGlobal()).toObject();
   } catch {
-    return { platformName: 'HireSense' };
+    return { platformName: 'AIPL Hire' };
   }
 }
 
@@ -140,7 +140,7 @@ export async function previewTemplate(key, vars = {}) {
  */
 export async function sendTemplated(key, { to, vars = {}, company, relatedUser, createdBy, scheduledFor } = {}) {
   const branding = await safeBranding();
-  const mergedVars = { platformName: branding.platformName || 'HireSense', name: 'there', dashboardUrl: config.clientUrl, ...vars };
+  const mergedVars = { platformName: branding.platformName || 'AIPL Hire', name: 'there', dashboardUrl: config.clientUrl, ...vars };
   const tpl = await resolveTemplate(key, mergedVars);
   const log = await EmailLog.create({
     to,
