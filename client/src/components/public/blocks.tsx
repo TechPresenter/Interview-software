@@ -24,6 +24,9 @@ export function SectionHeading({
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">{eyebrow}</p>
       )}
       <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">{title}</h2>
+      {center && (
+        <span className="mx-auto mt-5 block h-1 w-14 rounded-full bg-[linear-gradient(90deg,hsl(var(--primary)),hsl(var(--accent)))]" />
+      )}
       {lead && <p className="mt-4 text-muted-foreground">{lead}</p>}
     </div>
   );
@@ -41,7 +44,7 @@ export function FeatureGrid({ items, columns = 3 }: { items: Feature[]; columns?
   return (
     <div className={cn('grid gap-6', cols)}>
       {items.map((f, i) => (
-        <GlassCard key={f.title} tilt delay={i * 0.04} className="group">
+        <GlassCard key={f.title} tilt delay={i * 0.04} className="group transition-shadow duration-300 hover:ring-1 hover:ring-primary/25">
           <span className="mb-4 inline-grid h-12 w-12 place-items-center rounded-xl bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] glow transition-transform duration-300 group-hover:scale-110">
             <f.icon className="h-6 w-6 text-white" />
           </span>
@@ -70,10 +73,10 @@ export function CheckList({ items, className }: { items: string[]; className?: s
 /** Row of headline statistics inside a glass panel. */
 export function StatStrip({ stats }: { stats: { value: string; label: string }[] }) {
   return (
-    <GlassCard className="grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4">
+    <GlassCard className="gradient-border grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((s) => (
         <div key={s.label} className="text-center">
-          <p className="text-4xl font-extrabold text-gradient md:text-5xl">{s.value}</p>
+          <p className="text-4xl font-extrabold text-gradient-animate md:text-5xl">{s.value}</p>
           <p className="mt-2 text-sm text-muted-foreground">{s.label}</p>
         </div>
       ))}
@@ -88,8 +91,8 @@ export function Steps({ steps }: { steps: Step[] }) {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       {steps.map((s, i) => (
-        <div key={s.title} className="relative rounded-2xl border border-border bg-card/40 p-6">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-sm font-bold text-white">
+        <div key={s.title} className="group relative rounded-2xl border border-border bg-card/40 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-card/60">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-sm font-bold text-white transition-transform duration-300 group-hover:scale-110">
             {i + 1}
           </span>
           <h3 className="mt-4 font-semibold">{s.title}</h3>

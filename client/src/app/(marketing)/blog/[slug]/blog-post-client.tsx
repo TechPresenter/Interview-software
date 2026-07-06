@@ -15,6 +15,7 @@ export default function BlogPostClient() {
   return (
     <main className="relative min-h-screen overflow-x-clip pb-24 pt-28 md:pt-32">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] mesh-bg opacity-30" />
+      <div className="pointer-events-none absolute left-1/2 top-[-6%] -z-10 h-[380px] w-[820px] -translate-x-1/2 aurora opacity-50" />
 
       <div className="container">
         <Breadcrumbs items={[{ label: 'Blog', href: '/blog' }, { label: data?.title || 'Article' }]} />

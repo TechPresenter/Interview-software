@@ -48,13 +48,15 @@ export default function PricingClient() {
   return (
     <main className="relative min-h-screen overflow-x-clip pb-24 pt-28 md:pt-32">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] mesh-bg opacity-50" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] grid-bg" />
+      <div className="pointer-events-none absolute left-1/2 top-[-6%] -z-10 h-[440px] w-[960px] -translate-x-1/2 aurora opacity-60" />
 
       <div className="container">
         <Breadcrumbs items={[{ label: 'Pricing' }]} />
 
         <section className="py-12 text-center">
           <h1 className="text-4xl font-extrabold md:text-6xl">
-            Simple, scalable <span className="text-gradient">pricing</span>
+            Simple, scalable <span className="text-gradient-animate">pricing</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">Start free. Upgrade as you grow. Cancel anytime.</p>
 
@@ -74,7 +76,7 @@ export default function PricingClient() {
             {(plans ?? []).map((p: any) => {
               const price = cycle === 'yearly' ? p.pricing.yearly : p.pricing.monthly;
               return (
-                <GlassCard key={p._id} interactive className={cn(p.isPopular && 'ring-1 ring-primary/40')}>
+                <GlassCard key={p._id} interactive className={cn(p.isPopular && 'gradient-border glow ring-1 ring-primary/40 lg:scale-[1.03]')}>
                   {p.isPopular && <Badge className="mb-3">Most popular</Badge>}
                   <h3 className="text-xl font-semibold">{p.name}</h3>
                   <p className="mt-3 text-4xl font-bold text-gradient">

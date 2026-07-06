@@ -23,6 +23,7 @@ export function MarketingPage({ eyebrow, title, lead, breadcrumb, actions, child
     <main className="relative min-h-screen overflow-x-clip pb-24 pt-28 md:pt-32">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] mesh-bg opacity-50" />
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] grid-bg" />
+      <div className="pointer-events-none absolute left-1/2 top-[-6%] -z-10 h-[440px] w-[960px] -translate-x-1/2 aurora opacity-60" />
 
       <div className="container">
         <Breadcrumbs items={breadcrumb} />
@@ -30,7 +31,7 @@ export function MarketingPage({ eyebrow, title, lead, breadcrumb, actions, child
         <header className="mt-8 max-w-3xl">
           {eyebrow && (
             <span className="inline-flex items-center gap-2 rounded-full glass px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
               {eyebrow}
             </span>
           )}

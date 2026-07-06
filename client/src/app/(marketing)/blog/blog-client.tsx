@@ -40,13 +40,15 @@ export default function BlogClient() {
   return (
     <main className="relative min-h-screen overflow-x-clip pb-24 pt-28 md:pt-32">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] mesh-bg opacity-40" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] grid-bg" />
+      <div className="pointer-events-none absolute left-1/2 top-[-6%] -z-10 h-[440px] w-[960px] -translate-x-1/2 aurora opacity-60" />
 
       <div className="container">
         <Breadcrumbs items={[{ label: 'Blog' }]} />
 
         <header className="mt-8 max-w-3xl">
           <h1 className="text-4xl font-extrabold md:text-5xl">
-            The <span className="text-gradient">AIPL Hire</span> blog
+            The <span className="text-gradient-animate">AIPL Hire</span> blog
           </h1>
           <p className="mt-3 text-muted-foreground">Hiring insights, product updates, and AI in recruitment.</p>
         </header>

@@ -57,6 +57,7 @@ export default function RegisterPage() {
   return (
     <main className="relative grid min-h-screen place-items-center overflow-hidden p-6">
       <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-50" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[520px] w-[720px] -translate-x-1/2 -translate-y-1/2 aurora opacity-55" />
       <div className="absolute right-6 top-6"><ThemeToggle /></div>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2 text-xl font-bold">
