@@ -5,9 +5,9 @@ import { LegalDoc } from '@/components/public/LegalDoc';
 export const metadata: Metadata = pageMetadata({
   title: 'Accessibility',
   description:
-    'The HireSense accessibility statement — our commitment to WCAG 2.1 AA, the measures we take, assistive technology compatibility, and how to share feedback.',
+    'The AIPL Hire accessibility statement — our commitment to WCAG 2.1 AA, the measures we take, assistive technology compatibility, and how to share feedback.',
   path: '/accessibility',
-  keywords: ['accessibility', 'WCAG', 'a11y', 'assistive technology', 'HireSense accessibility'],
+  keywords: ['accessibility', 'WCAG', 'a11y', 'assistive technology', 'AIPL Hire accessibility'],
 });
 
 export default function AccessibilityPage() {
@@ -15,7 +15,7 @@ export default function AccessibilityPage() {
     <LegalDoc
       title="Accessibility Statement"
       updated="6 July 2026"
-      summary="HireSense is committed to making our platform usable by everyone, including people with disabilities."
+      summary="AIPL Hire is committed to making our platform usable by everyone, including people with disabilities."
       breadcrumb={[{ label: 'Accessibility' }]}
       sections={[
         {
@@ -76,8 +76,8 @@ export default function AccessibilityPage() {
           heading: 'Feedback',
           body: (
             <p>
-              We welcome your feedback on the accessibility of HireSense. If you encounter a barrier, email{' '}
-              <a href="mailto:accessibility@hiresense.ai">accessibility@hiresense.ai</a> or use our{' '}
+              We welcome your feedback on the accessibility of AIPL Hire. If you encounter a barrier, email{' '}
+              <a href="mailto:accessibility@aipl.online">accessibility@aipl.online</a> or use our{' '}
               <a href="/contact">Contact page</a>, and we will work to address it.
             </p>
           ),

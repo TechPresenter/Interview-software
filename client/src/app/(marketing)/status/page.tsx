@@ -7,9 +7,9 @@ import { GlassCard } from '@/components/ui/GlassCard';
 export const metadata: Metadata = pageMetadata({
   title: 'System Status',
   description:
-    'Live operational status for HireSense services — API, dashboard, interview room, AI engine, and webhooks — plus uptime and incident history.',
+    'Live operational status for AIPL Hire services — API, dashboard, interview room, AI engine, and webhooks — plus uptime and incident history.',
   path: '/status',
-  keywords: ['HireSense status', 'system status', 'uptime', 'service health'],
+  keywords: ['AIPL Hire status', 'system status', 'uptime', 'service health'],
 });
 
 const services = [
@@ -26,7 +26,7 @@ export default function StatusPage() {
     <MarketingPage
       eyebrow="Status"
       title={<>System <span className="text-gradient">status</span></>}
-      lead="Real-time operational status of HireSense services and 90-day uptime."
+      lead="Real-time operational status of AIPL Hire services and 90-day uptime."
       breadcrumb={[{ label: 'System Status' }]}
     >
       <div className="mx-auto max-w-3xl">

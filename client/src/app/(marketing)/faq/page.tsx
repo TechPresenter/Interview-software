@@ -8,16 +8,16 @@ import { Button } from '@/components/ui/Button';
 export const metadata: Metadata = pageMetadata({
   title: 'FAQs',
   description:
-    'Frequently asked questions about HireSense — how AI interviews work, scoring and fairness, proctoring, pricing, data security, and getting started.',
+    'Frequently asked questions about AIPL Hire — how AI interviews work, scoring and fairness, proctoring, pricing, data security, and getting started.',
   path: '/faq',
-  keywords: ['HireSense FAQ', 'AI interview questions', 'hiring software FAQ'],
+  keywords: ['AIPL Hire FAQ', 'AI interview questions', 'hiring software FAQ'],
 });
 
 const groups: { category: string; items: { q: string; a: string }[] }[] = [
   {
     category: 'Product',
     items: [
-      { q: 'What is HireSense?', a: 'HireSense is an enterprise AI interview platform. It screens resumes, runs adaptive AI interviews, scores candidates objectively across seven competencies, and generates hire-ready reports — all in one place.' },
+      { q: 'What is AIPL Hire?', a: 'AIPL Hire is an enterprise AI interview platform. It screens resumes, runs adaptive AI interviews, scores candidates objectively across seven competencies, and generates hire-ready reports — all in one place.' },
       { q: 'How do AI interviews work?', a: 'Candidates join a private, proctored session where an AI interviewer asks role-relevant questions, follows up on answers, and adapts difficulty in real time. They can respond by voice or text, in English or Hindi.' },
       { q: 'Can candidates interview in Hindi?', a: 'Yes. Interviews can be run in English or Hindi, and the language can be switched mid-interview with region-aware voices and localized scoring.' },
     ],

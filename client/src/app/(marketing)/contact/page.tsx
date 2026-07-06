@@ -9,15 +9,15 @@ import { SITE } from '@/lib/site';
 export const metadata: Metadata = pageMetadata({
   title: 'Contact',
   description:
-    'Get in touch with the HireSense team. Talk to sales, reach support, or ask about partnerships — we typically reply within one business day.',
+    'Get in touch with the AIPL Hire team. Talk to sales, reach support, or ask about partnerships — we typically reply within one business day.',
   path: '/contact',
-  keywords: ['contact HireSense', 'sales', 'support', 'demo request'],
+  keywords: ['contact AIPL Hire', 'sales', 'support', 'demo request'],
 });
 
 const channels = [
-  { icon: Briefcase, title: 'Talk to sales', desc: 'Pricing, demos, and enterprise rollouts.', value: 'sales@hiresense.ai', href: 'mailto:sales@hiresense.ai' },
+  { icon: Briefcase, title: 'Talk to sales', desc: 'Pricing, demos, and enterprise rollouts.', value: 'sales@aipl.online', href: 'mailto:sales@aipl.online' },
   { icon: LifeBuoy, title: 'Support', desc: 'Already a customer? We are here to help.', value: SITE.email, href: `mailto:${SITE.email}` },
-  { icon: Mail, title: 'Partnerships & press', desc: 'Integrations, media, and collaborations.', value: 'hello@hiresense.ai', href: 'mailto:hello@hiresense.ai' },
+  { icon: Mail, title: 'Partnerships & press', desc: 'Integrations, media, and collaborations.', value: 'hello@aipl.online', href: 'mailto:hello@aipl.online' },
 ];
 
 const socials = [
@@ -100,7 +100,7 @@ export default function ContactPage() {
       <section className="mt-10">
         <div className="overflow-hidden rounded-2xl border border-border">
           <iframe
-            title="HireSense head office location"
+            title="AIPL Hire head office location"
             src={MAP_SRC}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"

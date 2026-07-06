@@ -12,19 +12,19 @@ export type NavLink = { label: string; href: string };
 export type NavColumn = { title: string; links: NavLink[] };
 
 export const SITE = {
-  name: 'HireSense',
-  legalName: 'HireSense',
+  name: 'AIPL Hire',
+  legalName: 'AIPL Hire',
   /** Short marketing tagline used in the footer + hero. */
   tagline: 'AI-powered hiring, end to end.',
   description:
     'Enterprise AI interview platform. Screen resumes, run adaptive AI interviews, score candidates objectively, and get hire-ready reports — faster and fairer hiring.',
-  email: 'support@hiresense.ai',
+  email: 'support@aipl.online',
   /** Canonical production origin (no trailing slash). Override via env. */
-  url: (process.env.NEXT_PUBLIC_SITE_URL || 'https://hiresense.ai').replace(/\/$/, ''),
+  url: (process.env.NEXT_PUBLIC_SITE_URL || 'https://aipl.online').replace(/\/$/, ''),
   socials: {
-    linkedin: 'https://www.linkedin.com/company/hiresense',
-    x: 'https://x.com/hiresense',
-    youtube: 'https://www.youtube.com/@hiresense',
+    linkedin: 'https://www.linkedin.com/company/appsgain',
+    x: 'https://x.com',
+    youtube: 'https://www.youtube.com',
   },
 } as const;
 

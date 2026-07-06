@@ -11,7 +11,7 @@ interface ComparisonTableProps {
   /** Column headers (one per compared option). */
   columns: string[];
   rows: ComparisonRow[];
-  /** Index of the column to visually emphasize (e.g. HireSense / recommended plan). */
+  /** Index of the column to visually emphasize (e.g. AIPL Hire / recommended plan). */
   highlightCol?: number;
   /** Header label for the first (feature) column. */
   firstColLabel?: string;

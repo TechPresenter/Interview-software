@@ -5,7 +5,7 @@ import BlogClient from './blog-client';
 export const metadata: Metadata = pageMetadata({
   title: 'Blog',
   description:
-    'Hiring insights, product updates, and the latest on AI in recruitment — from the HireSense team.',
+    'Hiring insights, product updates, and the latest on AI in recruitment — from the AIPL Hire team.',
   path: '/blog',
   keywords: ['hiring blog', 'AI recruitment', 'talent acquisition', 'interview tips'],
 });

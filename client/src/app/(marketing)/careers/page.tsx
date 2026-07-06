@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/Button';
 export const metadata: Metadata = pageMetadata({
   title: 'Careers',
   description:
-    'Join HireSense and help build the future of fair, AI-powered hiring. Explore open roles across engineering, product, design, and go-to-market.',
+    'Join AIPL Hire and help build the future of fair, AI-powered hiring. Explore open roles across engineering, product, design, and go-to-market.',
   path: '/careers',
-  keywords: ['HireSense careers', 'jobs', 'hiring', 'remote jobs', 'AI startup careers'],
+  keywords: ['AIPL Hire careers', 'jobs', 'hiring', 'remote jobs', 'AI startup careers'],
 });
 
 const perks: Feature[] = [
@@ -43,7 +43,7 @@ export default function CareersPage() {
       actions={<Link href="#open-roles"><Button size="lg">View open roles</Button></Link>}
     >
       <section className="mb-20">
-        <SectionHeading eyebrow="Life at HireSense" title="Why you'll love working here" />
+        <SectionHeading eyebrow="Life at AIPL Hire" title="Why you'll love working here" />
         <FeatureGrid items={perks} />
       </section>
 

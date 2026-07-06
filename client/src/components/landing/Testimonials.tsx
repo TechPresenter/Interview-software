@@ -19,7 +19,7 @@ export function Testimonials() {
     <section className="py-24">
       <div className="container mx-auto max-w-2xl text-center">
         <Eyebrow>Loved by teams</Eyebrow>
-        <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">Hiring teams ship faster with HireSense</h2>
+        <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">Hiring teams ship faster with AIPL Hire</h2>
       </div>
 
       <div className="group relative mt-14 overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_8%,#000_92%,transparent)]">

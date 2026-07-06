@@ -8,9 +8,9 @@ import HelpCenterClient from './help-center-client';
 export const metadata: Metadata = pageMetadata({
   title: 'Help Center',
   description:
-    'Guides and answers for getting the most out of HireSense — from setting up your first job to interpreting AI scores, billing, and account management.',
+    'Guides and answers for getting the most out of AIPL Hire — from setting up your first job to interpreting AI scores, billing, and account management.',
   path: '/help-center',
-  keywords: ['HireSense help', 'support center', 'how to', 'hiring software help'],
+  keywords: ['AIPL Hire help', 'support center', 'how to', 'hiring software help'],
 });
 
 export default function HelpCenterPage() {

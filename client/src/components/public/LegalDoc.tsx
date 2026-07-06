@@ -60,8 +60,8 @@ export function LegalDoc({ title, updated, summary, sections, breadcrumb }: Lega
 
           <p className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
             Questions about this document? Contact{' '}
-            <a href="mailto:legal@hiresense.ai" className="font-medium text-primary underline underline-offset-4">
-              legal@hiresense.ai
+            <a href="mailto:legal@aipl.online" className="font-medium text-primary underline underline-offset-4">
+              legal@aipl.online
             </a>
             .
           </p>

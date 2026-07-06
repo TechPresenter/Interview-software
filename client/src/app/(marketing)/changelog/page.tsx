@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 export const metadata: Metadata = pageMetadata({
   title: 'Changelog',
   description:
-    "What's new in HireSense — the latest features, improvements, and fixes shipped across the platform.",
+    "What's new in AIPL Hire — the latest features, improvements, and fixes shipped across the platform.",
   path: '/changelog',
-  keywords: ['HireSense changelog', 'release notes', 'product updates', "what's new"],
+  keywords: ['AIPL Hire changelog', 'release notes', 'product updates', "what's new"],
 });
 
 type Tag = 'New' | 'Improved' | 'Fixed';

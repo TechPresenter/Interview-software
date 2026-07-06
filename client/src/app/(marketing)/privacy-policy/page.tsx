@@ -5,9 +5,9 @@ import { LegalDoc } from '@/components/public/LegalDoc';
 export const metadata: Metadata = pageMetadata({
   title: 'Privacy Policy',
   description:
-    'How HireSense collects, uses, shares, and protects personal data — including candidate and customer information — and the rights available to you.',
+    'How AIPL Hire collects, uses, shares, and protects personal data — including candidate and customer information — and the rights available to you.',
   path: '/privacy-policy',
-  keywords: ['privacy policy', 'data protection', 'personal data', 'HireSense privacy'],
+  keywords: ['privacy policy', 'data protection', 'personal data', 'AIPL Hire privacy'],
 });
 
 export default function PrivacyPolicyPage() {
@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
     <LegalDoc
       title="Privacy Policy"
       updated="6 July 2026"
-      summary="This Privacy Policy explains how HireSense collects, uses, discloses, and safeguards personal data when you use our platform and websites."
+      summary="This Privacy Policy explains how AIPL Hire collects, uses, discloses, and safeguards personal data when you use our platform and websites."
       breadcrumb={[{ label: 'Privacy Policy' }]}
       sections={[
         {
@@ -24,11 +24,11 @@ export default function PrivacyPolicyPage() {
           body: (
             <>
               <p>
-                HireSense (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) provides an AI-powered hiring
+                AIPL Hire (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) provides an AI-powered hiring
                 platform. This policy applies to personal data we process as a controller for our own websites and
                 accounts, and as a processor on behalf of customers who use the platform to interview candidates.
               </p>
-              <p>By using HireSense, you agree to the practices described in this policy.</p>
+              <p>By using AIPL Hire, you agree to the practices described in this policy.</p>
             </>
           ),
         },
@@ -155,7 +155,7 @@ export default function PrivacyPolicyPage() {
           body: (
             <p>
               Questions about this policy or your data? Email{' '}
-              <a href="mailto:privacy@hiresense.ai">privacy@hiresense.ai</a> or visit our{' '}
+              <a href="mailto:privacy@aipl.online">privacy@aipl.online</a> or visit our{' '}
               <a href="/contact">Contact page</a>.
             </p>
           ),

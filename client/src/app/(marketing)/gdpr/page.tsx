@@ -5,9 +5,9 @@ import { LegalDoc } from '@/components/public/LegalDoc';
 export const metadata: Metadata = pageMetadata({
   title: 'GDPR Compliance',
   description:
-    'How HireSense supports GDPR compliance — lawful bases, data subject rights, international transfers, sub-processors, and how to reach our data protection contact.',
+    'How AIPL Hire supports GDPR compliance — lawful bases, data subject rights, international transfers, sub-processors, and how to reach our data protection contact.',
   path: '/gdpr',
-  keywords: ['GDPR', 'GDPR compliance', 'data subject rights', 'EU data protection', 'HireSense GDPR'],
+  keywords: ['GDPR', 'GDPR compliance', 'data subject rights', 'EU data protection', 'AIPL Hire GDPR'],
 });
 
 export default function GdprPage() {
@@ -23,7 +23,7 @@ export default function GdprPage() {
           heading: 'Our commitment',
           body: (
             <p>
-              HireSense is built with privacy in mind. We process personal data lawfully, transparently, and securely,
+              AIPL Hire is built with privacy in mind. We process personal data lawfully, transparently, and securely,
               and we provide the tools and documentation customers need to comply with the GDPR.
             </p>
           ),
@@ -54,7 +54,7 @@ export default function GdprPage() {
                 <li>Withdraw consent at any time.</li>
               </ul>
               <p>
-                If HireSense holds your data as a controller, contact us below. If a customer collected your data through
+                If AIPL Hire holds your data as a controller, contact us below. If a customer collected your data through
                 the platform, we will direct your request to the relevant controller.
               </p>
             </>
@@ -96,7 +96,7 @@ export default function GdprPage() {
           body: (
             <p>
               For GDPR requests or questions, email{' '}
-              <a href="mailto:privacy@hiresense.ai">privacy@hiresense.ai</a>. See also our{' '}
+              <a href="mailto:privacy@aipl.online">privacy@aipl.online</a>. See also our{' '}
               <a href="/privacy-policy">Privacy Policy</a> and <a href="/security">Security</a> pages.
             </p>
           ),

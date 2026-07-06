@@ -46,7 +46,7 @@ export default function BlogClient() {
 
         <header className="mt-8 max-w-3xl">
           <h1 className="text-4xl font-extrabold md:text-5xl">
-            The <span className="text-gradient">HireSense</span> blog
+            The <span className="text-gradient">AIPL Hire</span> blog
           </h1>
           <p className="mt-3 text-muted-foreground">Hiring insights, product updates, and AI in recruitment.</p>
         </header>

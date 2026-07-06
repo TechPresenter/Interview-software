@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 export const metadata: Metadata = pageMetadata({
   title: 'Features',
   description:
-    'Explore the HireSense platform: adaptive AI interviewer, competency scoring, resume intelligence, proctoring & anti-cheat, a live interview room, and instant hire-ready reports.',
+    'Explore the AIPL Hire platform: adaptive AI interviewer, competency scoring, resume intelligence, proctoring & anti-cheat, a live interview room, and instant hire-ready reports.',
   path: '/features',
   keywords: ['AI interview features', 'competency scoring', 'resume screening', 'proctoring', 'candidate ranking'],
 });
@@ -35,7 +35,7 @@ const stats = [
   { value: '98%', label: 'Recruiter satisfaction' },
 ];
 
-const compareCols = ['HireSense', 'LinkedIn Talent', 'Ashby', 'Greenhouse', 'Lever', 'Workable'];
+const compareCols = ['AIPL Hire', 'LinkedIn Talent', 'Ashby', 'Greenhouse', 'Lever', 'Workable'];
 const compareRows: ComparisonRow[] = [
   { label: 'Adaptive AI interviewer', values: [true, false, false, false, false, false] },
   { label: 'AI voice interviewer', values: [true, false, false, false, false, false] },
@@ -74,7 +74,7 @@ export default function FeaturesPage() {
         <SectionHeading
           eyebrow="How we compare"
           title="Built for AI hiring — not bolted on"
-          lead="Legacy ATS platforms added AI as an afterthought. HireSense is AI-native from screening to scoring."
+          lead="Legacy ATS platforms added AI as an afterthought. AIPL Hire is AI-native from screening to scoring."
         />
         <ComparisonTable columns={compareCols} rows={compareRows} highlightCol={0} firstColLabel="Capability" />
         <p className="mt-3 text-center text-xs text-muted-foreground">

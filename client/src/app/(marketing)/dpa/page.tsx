@@ -5,9 +5,9 @@ import { LegalDoc } from '@/components/public/LegalDoc';
 export const metadata: Metadata = pageMetadata({
   title: 'Data Processing Agreement',
   description:
-    'The HireSense Data Processing Agreement (DPA) describes how we process personal data on behalf of customers, including security measures, sub-processors, and data subject rights.',
+    'The AIPL Hire Data Processing Agreement (DPA) describes how we process personal data on behalf of customers, including security measures, sub-processors, and data subject rights.',
   path: '/dpa',
-  keywords: ['data processing agreement', 'DPA', 'GDPR processor', 'sub-processors', 'HireSense DPA'],
+  keywords: ['data processing agreement', 'DPA', 'GDPR processor', 'sub-processors', 'AIPL Hire DPA'],
 });
 
 export default function DpaPage() {
@@ -15,7 +15,7 @@ export default function DpaPage() {
     <LegalDoc
       title="Data Processing Agreement"
       updated="6 July 2026"
-      summary="This DPA forms part of the agreement between HireSense (processor) and the customer (controller) for the processing of personal data through the platform."
+      summary="This DPA forms part of the agreement between AIPL Hire (processor) and the customer (controller) for the processing of personal data through the platform."
       breadcrumb={[{ label: 'Data Processing Agreement (DPA)' }]}
       sections={[
         {
@@ -24,7 +24,7 @@ export default function DpaPage() {
           body: (
             <p>
               For candidate and applicant data processed through the platform, the customer is the controller and
-              HireSense is the processor. HireSense processes personal data only on documented instructions from the
+              AIPL Hire is the processor. AIPL Hire processes personal data only on documented instructions from the
               controller, including as set out in the agreement and this DPA.
             </p>
           ),
@@ -45,7 +45,7 @@ export default function DpaPage() {
           heading: 'Scope and purpose of processing',
           body: (
             <ul>
-              <li><strong>Subject matter</strong> — provision of the HireSense hiring platform.</li>
+              <li><strong>Subject matter</strong> — provision of the AIPL Hire hiring platform.</li>
               <li><strong>Duration</strong> — the term of the agreement plus any legally required retention.</li>
               <li><strong>Nature and purpose</strong> — screening, interviewing, scoring, and reporting on candidates.</li>
               <li><strong>Categories of data</strong> — identifiers, application materials, interview responses, and recordings.</li>
@@ -70,7 +70,7 @@ export default function DpaPage() {
           heading: 'Sub-processors',
           body: (
             <p>
-              The controller authorizes HireSense to engage sub-processors (for hosting, AI, email, and payments) under
+              The controller authorizes AIPL Hire to engage sub-processors (for hosting, AI, email, and payments) under
               written contracts imposing equivalent data protection obligations. We maintain a current list of
               sub-processors and provide notice of material changes.
             </p>
@@ -142,7 +142,7 @@ export default function DpaPage() {
           body: (
             <p>
               To request a signed DPA or ask questions, email{' '}
-              <a href="mailto:privacy@hiresense.ai">privacy@hiresense.ai</a>.
+              <a href="mailto:privacy@aipl.online">privacy@aipl.online</a>.
             </p>
           ),
         },

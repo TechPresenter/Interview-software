@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { SITE } from './site';
 
 export interface PageSeo {
-  /** Page title (the root layout appends "· HireSense"). */
+  /** Page title (the root layout appends "· AIPL Hire"). */
   title: string;
   description: string;
   /** Absolute path beginning with "/". Used for the canonical + OG url. */

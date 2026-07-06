@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 export const metadata: Metadata = pageMetadata({
   title: 'Integrations',
   description:
-    'Connect HireSense to your ATS, HRMS, SSO, and communication tools — or build your own with a REST API and webhooks. One hiring workflow, fully connected.',
+    'Connect AIPL Hire to your ATS, HRMS, SSO, and communication tools — or build your own with a REST API and webhooks. One hiring workflow, fully connected.',
   path: '/integrations',
   keywords: ['ATS integration', 'HRMS integration', 'SSO', 'webhooks', 'recruitment API', 'Greenhouse Lever Workday'],
 });

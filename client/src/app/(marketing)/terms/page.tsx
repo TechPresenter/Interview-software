@@ -5,9 +5,9 @@ import { LegalDoc } from '@/components/public/LegalDoc';
 export const metadata: Metadata = pageMetadata({
   title: 'Terms & Conditions',
   description:
-    'The terms and conditions governing your use of the HireSense platform, including accounts, acceptable use, subscriptions, intellectual property, and liability.',
+    'The terms and conditions governing your use of the AIPL Hire platform, including accounts, acceptable use, subscriptions, intellectual property, and liability.',
   path: '/terms',
-  keywords: ['terms and conditions', 'terms of service', 'HireSense terms', 'user agreement'],
+  keywords: ['terms and conditions', 'terms of service', 'AIPL Hire terms', 'user agreement'],
 });
 
 export default function TermsPage() {
@@ -15,7 +15,7 @@ export default function TermsPage() {
     <LegalDoc
       title="Terms & Conditions"
       updated="6 July 2026"
-      summary="These Terms govern your access to and use of HireSense. By creating an account or using the platform, you agree to these Terms."
+      summary="These Terms govern your access to and use of AIPL Hire. By creating an account or using the platform, you agree to these Terms."
       breadcrumb={[{ label: 'Terms & Conditions' }]}
       sections={[
         {
@@ -23,7 +23,7 @@ export default function TermsPage() {
           heading: 'Acceptance of terms',
           body: (
             <p>
-              By accessing or using HireSense, you agree to be bound by these Terms and our{' '}
+              By accessing or using AIPL Hire, you agree to be bound by these Terms and our{' '}
               <a href="/privacy-policy">Privacy Policy</a>. If you are using the platform on behalf of an organization,
               you represent that you have authority to bind that organization.
             </p>
@@ -72,7 +72,7 @@ export default function TermsPage() {
           heading: 'Intellectual property',
           body: (
             <p>
-              HireSense and its content, features, and technology are owned by us and protected by law. You retain
+              AIPL Hire and its content, features, and technology are owned by us and protected by law. You retain
               ownership of the data you submit. You grant us a limited license to process that data solely to provide the
               service.
             </p>
@@ -83,7 +83,7 @@ export default function TermsPage() {
           heading: 'Customer and candidate data',
           body: (
             <p>
-              When you use HireSense to interview candidates, you act as the data controller and we act as the processor.
+              When you use AIPL Hire to interview candidates, you act as the data controller and we act as the processor.
               Our processing is governed by our <a href="/dpa">Data Processing Agreement</a>. You are responsible for
               providing required notices to and obtaining necessary consents from candidates.
             </p>
@@ -125,7 +125,7 @@ export default function TermsPage() {
           heading: 'Limitation of liability',
           body: (
             <p>
-              To the maximum extent permitted by law, HireSense will not be liable for indirect, incidental, or
+              To the maximum extent permitted by law, AIPL Hire will not be liable for indirect, incidental, or
               consequential damages, and our total liability is limited to the amounts you paid in the twelve months
               preceding the claim.
             </p>
@@ -156,7 +156,7 @@ export default function TermsPage() {
           heading: 'Contact',
           body: (
             <p>
-              Questions about these Terms? Email <a href="mailto:legal@hiresense.ai">legal@hiresense.ai</a> or visit our{' '}
+              Questions about these Terms? Email <a href="mailto:legal@aipl.online">legal@aipl.online</a> or visit our{' '}
               <a href="/contact">Contact page</a>.
             </p>
           ),

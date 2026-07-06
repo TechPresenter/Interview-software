@@ -15,7 +15,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   const title = titleFromSlug(params.slug) || 'Article';
   return pageMetadata({
     title,
-    description: `Read “${title}” on the HireSense blog — insights on AI-powered hiring and recruitment.`,
+    description: `Read “${title}” on the AIPL Hire blog — insights on AI-powered hiring and recruitment.`,
     path: `/blog/${params.slug}`,
   });
 }

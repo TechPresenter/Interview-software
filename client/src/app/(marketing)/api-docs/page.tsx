@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/Button';
 export const metadata: Metadata = pageMetadata({
   title: 'API Documentation',
   description:
-    'The HireSense REST API: authenticate with an API key, create jobs, invite candidates, retrieve scored reports, and subscribe to webhooks. Base URL, endpoints, and examples.',
+    'The AIPL Hire REST API: authenticate with an API key, create jobs, invite candidates, retrieve scored reports, and subscribe to webhooks. Base URL, endpoints, and examples.',
   path: '/api-docs',
-  keywords: ['HireSense API', 'REST API', 'recruitment API', 'webhooks', 'developer documentation'],
+  keywords: ['AIPL Hire API', 'REST API', 'recruitment API', 'webhooks', 'developer documentation'],
 });
 
 const endpoints = [
@@ -74,7 +74,7 @@ export default function ApiDocsPage() {
           <section id="base-url" className="mt-12 scroll-mt-28">
             <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground"><Terminal className="h-5 w-5 text-primary" /> Base URL</h2>
             <p className="mt-3">All endpoints are relative to the API version base:</p>
-            <CodeBlock label="Base URL">{`https://api.hiresense.ai/api/v1`}</CodeBlock>
+            <CodeBlock label="Base URL">{`https://api.aipl.online/api/v1`}</CodeBlock>
           </section>
 
           <section id="endpoints" className="mt-12 scroll-mt-28">
@@ -88,7 +88,7 @@ export default function ApiDocsPage() {
                 </div>
               ))}
             </div>
-            <CodeBlock label="Example — create a job">{`curl -X POST https://api.hiresense.ai/api/v1/jobs \\
+            <CodeBlock label="Example — create a job">{`curl -X POST https://api.aipl.online/api/v1/jobs \\
   -H "Authorization: Bearer $HIRESENSE_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{

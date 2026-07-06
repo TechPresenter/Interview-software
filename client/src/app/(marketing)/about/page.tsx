@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/Button';
 export const metadata: Metadata = pageMetadata({
   title: 'About Us',
   description:
-    'HireSense is on a mission to make hiring faster and fairer with explainable AI. Learn about our story, mission, vision, leadership, values, and milestones.',
+    'AIPL Hire is on a mission to make hiring faster and fairer with explainable AI. Learn about our story, mission, vision, leadership, values, and milestones.',
   path: '/about',
-  keywords: ['about HireSense', 'AI hiring company', 'fair hiring', 'leadership', 'company mission'],
+  keywords: ['about AIPL Hire', 'AI hiring company', 'fair hiring', 'leadership', 'company mission'],
 });
 
 const values: Feature[] = [
@@ -31,10 +31,10 @@ const stats = [
 ];
 
 const timeline = [
-  { year: '2023', title: 'Founded', desc: 'HireSense starts with a simple belief: hiring should be fair, fast, and explainable.' },
+  { year: '2023', title: 'Founded', desc: 'AIPL Hire starts with a simple belief: hiring should be fair, fast, and explainable.' },
   { year: '2024', title: 'First AI interviews', desc: 'We launch the adaptive AI interviewer and evidence-based competency scoring.' },
   { year: '2025', title: 'Scaling globally', desc: 'Proctoring, multilingual interviews, and enterprise controls ship to teams in 30+ countries.' },
-  { year: '2026', title: 'AI-native platform', desc: 'Custom AI interviewers, white-label branding, and deeper analytics make HireSense a full hiring OS.' },
+  { year: '2026', title: 'AI-native platform', desc: 'Custom AI interviewers, white-label branding, and deeper analytics make AIPL Hire a full hiring OS.' },
 ];
 
 const leaders = [
@@ -49,7 +49,7 @@ export default function AboutPage() {
     <MarketingPage
       eyebrow="Company"
       title={<>Making hiring <span className="text-gradient">faster and fairer</span></>}
-      lead="We started HireSense because hiring is too important to be slow, inconsistent, or biased. Our AI gives every candidate a fair shot and every team the evidence to decide with confidence."
+      lead="We started AIPL Hire because hiring is too important to be slow, inconsistent, or biased. Our AI gives every candidate a fair shot and every team the evidence to decide with confidence."
       breadcrumb={[{ label: 'About Us' }]}
       actions={
         <>
@@ -111,7 +111,7 @@ export default function AboutPage() {
 
       {/* Leadership */}
       <section className="mb-4">
-        <SectionHeading eyebrow="Leadership" title="The people behind HireSense" />
+        <SectionHeading eyebrow="Leadership" title="The people behind AIPL Hire" />
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {leaders.map((l) => (
             <GlassCard key={l.name} interactive className="text-center">
@@ -133,7 +133,7 @@ export default function AboutPage() {
 
       <CTASection
         title={<>Build the future of hiring <span className="text-gradient">with us</span></>}
-        subtitle="Whether you want to hire with HireSense or work here, we'd love to talk."
+        subtitle="Whether you want to hire with AIPL Hire or work here, we'd love to talk."
         primary={{ label: 'See open roles', href: '/careers' }}
         secondary={{ label: 'Contact us', href: '/contact' }}
       />

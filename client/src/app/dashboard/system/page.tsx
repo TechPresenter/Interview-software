@@ -51,7 +51,7 @@ function GeneralSettings() {
 
   useEffect(() => {
     const map: Record<string, any> = {
-      appName: 'HireSense', appUrl: 'http://localhost:3000', tagline: 'AI-Powered Interview Platform',
+      appName: 'AIPL Hire', appUrl: 'https://aipl.online', tagline: 'AI-Powered Interview Platform',
       email: 'noreply@hiresense.ai', timezone: 'UTC', currency: 'USD', dateFormat: 'MMM D, YYYY',
       timeFormat: '12h', defaultLanguage: 'en', langEn: true, langHi: true, maintenance: false,
     };

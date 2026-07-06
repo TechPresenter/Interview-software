@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/Button';
 export const metadata: Metadata = pageMetadata({
   title: 'Security',
   description:
-    'How HireSense protects your data: encryption in transit and at rest, role-based access control, continuous monitoring, secure infrastructure, and privacy by design.',
+    'How AIPL Hire protects your data: encryption in transit and at rest, role-based access control, continuous monitoring, secure infrastructure, and privacy by design.',
   path: '/security',
-  keywords: ['HireSense security', 'data protection', 'encryption', 'access control', 'enterprise security'],
+  keywords: ['AIPL Hire security', 'data protection', 'encryption', 'access control', 'enterprise security'],
 });
 
 const measures: Feature[] = [
@@ -38,7 +38,7 @@ export default function SecurityPage() {
     <MarketingPage
       eyebrow="Trust & Security"
       title={<>Security you can <span className="text-gradient">build on</span></>}
-      lead="Protecting candidate and company data is foundational to HireSense. Here's how we keep your information safe at every layer."
+      lead="Protecting candidate and company data is foundational to AIPL Hire. Here's how we keep your information safe at every layer."
       breadcrumb={[{ label: 'Security' }]}
       actions={
         <>
@@ -77,7 +77,7 @@ export default function SecurityPage() {
           <h2 className="text-lg font-semibold">Report a vulnerability</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Found a security issue? We appreciate responsible disclosure. Email{' '}
-            <a href="mailto:security@hiresense.ai" className="font-medium text-primary underline underline-offset-4">security@hiresense.ai</a>{' '}
+            <a href="mailto:security@aipl.online" className="font-medium text-primary underline underline-offset-4">security@aipl.online</a>{' '}
             and we&apos;ll respond promptly.
           </p>
         </GlassCard>

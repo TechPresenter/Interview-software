@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/Button';
 export const metadata: Metadata = pageMetadata({
   title: 'Documentation',
   description:
-    'HireSense product documentation — get started, configure AI interviews, manage your candidate pipeline, handle billing, and administer your workspace.',
+    'AIPL Hire product documentation — get started, configure AI interviews, manage your candidate pipeline, handle billing, and administer your workspace.',
   path: '/docs',
-  keywords: ['HireSense docs', 'documentation', 'user guide', 'setup guide'],
+  keywords: ['AIPL Hire docs', 'documentation', 'user guide', 'setup guide'],
 });
 
 const sections = [
@@ -19,7 +19,7 @@ const sections = [
     title: 'Getting started',
     body: (
       <>
-        <p>Welcome to HireSense. You&apos;ll be running your first AI interview in minutes:</p>
+        <p>Welcome to AIPL Hire. You&apos;ll be running your first AI interview in minutes:</p>
         <ol>
           <li><strong>Create your workspace</strong> — sign up and confirm your organization details.</li>
           <li><strong>Create a job</strong> — add the role title, description, and required competencies.</li>
@@ -99,7 +99,7 @@ export default function DocsPage() {
   return (
     <MarketingPage
       eyebrow="Documentation"
-      title={<>HireSense <span className="text-gradient">docs</span></>}
+      title={<>AIPL Hire <span className="text-gradient">docs</span></>}
       lead="Everything you need to set up, run, and administer AI-powered hiring."
       breadcrumb={[{ label: 'Documentation' }]}
       actions={<Link href="/api-docs"><Button size="lg" variant="glass" magnetic={false}>API reference</Button></Link>}

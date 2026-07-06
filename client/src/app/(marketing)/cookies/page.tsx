@@ -5,9 +5,9 @@ import { LegalDoc } from '@/components/public/LegalDoc';
 export const metadata: Metadata = pageMetadata({
   title: 'Cookie Policy',
   description:
-    'How HireSense uses cookies and similar technologies, the categories of cookies we use, and how you can manage your preferences.',
+    'How AIPL Hire uses cookies and similar technologies, the categories of cookies we use, and how you can manage your preferences.',
   path: '/cookies',
-  keywords: ['cookie policy', 'cookies', 'tracking technologies', 'HireSense cookies'],
+  keywords: ['cookie policy', 'cookies', 'tracking technologies', 'AIPL Hire cookies'],
 });
 
 export default function CookiePolicyPage() {
@@ -15,7 +15,7 @@ export default function CookiePolicyPage() {
     <LegalDoc
       title="Cookie Policy"
       updated="6 July 2026"
-      summary="This Cookie Policy explains what cookies are, how HireSense uses them, and how you can control them."
+      summary="This Cookie Policy explains what cookies are, how AIPL Hire uses them, and how you can control them."
       breadcrumb={[{ label: 'Cookie Policy' }]}
       sections={[
         {
@@ -84,7 +84,7 @@ export default function CookiePolicyPage() {
           heading: 'Contact',
           body: (
             <p>
-              Questions about cookies? Email <a href="mailto:privacy@hiresense.ai">privacy@hiresense.ai</a>. See also our{' '}
+              Questions about cookies? Email <a href="mailto:privacy@aipl.online">privacy@aipl.online</a>. See also our{' '}
               <a href="/privacy-policy">Privacy Policy</a>.
             </p>
           ),
