@@ -23,7 +23,7 @@ export default function PricingPage() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-brand shadow-glow">
             <Sparkles className="h-5 w-5 text-white" />
           </span>
-          <span className="text-gradient">HireSense</span>
+          <span className="text-gradient">AIPL Hire</span>
         </Link>
         <Link href="/login"><Button size="sm" variant="glass" magnetic={false}>Sign in</Button></Link>
       </header>

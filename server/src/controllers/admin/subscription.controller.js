@@ -27,11 +27,18 @@ export const upsertPlan = asyncHandler(async (req, res) => {
   return ok(res, plan, 'Plan saved');
 });
 
-/** POST /admin/plans/seed — create the four default tiers if absent. */
-export const seedPlans = asyncHandler(async (_req, res) => {
-  const existing = await Plan.countDocuments();
-  if (existing === 0) await Plan.insertMany(Plan.defaults());
-  return ok(res, await Plan.find().sort('sortOrder').lean(), 'Plans ready');
+/**
+ * POST /admin/plans/seed — sync the four tiers to the current defaults.
+ * Upserts by `key`, so re-running applies the latest pricing/features to
+ * existing plans (not just an empty DB).
+ */
+export const seedPlans = asyncHandler(async (req, res) => {
+  const defaults = Plan.defaults();
+  await Plan.bulkWrite(
+    defaults.map((p) => ({ updateOne: { filter: { key: p.key }, update: { $set: p }, upsert: true } })),
+  );
+  await audit({ req, action: 'plan.seed', meta: { count: defaults.length } });
+  return ok(res, await Plan.find().sort('sortOrder').lean(), 'Plans synced to defaults');
 });
 
 /* ── Coupons ───────────────────────────────────────────── */

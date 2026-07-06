@@ -41,10 +41,10 @@ const stats = [
 ];
 
 const plans = [
-  { name: 'Free', monthly: 0, yearly: 0, features: ['1 active job', '15 AI interviews / mo', 'Basic reports'], popular: false },
-  { name: 'Starter', monthly: 49, yearly: 490, features: ['5 active jobs', '100 interviews / mo', 'Resume analysis', 'Email support'], popular: false },
-  { name: 'Professional', monthly: 149, yearly: 1490, features: ['25 active jobs', '500 interviews / mo', 'Anti-cheat proctoring', 'Priority support'], popular: true },
-  { name: 'Enterprise', monthly: null, yearly: null, features: ['Unlimited jobs', 'Custom AI weightage', 'SSO & audit logs', 'Dedicated CSM'], popular: false },
+  { name: 'Free Trial', monthly: 0, yearly: 0, features: ['3 AI Interviews (one-time)', '1 Active Job', 'Resume Upload', 'Basic Dashboard', 'Email Support', 'Valid 7 Days'], popular: false },
+  { name: 'Starter', monthly: 9999, yearly: 99990, features: ['100 AI Interviews / mo', '10 Active Jobs', 'Resume Analysis & Scoring', 'AI Candidate Ranking', 'Interview Reports', '5 Team Members'], popular: false },
+  { name: 'Professional', monthly: 24999, yearly: 249990, features: ['2,500 AI Interviews / mo', 'Unlimited Active Jobs', 'Anti-Cheat Monitoring', 'Video Recording', 'Custom Templates', 'Analytics Dashboard', 'Priority Support', '25 Team Members'], popular: true },
+  { name: 'Enterprise', monthly: null, yearly: null, features: ['Unlimited AI Interviews', 'Unlimited Jobs', 'Custom AI Weightage', 'SSO & Security', 'API Access', 'ATS/HRMS Integrations', 'White Label', 'Dedicated Manager'], popular: false },
 ];
 
 export default function LandingPage() {
@@ -262,7 +262,7 @@ export default function LandingPage() {
                 {p.popular && <span className="mb-3 inline-block rounded-full bg-primary/15 px-3 py-0.5 text-xs font-medium text-primary">Most popular</span>}
                 <h3 className="text-lg font-semibold">{p.name}</h3>
                 <p className="mt-3 text-4xl font-bold text-gradient">
-                  {price === null ? 'Custom' : `$${price}`}
+                  {price === null ? 'Custom' : price === 0 ? 'Free' : `₹${price.toLocaleString('en-IN')}`}
                   {price ? <span className="text-base text-muted-foreground">/{yearly ? 'yr' : 'mo'}</span> : null}
                 </p>
                 <ul className="mt-5 space-y-2.5 text-sm text-muted-foreground">
