@@ -1,14 +1,19 @@
 import type { MetadataRoute } from 'next';
+import { SITE, PUBLIC_PATHS } from '@/lib/site';
 
-const BASE = process.env.NEXT_PUBLIC_SITE_URL || 'https://hiresense.ai';
+const daily = new Set(['/blog', '/changelog', '/status']);
+const highPriority = new Set(['/features', '/ai-interviews', '/pricing', '/reports']);
 
-/** Static marketing routes. Dynamic blog routes can be appended at build time. */
+/**
+ * Sitemap for all public marketing/content/legal pages. Routes are sourced from
+ * the shared site config so the sitemap always stays in sync with the footer.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const routes = ['', '/pricing', '/blog', '/login', '/register'];
-  return routes.map((path) => ({
-    url: `${BASE}${path}`,
-    lastModified: new Date(),
-    changeFrequency: path === '/blog' ? 'daily' : 'weekly',
-    priority: path === '' ? 1 : 0.7,
+  const now = new Date();
+  return PUBLIC_PATHS.map((path) => ({
+    url: `${SITE.url}${path === '/' ? '' : path}`,
+    lastModified: now,
+    changeFrequency: path === '/' ? 'weekly' : daily.has(path) ? 'daily' : 'monthly',
+    priority: path === '/' ? 1 : highPriority.has(path) ? 0.9 : 0.6,
   }));
 }

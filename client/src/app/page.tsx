@@ -5,16 +5,18 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Bot, BarChart3, ShieldCheck, FileSearch, Video, Sparkles, ArrowRight, Check,
-  Workflow, Twitter, Linkedin, Github, ArrowUpRight,
+  Workflow,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
-import { Navbar } from '@/components/landing/Navbar';
+import { SiteHeader } from '@/components/public/SiteHeader';
+import { SiteFooter } from '@/components/public/SiteFooter';
 import { AiDemo, Eyebrow } from '@/components/landing/AiDemo';
 import { Testimonials } from '@/components/landing/Testimonials';
 import { Faq } from '@/components/landing/Faq';
-import { CreditFooter } from '@/components/ui/CreditFooter';
+import { HeroVisual } from '@/components/landing/HeroVisual';
+import { LogoMarquee } from '@/components/landing/LogoMarquee';
 import { cn } from '@/lib/utils';
 
 const features = [
@@ -52,7 +54,7 @@ export default function LandingPage() {
 
   return (
     <main className="relative overflow-x-clip">
-      <Navbar />
+      <SiteHeader />
 
       {/* ── Hero ───────────────────────────────────────── */}
       <section className="relative grid min-h-screen place-items-center overflow-hidden px-6 pt-28">
@@ -99,57 +101,15 @@ export default function LandingPage() {
           </motion.p>
         </div>
 
-        {/* Floating hero preview */}
-        <motion.div
-          initial={{ opacity: 0, y: 60, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }}
-          transition={{ delay: 0.35, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          style={{ transformPerspective: 1200 }}
-          className="relative mx-auto mt-16 w-full max-w-4xl pb-24"
-        >
-          <GlassCard className="p-6">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="h-3 w-3 rounded-full bg-destructive/70" />
-              <span className="h-3 w-3 rounded-full bg-amber-400/70" />
-              <span className="h-3 w-3 rounded-full bg-emerald-400/70" />
-              <span className="ml-2">Live interview · Senior Frontend Engineer</span>
-              <span className="ml-auto rounded-md bg-emerald-400/15 px-2 py-0.5 text-emerald-400">Integrity 98</span>
-            </div>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {['Technical', 'Communication', 'Problem Solving'].map((c, i) => (
-                <div key={c} className="rounded-xl border border-border bg-muted/30 p-4">
-                  <p className="text-xs text-muted-foreground">{c}</p>
-                  <p className="mt-1 text-3xl font-bold text-gradient"><AnimatedCounter value={[88, 82, 91][i]} /></p>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <motion.div className="h-full rounded-full bg-[linear-gradient(90deg,hsl(var(--primary)),hsl(var(--accent)))]" initial={{ width: 0 }} whileInView={{ width: `${[88, 82, 91][i]}%` }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.2 + i * 0.1 }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </GlassCard>
-
-          {/* floating mini cards */}
-          <motion.div className="absolute -left-6 top-10 hidden animate-float lg:block" style={{ animationDelay: '0.5s' }}>
-            <GlassCard className="w-44 p-4">
-              <p className="text-xs text-muted-foreground">Recommendation</p>
-              <p className="mt-1 font-bold text-emerald-400">Strong Hire</p>
-            </GlassCard>
-          </motion.div>
-          <motion.div className="absolute -right-4 top-24 hidden animate-float lg:block" style={{ animationDelay: '1.2s' }}>
-            <GlassCard className="w-48 p-4">
-              <p className="text-xs text-muted-foreground">Job match</p>
-              <p className="mt-1 text-2xl font-bold text-gradient">94%</p>
-            </GlassCard>
-          </motion.div>
-        </motion.div>
+        {/* AI-themed hero visual */}
+        <HeroVisual />
       </section>
 
       {/* ── Trust row ──────────────────────────────────── */}
       <section className="container -mt-10 pb-16">
         <p className="text-center text-xs uppercase tracking-widest text-muted-foreground">Trusted by modern hiring teams</p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-12 gap-y-4 opacity-60">
-          {['Nimbus', 'Cobalt', 'Vertex', 'Lumen', 'Drift', 'Apex'].map((b) => (
-            <span key={b} className="font-display text-xl font-bold tracking-tight">{b}</span>
-          ))}
+        <div className="mt-8">
+          <LogoMarquee />
         </div>
       </section>
 
@@ -295,55 +255,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ─────────────────────────────────────── */}
-      <Footer />
+      <SiteFooter />
     </main>
-  );
-}
-
-function Footer() {
-  const cols = [
-    { title: 'Product', links: [['Features', '#features'], ['Pricing', '#pricing'], ['AI Interview', '#'], ['Reports', '#']] },
-    { title: 'Company', links: [['Blog', '/blog'], ['About', '#'], ['Careers', '#'], ['Contact', '#']] },
-    { title: 'Resources', links: [['Docs', '#'], ['Guides', '#'], ['Support', '#'], ['Status', '#']] },
-    { title: 'Legal', links: [['Privacy', '#'], ['Terms', '#'], ['Security', '#'], ['DPA', '#']] },
-  ];
-  return (
-    <footer className="border-t border-border">
-      <div className="container py-16">
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
-          <div>
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] glow"><Sparkles className="h-4 w-4 text-white" /></span>
-              <span className="text-gradient">HireSense</span>
-            </Link>
-            <p className="mt-4 max-w-xs text-sm text-muted-foreground">AI-powered hiring, end to end. Screen, interview, score, and report — faster and fairer.</p>
-            <div className="mt-5 flex gap-2">
-              {[Twitter, Linkedin, Github].map((Icon, i) => (
-                <a key={i} href="#" className="grid h-9 w-9 place-items-center rounded-xl border border-border text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"><Icon className="h-4 w-4" /></a>
-              ))}
-            </div>
-          </div>
-          {cols.map((c) => (
-            <div key={c.title}>
-              <p className="text-sm font-semibold">{c.title}</p>
-              <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-                {c.links.map(([l, h]) => <li key={l}><Link href={h} className="transition hover:text-foreground">{l}</Link></li>)}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-12 flex flex-col items-center gap-4 border-t border-border pt-8 sm:flex-row sm:justify-between">
-          <div className="flex flex-col items-center gap-2 sm:items-start">
-            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} AIPL Hire. All rights reserved.</p>
-            <CreditFooter />
-          </div>
-          <div className="flex w-full max-w-sm gap-2">
-            <input placeholder="Your email" className="h-10 flex-1 rounded-xl border border-input bg-card/60 px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/40" />
-            <Button size="sm" magnetic={false}>Subscribe <ArrowUpRight className="h-4 w-4" /></Button>
-          </div>
-        </div>
-      </div>
-    </footer>
   );
 }

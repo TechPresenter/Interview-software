@@ -9,6 +9,7 @@ import { navByRole } from './nav.config';
 import { useAuth } from '@/store/auth.store';
 import { useBranding } from '@/store/branding.store';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { SITE } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
 const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
@@ -20,7 +21,7 @@ export function Sidebar() {
   const branding = useBranding((s) => s.branding);
   const [collapsed, setCollapsed] = useState(false);
   const items = user ? navByRole[user.role] : [];
-  const name = branding?.platformName || 'AIPL Hire';
+  const name = branding?.platformName || SITE.name;
 
   return (
     <motion.aside

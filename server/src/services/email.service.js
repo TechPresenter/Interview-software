@@ -75,7 +75,7 @@ export async function smtpEnabled() {
  * Low-level send. Returns { delivered, mocked?, messageId?, error? }.
  * @param {{ to:string, subject:string, html?:string, text?:string, from?:string }} msg
  */
-export async function sendEmail({ to, subject, html, text, from }) {
+export async function sendEmail({ to, subject, html, text, from, replyTo }) {
   const smtp = await resolveSmtp();
   if (!smtp.enabled) {
     logger.info({ to, subject }, '✉️  [dev] email (SMTP not configured — not sent)');
@@ -83,7 +83,7 @@ export async function sendEmail({ to, subject, html, text, from }) {
   }
   try {
     const t = await getTransporter(smtp);
-    const info = await t.sendMail({ from: from || smtp.from, to, subject, html, text });
+    const info = await t.sendMail({ from: from || smtp.from, to, subject, html, text, replyTo });
     return { delivered: true, messageId: info.messageId };
   } catch (err) {
     logger.error({ err: err.message, to }, 'email send failed');

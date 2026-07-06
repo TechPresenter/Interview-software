@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 export interface Column<T> {
   key: string;
@@ -63,8 +64,8 @@ export function DataTable<T extends Record<string, any>>({
 
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="px-5 py-12 text-center text-muted-foreground">
-                  {emptyText}
+                <td colSpan={columns.length} className="p-6">
+                  <EmptyState title={emptyText} className="border-0 bg-transparent py-10" />
                 </td>
               </tr>
             )}

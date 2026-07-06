@@ -8,6 +8,7 @@ import { useAuth } from '@/store/auth.store';
 import { useTheme } from '@/store/theme.store';
 import { useBranding } from '@/store/branding.store';
 import { AnnouncementBar } from '@/components/AnnouncementBar';
+import { Toaster } from '@/components/ui/toast';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -32,6 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={client}>
       <AnnouncementBar />
       {children}
+      <Toaster />
     </QueryClientProvider>
   );
 }
