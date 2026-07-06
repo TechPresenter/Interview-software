@@ -31,11 +31,11 @@ async function run() {
     logger.info(`ℹ️  Super admin already exists: ${email}`);
   }
 
-  const planCount = await Plan.countDocuments();
-  if (planCount === 0) {
-    await Plan.insertMany(Plan.defaults());
-    logger.info('✅ Seeded subscription plans');
-  }
+  // Upsert plans to the current defaults so re-running keeps pricing/features in sync.
+  await Plan.bulkWrite(
+    Plan.defaults().map((p) => ({ updateOne: { filter: { key: p.key }, update: { $set: p }, upsert: true } })),
+  );
+  logger.info('✅ Synced subscription plans');
 
   const sampleCount = await Question.countDocuments({ company: null });
   if (sampleCount === 0) {
