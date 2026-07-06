@@ -6,6 +6,7 @@ import { router as roomRoutes } from './room.routes.js';
 import { router as candidateRoutes } from './candidate.routes.js';
 import { router as contentRoutes } from './content.routes.js';
 import { router as trackingRoutes } from './tracking.routes.js';
+import { router as notificationRoutes } from './notification.routes.js';
 
 export const router = Router();
 
@@ -40,6 +41,7 @@ router.use('/interview-room', roomRoutes);
 router.use('/me', candidateRoutes);
 router.use('/content', contentRoutes);
 router.use('/track', trackingRoutes);
+router.use('/notifications', notificationRoutes);
 router.use('/', companyRoutes);
 
 export default router;

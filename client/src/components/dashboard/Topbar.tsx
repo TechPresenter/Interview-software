@@ -20,14 +20,14 @@ export function Topbar() {
   const billingHref = isAdmin ? '/dashboard/subscriptions' : '/dashboard/billing';
 
   const items = [
-    { label: 'Profile Details', icon: User, href: isCandidate ? '/dashboard/profile' : '/dashboard/account' },
-    { label: 'Account Settings', icon: Settings, href: '/dashboard/account' },
-    { label: 'Security Center', icon: Shield, href: '/dashboard/account#security' },
+    { label: 'Profile Details', icon: User, href: isCandidate ? '/dashboard/profile' : '/dashboard/profile-details' },
+    { label: 'Account Settings', icon: Settings, href: '/dashboard/account-settings' },
+    { label: 'Security Center', icon: Shield, href: '/dashboard/security' },
     ...(!isCandidate ? [{ label: 'Billing', icon: CreditCard, href: billingHref }] : []),
-    ...(!isCandidate ? [{ label: 'Subscription', icon: Receipt, href: billingHref }] : []),
-    { label: 'Notifications', icon: Bell, href: isCandidate ? '/dashboard/my-interviews' : '/dashboard/account#notifications' },
-    { label: 'API Keys', icon: KeyRound, href: isAdmin ? '/dashboard/ai' : '/dashboard/account#api' },
-    { label: 'Activity Logs', icon: ScrollText, href: isAdmin ? '/dashboard/system' : '/dashboard/account#activity' },
+    ...(!isCandidate ? [{ label: 'Subscription', icon: Receipt, href: '/dashboard/subscription' }] : []),
+    { label: 'Notifications', icon: Bell, href: '/dashboard/notifications' },
+    { label: 'API Keys', icon: KeyRound, href: '/dashboard/api-keys' },
+    { label: 'Activity Logs', icon: ScrollText, href: '/dashboard/activity-logs' },
   ];
 
   const initial = user.name?.[0]?.toUpperCase() || 'U';
