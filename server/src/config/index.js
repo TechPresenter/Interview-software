@@ -28,6 +28,12 @@ const schema = z.object({
   AI_MAX_TOKENS: z.coerce.number().default(4096),
   AI_ENCRYPTION_KEY: z.string().optional(), // encrypts stored provider API keys
 
+  // Sarvam AI — natural Indian-language TTS for the interview room (Hindi/English).
+  SARVAM_API_KEY: z.string().optional(),
+  SARVAM_TTS_MODEL: z.string().default('bulbul:v2'),
+  SARVAM_SPEAKER_FEMALE: z.string().default('anushka'),
+  SARVAM_SPEAKER_MALE: z.string().default('abhilash'),
+
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().optional(),
@@ -95,6 +101,15 @@ export const config = {
     maxTokens: env.AI_MAX_TOKENS,
     enabled: Boolean(env.ANTHROPIC_API_KEY),
     encryptionKey: env.AI_ENCRYPTION_KEY,
+  },
+  voice: {
+    sarvam: {
+      apiKey: env.SARVAM_API_KEY,
+      model: env.SARVAM_TTS_MODEL,
+      speakerFemale: env.SARVAM_SPEAKER_FEMALE,
+      speakerMale: env.SARVAM_SPEAKER_MALE,
+      enabled: Boolean(env.SARVAM_API_KEY),
+    },
   },
   mail: {
     host: env.SMTP_HOST,

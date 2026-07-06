@@ -25,6 +25,11 @@ export const roomApi = {
     http.post(`/${token}/answer`, body).then((r) => r.data.data),
   skip: (token: string) => http.post(`/${token}/skip`).then((r) => r.data.data),
   setLanguage: (token: string, language: 'en' | 'hi') => http.post(`/${token}/language`, { language }).then((r) => r.data.data),
+  tts: (token: string, text: string, language: 'en' | 'hi', gender: 'female' | 'male' | 'auto' = 'female') =>
+    http
+      .post(`/${token}/tts`, { text, lang: language, gender })
+      .then((r) => r.data.data as { audios: string[]; mime: string | null })
+      .catch(() => null),
   complete: (token: string) => http.post(`/${token}/complete`).then((r) => r.data.data),
   proctoring: (token: string, type: string, severity: 'low' | 'medium' | 'high' = 'low') =>
     http.post(`/${token}/proctoring`, { type, severity }).then((r) => r.data.data).catch(() => null),

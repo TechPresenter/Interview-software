@@ -15,6 +15,7 @@ router.post('/:token/start', validate(startSchema), roomCtrl.start);
 router.post('/:token/answer', validate(answerSchema), roomCtrl.answer);
 router.post('/:token/skip', roomCtrl.skip);
 router.post('/:token/language', validate(languageSchema), roomCtrl.language);
+router.post('/:token/tts', roomCtrl.tts);
 router.post('/:token/complete', roomCtrl.complete);
 router.post('/:token/proctoring', validate(proctoringSchema), roomCtrl.proctoring);
 router.post('/:token/recording', uploadMedia, roomCtrl.recording);

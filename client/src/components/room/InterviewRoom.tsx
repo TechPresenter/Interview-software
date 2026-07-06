@@ -8,7 +8,7 @@ import { Waveform } from './Waveform';
 import { Button } from '@/components/ui/Button';
 import { roomApi, type RoomQuestion, type RoomProgress } from '@/lib/room.api';
 import { useAntiCheat, enterFullscreen } from '@/hooks/useAntiCheat';
-import { loadVoices, speak, stopSpeaking, type Lang } from '@/lib/voice';
+import { loadVoices, speak, playAudios, stopSpeaking, type Lang } from '@/lib/voice';
 import { cn } from '@/lib/utils';
 
 type Phase = 'starting' | 'active' | 'submitting' | 'finishing' | 'done';
@@ -54,10 +54,21 @@ export function InterviewRoom({
     onEvent: (type, severity) => roomApi.proctoring(token, type, severity),
   });
 
-  /* ── TTS (Indian female voice, EN/HI) ── */
-  const speakText = useCallback((text: string, l: Lang) => {
+  /* ── TTS: prefer Sarvam (natural Indian voice, EN/HI); fall back to browser ── */
+  const speakText = useCallback(async (text: string, l: Lang) => {
+    stopSpeaking();
+    setSpeaking(true);
+    try {
+      const res = await roomApi.tts(token, text, l, interviewer?.voice || 'female');
+      if (res?.audios?.length) {
+        await playAudios(res.audios, res.mime || 'audio/wav', { onEnd: () => setSpeaking(false) });
+        return;
+      }
+    } catch {
+      /* fall back to browser speech synthesis below */
+    }
     speak(text, l, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false), voice: interviewer?.voice || 'female' });
-  }, [interviewer?.voice]);
+  }, [token, interviewer?.voice]);
   const pushAi = useCallback((text: string, l: Lang) => {
     setTranscript((t) => [...t, { role: 'ai', text }]);
     speakText(text, l);

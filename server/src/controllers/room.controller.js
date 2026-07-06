@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import * as room from '../services/room.service.js';
+import * as ttsService from '../services/tts.service.js';
 import { saveBuffer } from '../services/file.service.js';
 
 /**
@@ -37,6 +38,24 @@ export const skip = asyncHandler(async (req, res) => {
 export const language = asyncHandler(async (req, res) => {
   const interview = await room.loadByToken(req.params.token);
   return ok(res, await room.setLanguage(interview, req.body?.language), 'Language updated');
+});
+
+/**
+ * POST /interview-room/:token/tts — synthesize question/intro audio with Sarvam
+ * (natural Indian voice, EN/HI). Token-gated so the paid key can't be abused.
+ * Returns { audios: [], enabled:false } when Sarvam isn't configured; the client
+ * then falls back to the browser's speech synthesis.
+ */
+export const tts = asyncHandler(async (req, res) => {
+  await room.loadByToken(req.params.token); // authorize by unguessable token
+  const { text, lang, gender } = req.body || {};
+  if (!text || typeof text !== 'string') throw ApiError.badRequest('text is required');
+  const result = await ttsService.synthesize({
+    text: text.slice(0, 4000),
+    lang: lang === 'hi' ? 'hi' : 'en',
+    gender: gender === 'male' ? 'male' : gender === 'auto' ? 'auto' : 'female',
+  });
+  return ok(res, result || { audios: [], mime: null, enabled: ttsService.ttsEnabled() });
 });
 
 /** POST /interview-room/:token/complete */

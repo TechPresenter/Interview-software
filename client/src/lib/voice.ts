@@ -10,6 +10,11 @@ export type Lang = 'en' | 'hi';
 
 let cached: SpeechSynthesisVoice[] = [];
 
+// Server-TTS (Sarvam) playback state — kept module-level so stopSpeaking() can
+// interrupt an in-flight audio sequence just like it cancels speechSynthesis.
+let currentAudio: HTMLAudioElement | null = null;
+let remoteCancelled = false;
+
 /** Resolve the available voices (they load async in some browsers). */
 export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   return new Promise((resolve) => {
@@ -79,6 +84,48 @@ export function speak(
   window.speechSynthesis.speak(u);
 }
 
+/**
+ * Play a sequence of base64 audio chunks (from server-side Sarvam TTS) in order.
+ * Resolves when playback finishes or is interrupted by stopSpeaking().
+ */
+export async function playAudios(
+  audios: string[],
+  mime = 'audio/wav',
+  { onStart, onEnd }: { onStart?: () => void; onEnd?: () => void } = {},
+): Promise<void> {
+  stopSpeaking();
+  remoteCancelled = false;
+  if (typeof window === 'undefined' || !audios?.length) {
+    onEnd?.();
+    return;
+  }
+  onStart?.();
+  try {
+    for (const b64 of audios) {
+      if (remoteCancelled) break;
+      await new Promise<void>((resolve) => {
+        const audio = new Audio(`data:${mime};base64,${b64}`);
+        currentAudio = audio;
+        audio.onended = () => resolve();
+        audio.onerror = () => resolve();
+        audio.play().catch(() => resolve());
+      });
+    }
+  } finally {
+    currentAudio = null;
+    onEnd?.();
+  }
+}
+
 export function stopSpeaking() {
+  remoteCancelled = true;
+  if (currentAudio) {
+    try {
+      currentAudio.pause();
+    } catch {
+      /* ignore */
+    }
+    currentAudio = null;
+  }
   if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
 }
