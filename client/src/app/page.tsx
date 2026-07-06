@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Bot, BarChart3, ShieldCheck, FileSearch, Video, Sparkles, ArrowRight, Check,
-  Workflow,
+  Workflow, Star, Zap, PlayCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -60,16 +60,20 @@ export default function LandingPage() {
       <section className="relative grid min-h-screen place-items-center overflow-hidden px-6 pt-28">
         <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-70" />
         <div className="pointer-events-none absolute inset-0 -z-10 grid-bg" />
+        <div className="pointer-events-none absolute left-1/2 top-[-8%] -z-10 h-[620px] w-[1100px] -translate-x-1/2 aurora opacity-80" />
         <div className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/20 blur-[140px]" />
         <div className="pointer-events-none absolute right-[8%] top-[30%] -z-10 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
 
         <div className="mx-auto max-w-5xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            className="mx-auto mb-7 inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs"
+            className="group mx-auto mb-7 inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-medium"
           >
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-            Powered by Claude — adaptive, fair, explainable
+            <span className="inline-flex items-center gap-1 rounded-full bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+              <Zap className="h-3 w-3" /> New
+            </span>
+            Powered by Claude — adaptive, fair &amp; explainable
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </motion.div>
 
           <motion.h1
@@ -77,7 +81,7 @@ export default function LandingPage() {
             className="text-balance text-5xl font-extrabold leading-[1.02] tracking-tight md:text-7xl lg:text-[5.5rem]"
           >
             Hire the right people<br />
-            <span className="text-gradient">10× faster</span> with AI interviews
+            <span className="text-gradient-animate">10× faster</span> with AI interviews
           </motion.h1>
 
           <motion.p
@@ -93,12 +97,38 @@ export default function LandingPage() {
             className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <Link href="/register"><Button size="lg">Start hiring free <ArrowRight className="h-5 w-5" /></Button></Link>
-            <Link href="/login"><Button size="lg" variant="glass" magnetic={false}>Book a demo</Button></Link>
+            <Link href="/login"><Button size="lg" variant="glass" magnetic={false}><PlayCircle className="h-5 w-5" /> Book a demo</Button></Link>
           </motion.div>
 
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-5 text-xs text-muted-foreground">
-            No credit card required · Free forever plan
-          </motion.p>
+          {/* Social proof */}
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.32 }}
+            className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2.5" aria-hidden>
+                {[
+                  'from-violet-500 to-indigo-500',
+                  'from-sky-500 to-cyan-500',
+                  'from-fuchsia-500 to-pink-500',
+                  'from-emerald-500 to-teal-500',
+                  'from-amber-500 to-orange-500',
+                ].map((g, i) => (
+                  <span key={i} className={cn('grid h-8 w-8 place-items-center rounded-full border-2 border-background bg-gradient-to-br text-[11px] font-bold text-white', g)}>
+                    {['A', 'K', 'M', 'S', 'R'][i]}
+                  </span>
+                ))}
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-0.5 text-amber-400">
+                  {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-current" />)}
+                </div>
+                <p className="text-xs text-muted-foreground">Trusted by <strong className="text-foreground">500+</strong> hiring teams</p>
+              </div>
+            </div>
+            <span className="hidden h-8 w-px bg-border sm:block" aria-hidden />
+            <p className="text-xs text-muted-foreground">No credit card required · Free forever plan</p>
+          </motion.div>
         </div>
 
         {/* AI-themed hero visual */}
@@ -242,14 +272,20 @@ export default function LandingPage() {
 
       {/* ── CTA ────────────────────────────────────────── */}
       <section className="container py-24">
-        <div className="relative overflow-hidden rounded-3xl border border-border p-12 text-center md:p-20">
+        <div className="gradient-border relative overflow-hidden rounded-3xl border border-border p-12 text-center md:p-20">
           <div className="absolute inset-0 -z-10 mesh-bg opacity-80" />
+          <div className="pointer-events-none absolute left-1/2 top-[-30%] -z-10 h-[420px] w-[820px] -translate-x-1/2 aurora opacity-70" />
           <div className="absolute inset-0 -z-10 bg-background/40" />
-          <h2 className="mx-auto max-w-2xl text-4xl font-bold tracking-tight md:text-6xl">Ready to <span className="text-gradient">transform</span> your hiring?</h2>
+          <h2 className="mx-auto max-w-2xl text-4xl font-bold tracking-tight md:text-6xl">Ready to <span className="text-gradient-animate">transform</span> your hiring?</h2>
           <p className="mx-auto mt-5 max-w-lg text-muted-foreground">Join modern teams interviewing smarter with AI. Free to start.</p>
           <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href="/register"><Button size="lg">Get started for free <ArrowRight className="h-5 w-5" /></Button></Link>
             <Link href="/pricing"><Button size="lg" variant="glass" magnetic={false}>View pricing</Button></Link>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-accent" /> Setup in minutes</span>
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-accent" /> Enterprise-grade security</span>
+            <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-accent" /> Cancel anytime</span>
           </div>
         </div>
       </section>

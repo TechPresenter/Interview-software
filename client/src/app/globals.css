@@ -146,6 +146,33 @@ h1, h2, h3, h4, h5, h6, .font-display {
     color: transparent;
   }
 
+  /* Animated, shimmering gradient headline. */
+  .text-gradient-animate {
+    background: linear-gradient(
+      120deg,
+      hsl(var(--primary)),
+      hsl(var(--accent)),
+      hsl(300 85% 66%),
+      hsl(var(--primary))
+    );
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient-pan 9s ease infinite;
+  }
+
+  /* Soft, drifting aurora glow — used as a hero backdrop accent. */
+  .aurora {
+    background:
+      radial-gradient(38% 48% at 22% 28%, hsl(var(--primary) / 0.40) 0, transparent 70%),
+      radial-gradient(40% 46% at 78% 22%, hsl(var(--accent) / 0.34) 0, transparent 70%),
+      radial-gradient(46% 50% at 50% 82%, hsl(300 85% 62% / 0.24) 0, transparent 72%);
+    background-size: 200% 200%;
+    filter: blur(28px);
+    animation: mesh-pan 18s ease infinite;
+  }
+
   .mesh-bg {
     background:
       radial-gradient(at 18% 20%, hsl(256 90% 62% / 0.32) 0, transparent 45%),
@@ -226,6 +253,10 @@ h1, h2, h3, h4, h5, h6, .font-display {
 @keyframes marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
+}
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 .animate-float { animation: float-y 7s ease-in-out infinite; }
 
