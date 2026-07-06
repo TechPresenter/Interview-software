@@ -1,6 +1,7 @@
 import { Interview } from '../models/Interview.js';
 import { Candidate } from '../models/Candidate.js';
 import { Job } from '../models/Job.js';
+import { Company } from '../models/Company.js';
 import { Answer } from '../models/Answer.js';
 import { Report } from '../models/Report.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -37,10 +38,12 @@ export async function loadByToken(token, { lean = false } = {}) {
 
 /** Candidate-facing room view (never leaks scores/evaluations). */
 export async function roomView(interview) {
-  const [candidate, job] = await Promise.all([
+  const [candidate, job, company] = await Promise.all([
     Candidate.findById(interview.candidate).select('name email').lean(),
     interview.job ? Job.findById(interview.job).select('title company').lean() : null,
+    Company.findById(interview.company).select('aiInterviewer name').lean(),
   ]);
+  const ai = company?.aiInterviewer || {};
   return {
     id: interview._id,
     status: interview.status,
@@ -48,6 +51,12 @@ export async function roomView(interview) {
     config: interview.config,
     candidate: { name: candidate?.name },
     job: { title: job?.title || 'the role' },
+    interviewer: {
+      name: ai.name || 'Sense',
+      avatarUrl: ai.avatarUrl || null,
+      voice: ai.voice || 'female',
+      intro: ai.intro || null,
+    },
     phase: interview.engineState.phase,
     progress: progressOf(interview),
     pendingQuestion: interview.status === 'in_progress' ? interview.engineState.pendingQuestion : undefined,

@@ -8,6 +8,8 @@ import { Report } from '../../models/Report.js';
 import { Company } from '../../models/Company.js';
 import { usageReport } from '../../services/limits.service.js';
 import { recentActivity } from '../../services/analytics.service.js';
+import { saveBuffer } from '../../services/file.service.js';
+import { ApiError } from '../../utils/ApiError.js';
 import { PIPELINE_STAGES } from '../../constants/enums.js';
 
 /** GET /company/overview — company dashboard KPIs + funnel + usage. */
@@ -61,6 +63,30 @@ export const overview = asyncHandler(async (req, res) => {
     activity,
     onboarding,
   });
+});
+
+/* ── Custom AI interviewer (candidate-facing) ──────────── */
+
+/** GET /company/ai-interviewer */
+export const getInterviewer = asyncHandler(async (req, res) => {
+  const c = await Company.findById(req.companyId).select('aiInterviewer').lean();
+  return ok(res, c?.aiInterviewer || { name: 'Sense', voice: 'female' });
+});
+
+/** PUT /company/ai-interviewer */
+export const updateInterviewer = asyncHandler(async (req, res) => {
+  const patch = {};
+  for (const f of ['name', 'voice', 'intro']) if (req.body[f] !== undefined) patch[`aiInterviewer.${f}`] = req.body[f];
+  const c = await Company.findByIdAndUpdate(req.companyId, { $set: patch }, { new: true }).select('aiInterviewer');
+  return ok(res, c.aiInterviewer, 'AI interviewer updated');
+});
+
+/** POST /company/ai-interviewer/avatar */
+export const uploadInterviewerAvatar = asyncHandler(async (req, res) => {
+  if (!req.file) throw ApiError.badRequest('No image uploaded');
+  const { url } = await saveBuffer(req.file.buffer, req.file.originalname);
+  const c = await Company.findByIdAndUpdate(req.companyId, { $set: { 'aiInterviewer.avatarUrl': url } }, { new: true }).select('aiInterviewer');
+  return ok(res, c.aiInterviewer, 'Avatar updated');
 });
 
 const toId = (id) => new mongoose.Types.ObjectId(id);

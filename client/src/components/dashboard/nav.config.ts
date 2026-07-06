@@ -51,6 +51,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
     { label: 'Reports', href: '/dashboard/reports', icon: FileBarChart },
     { label: 'Knowledge Base', href: '/dashboard/knowledge', icon: BookOpen },
+    { label: 'AI Interviewer', href: '/dashboard/interviewer', icon: Bot },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   ],

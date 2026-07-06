@@ -7,6 +7,8 @@ import { Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { roomApi } from '@/lib/room.api';
 
+const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+
 // Camera / mic / MediaRecorder / SpeechSynthesis are browser-only — never SSR them.
 const PreCheck = dynamic(() => import('@/components/room/PreCheck').then((m) => m.PreCheck), {
   ssr: false,
@@ -52,7 +54,7 @@ export default function InterviewPage() {
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-brand shadow-glow">
           <Sparkles className="h-5 w-5 text-white" />
         </span>
-        <span className="text-gradient">HireSense</span>
+        <span className="text-gradient">{room?.interviewer?.name || 'AIPL Hire'}</span>
       </header>
 
       {loading && (
@@ -94,6 +96,7 @@ export default function InterviewPage() {
           initialLanguage={room.config?.language === 'hi' ? 'hi' : 'en'}
           allowSkip={room.config?.allowSkip ?? true}
           initialSkips={room.skips?.remaining ?? room.config?.maxSkips ?? 0}
+          interviewer={room.interviewer ? { ...room.interviewer, avatarUrl: room.interviewer.avatarUrl ? `${API_ORIGIN}${room.interviewer.avatarUrl}` : null } : undefined}
         />
       )}
     </main>

@@ -3,8 +3,9 @@
 import { motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
 
-/** Animated AI interviewer avatar. Pulses/ripples while `speaking`. */
-export function AiAvatar({ speaking }: { speaking: boolean }) {
+/** Animated AI interviewer avatar. Pulses/ripples while `speaking`. Shows a
+ *  custom image when `avatarUrl` is provided, otherwise a default bot icon. */
+export function AiAvatar({ speaking, avatarUrl }: { speaking: boolean; avatarUrl?: string | null }) {
   return (
     <div className="relative grid h-32 w-32 place-items-center">
       {/* Ripple rings while speaking */}
@@ -22,9 +23,13 @@ export function AiAvatar({ speaking }: { speaking: boolean }) {
       <motion.div
         animate={speaking ? { scale: [1, 1.08, 1] } : { scale: 1 }}
         transition={{ duration: 0.8, repeat: speaking ? Infinity : 0 }}
-        className="relative grid h-24 w-24 place-items-center rounded-full bg-gradient-brand shadow-glow"
+        className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-gradient-brand shadow-glow"
       >
-        <Bot className="h-12 w-12 text-white" />
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="AI interviewer" className="h-24 w-24 rounded-full object-cover" />
+        ) : (
+          <Bot className="h-12 w-12 text-white" />
+        )}
       </motion.div>
     </div>
   );

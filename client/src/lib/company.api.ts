@@ -65,6 +65,15 @@ export const companyApi = {
   billing: () => apiGet<any>('/billing'),
   billingInvoices: () => apiGet<any[]>('/billing/invoices'),
   downloadInvoice: (id: string) => download(`/billing/invoices/${id}/pdf`, {}, `invoice-${id}.pdf`),
+
+  // Custom AI interviewer
+  aiInterviewer: () => apiGet<any>('/company/ai-interviewer'),
+  updateInterviewer: (body: object) => api.put('/company/ai-interviewer', body).then((r) => r.data.data),
+  uploadInterviewerAvatar: (file: File) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    return api.post('/company/ai-interviewer/avatar', fd).then((r) => r.data.data);
+  },
   checkout: (body: object) => apiPost<any>('/billing/checkout', body),
   verifyRazorpay: (body: object) => apiPost<any>('/billing/razorpay/verify', body),
   cancelBilling: () => apiPost<any>('/billing/cancel'),

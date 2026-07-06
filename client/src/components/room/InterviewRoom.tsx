@@ -16,7 +16,7 @@ interface Turn { role: 'ai' | 'candidate'; text: string }
 
 export function InterviewRoom({
   token, durationMinutes, stream, onDone,
-  initialLanguage = 'en', allowSkip = true, initialSkips = 0,
+  initialLanguage = 'en', allowSkip = true, initialSkips = 0, interviewer,
 }: {
   token: string;
   durationMinutes: number;
@@ -25,6 +25,7 @@ export function InterviewRoom({
   initialLanguage?: Lang;
   allowSkip?: boolean;
   initialSkips?: number;
+  interviewer?: { name?: string; avatarUrl?: string | null; voice?: 'female' | 'male' | 'auto'; intro?: string | null };
 }) {
   const [phase, setPhase] = useState<Phase>('starting');
   const [lang, setLang] = useState<Lang>(initialLanguage);
@@ -55,8 +56,8 @@ export function InterviewRoom({
 
   /* ── TTS (Indian female voice, EN/HI) ── */
   const speakText = useCallback((text: string, l: Lang) => {
-    speak(text, l, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) });
-  }, []);
+    speak(text, l, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false), voice: interviewer?.voice || 'female' });
+  }, [interviewer?.voice]);
   const pushAi = useCallback((text: string, l: Lang) => {
     setTranscript((t) => [...t, { role: 'ai', text }]);
     speakText(text, l);
@@ -132,8 +133,8 @@ export function InterviewRoom({
       try {
         const res = await roomApi.start(token, lang);
         if (!mounted) return;
-        const intro = [res.greeting, res.question?.text].filter(Boolean).join(' ');
-        setTranscript([res.greeting && { role: 'ai', text: res.greeting }, res.question && { role: 'ai', text: res.question.text }].filter(Boolean) as Turn[]);
+        const intro = [interviewer?.intro, res.greeting, res.question?.text].filter(Boolean).join(' ');
+        setTranscript([interviewer?.intro && { role: 'ai', text: interviewer.intro }, res.greeting && { role: 'ai', text: res.greeting }, res.question && { role: 'ai', text: res.question.text }].filter(Boolean) as Turn[]);
         setQuestion(res.question);
         setProgress(res.progress);
         const saved = localStorage.getItem(`iv:${token}:0`);
@@ -221,7 +222,7 @@ export function InterviewRoom({
     return (
       <div className="grid min-h-[60vh] place-items-center text-center">
         <div>
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mx-auto mb-6"><AiAvatar speaking={false} /></motion.div>
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mx-auto mb-6"><AiAvatar speaking={false} avatarUrl={interviewer?.avatarUrl} /></motion.div>
           <h1 className="text-3xl font-bold">{lang === 'hi' ? 'इंटरव्यू पूरा हुआ 🎉' : 'Interview complete 🎉'}</h1>
           <p className="mt-2 text-muted-foreground">{lang === 'hi' ? 'धन्यवाद! आपके उत्तर रिकॉर्ड कर लिए गए हैं और उनका मूल्यांकन हो रहा है।' : 'Thanks for your time. Your responses were recorded and are being evaluated.'}</p>
           <Button className="mt-8" magnetic={false} onClick={onDone}>{lang === 'hi' ? 'डैशबोर्ड पर जाएँ' : 'Back to dashboard'}</Button>
@@ -262,15 +263,20 @@ export function InterviewRoom({
         {/* Avatar + question */}
         <div className="glass relative flex flex-col items-center gap-5 overflow-hidden rounded-2xl p-8 text-center">
           <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-20" />
-          <AiAvatar speaking={speaking} />
+          <AiAvatar speaking={speaking} avatarUrl={interviewer?.avatarUrl} />
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {speaking ? <><Volume2 className="h-3.5 w-3.5 text-primary" /> {lang === 'hi' ? 'AI बोल रहा है…' : 'AI is speaking…'}</> : <span>Sense AI</span>}
+            {speaking ? <><Volume2 className="h-3.5 w-3.5 text-primary" /> {(interviewer?.name || 'Sense')} {lang === 'hi' ? 'बोल रहा है…' : 'is speaking…'}</> : <span>{interviewer?.name || 'Sense'}</span>}
           </div>
           <AnimatePresence mode="wait">
             <motion.p key={question?.text} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="max-w-2xl text-xl font-medium">
               {question?.text || (lang === 'hi' ? 'आपका पहला प्रश्न तैयार हो रहा है…' : 'Preparing your first question…')}
             </motion.p>
           </AnimatePresence>
+          {question?.text && phase === 'active' && (
+            <Button variant="glass" size="sm" magnetic={false} onClick={() => speakText(question.text, lang)}>
+              <Volume2 className="h-4 w-4" /> {lang === 'hi' ? 'प्रश्न दोबारा सुनें' : 'Repeat question'}
+            </Button>
+          )}
           {/* AI typing indicator */}
           {phase === 'submitting' && !lastIsAi && (
             <div className="flex gap-1">{[0, 1, 2].map((i) => <motion.span key={i} className="h-2 w-2 rounded-full bg-primary" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />)}</div>
@@ -329,7 +335,7 @@ export function InterviewRoom({
           <div className="max-h-72 space-y-3 overflow-y-auto pr-1 text-sm">
             {transcript.map((t, i) => (
               <div key={i} className={cn('rounded-xl px-3 py-2', t.role === 'ai' ? 'bg-primary/10' : 'bg-muted/50')}>
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.role === 'ai' ? 'Interviewer' : 'You'}</span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.role === 'ai' ? (interviewer?.name || 'Sense') : 'You'}</span>
                 <p>{t.text}</p>
               </div>
             ))}

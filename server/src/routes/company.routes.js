@@ -3,7 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import { rbac } from '../middleware/rbac.js';
 import { requireTenant } from '../middleware/tenant.js';
 import { validate } from '../middleware/validate.js';
-import { uploadResume, uploadCsv, uploadKnowledge } from '../middleware/upload.js';
+import { uploadResume, uploadCsv, uploadKnowledge, uploadImage } from '../middleware/upload.js';
 import { ROLES } from '../constants/enums.js';
 import {
   createJobSchema,
@@ -33,6 +33,11 @@ router.use(authenticate, rbac(ROLES.COMPANY_ADMIN, ROLES.RECRUITER, ROLES.HR_MAN
 
 /* ── Overview ──────────────────────────────────────────── */
 router.get('/company/overview', overview.overview);
+
+/* ── Custom AI interviewer ─────────────────────────────── */
+router.get('/company/ai-interviewer', overview.getInterviewer);
+router.put('/company/ai-interviewer', overview.updateInterviewer);
+router.post('/company/ai-interviewer/avatar', uploadImage, overview.uploadInterviewerAvatar);
 
 /* ── Jobs ──────────────────────────────────────────────── */
 router.get('/jobs', jobs.list);

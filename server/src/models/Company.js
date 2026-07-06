@@ -36,6 +36,14 @@ const companySchema = new Schema(
       accentColor: { type: String, default: '#22d3ee' },
     },
 
+    // Company-customizable AI interviewer shown to candidates.
+    aiInterviewer: {
+      name: { type: String, default: 'Sense' },
+      avatarUrl: { type: String },
+      voice: { type: String, enum: ['female', 'male', 'auto'], default: 'female' },
+      intro: { type: String }, // optional custom opening line spoken to candidates
+    },
+
     contactEmail: { type: String, lowercase: true },
     billingEmail: { type: String, lowercase: true },
   },

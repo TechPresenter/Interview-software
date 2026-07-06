@@ -29,31 +29,39 @@ export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
-// Known Indian female voice names across Windows / Chrome / Edge.
-const FEMALE_HINTS = /(heera|kalpana|swara|neerja|aditi|raveena|female|woman|priya|ananya|google.*हिन्दी|google.*india)/i;
+export type VoicePref = 'female' | 'male' | 'auto';
 
-/** Pick the best voice for a language, preferring Indian + female. */
-export function pickVoice(lang: Lang, voices = cached): SpeechSynthesisVoice | undefined {
+// Known Indian voice-name hints across Windows / Chrome / Edge.
+const FEMALE_HINTS = /(heera|kalpana|swara|neerja|aditi|raveena|female|woman|priya|ananya|google.*हिन्दी|google.*india)/i;
+const MALE_HINTS = /(male|man|ravi|hemant|prabhat|madhur|google.*male)/i;
+
+/** Pick the best voice for a language, preferring Indian + the requested gender. */
+export function pickVoice(lang: Lang, voices = cached, prefer: VoicePref = 'female'): SpeechSynthesisVoice | undefined {
   if (!voices.length) return undefined;
   const target = lang === 'hi' ? 'hi' : 'en';
   const inLang = voices.filter((v) => v.lang?.toLowerCase().startsWith(target));
   const indian = inLang.filter((v) => /in/i.test(v.lang)); // en-IN / hi-IN
+  if (prefer === 'auto') {
+    for (const pool of [indian, inLang, voices]) if (pool.length) return pool[0];
+    return voices[0];
+  }
+  const hint = prefer === 'male' ? MALE_HINTS : FEMALE_HINTS;
   const pools = [
-    indian.filter((v) => FEMALE_HINTS.test(v.name)),
+    indian.filter((v) => hint.test(v.name)),
     indian,
-    inLang.filter((v) => FEMALE_HINTS.test(v.name)),
+    inLang.filter((v) => hint.test(v.name)),
     inLang,
-    voices.filter((v) => FEMALE_HINTS.test(v.name)),
+    voices.filter((v) => hint.test(v.name)),
   ];
   for (const pool of pools) if (pool.length) return pool[0];
   return voices[0];
 }
 
-/** Speak text in the given language. Returns when speech ends. */
+/** Speak text in the given language + voice preference. */
 export function speak(
   text: string,
   lang: Lang,
-  { onStart, onEnd }: { onStart?: () => void; onEnd?: () => void } = {},
+  { onStart, onEnd, voice = 'female' }: { onStart?: () => void; onEnd?: () => void; voice?: VoicePref } = {},
 ) {
   if (typeof window === 'undefined' || !window.speechSynthesis || !text) {
     onEnd?.();
@@ -61,11 +69,11 @@ export function speak(
   }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  const voice = pickVoice(lang);
-  if (voice) u.voice = voice;
+  const v = pickVoice(lang, cached, voice);
+  if (v) u.voice = v;
   u.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
   u.rate = lang === 'hi' ? 0.95 : 1;
-  u.pitch = 1.05;
+  u.pitch = voice === 'male' ? 0.9 : 1.05;
   u.onstart = () => onStart?.();
   u.onend = () => onEnd?.();
   window.speechSynthesis.speak(u);
