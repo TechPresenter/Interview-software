@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sparkles, Mail, Linkedin, Twitter, Youtube, ShieldCheck, Lock, BadgeCheck } from 'lucide-react';
 import { useBranding } from '@/store/branding.store';
-import { CreditFooter } from '@/components/ui/CreditFooter';
 import { FOOTER_NAV, SITE } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
@@ -82,10 +81,7 @@ export function SiteFooter() {
 
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col gap-6 border-t border-border pt-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground">© {year} {name}. All rights reserved.</p>
-            <CreditFooter className="!items-start sm:!items-center" />
-          </div>
+          <p className="text-sm text-muted-foreground">© {year} {name}. All rights reserved.</p>
 
           <div className="flex flex-wrap items-center gap-2">
             {socials.map((s) => (
