@@ -16,6 +16,20 @@ async function getPaged<T>(url: string, params?: object): Promise<Paged<T>> {
   return { items: data.data as T[], meta: data.meta };
 }
 
+/** Fetch a binary export and trigger a browser download. */
+async function download(url: string, params: object, fallbackName: string) {
+  const res = await api.get(url, { params, responseType: 'blob' });
+  const disposition = res.headers['content-disposition'] || '';
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const filename = match?.[1] || fallbackName;
+  const blobUrl = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(blobUrl);
+}
+
 export const adminApi = {
   // Dashboard
   overview: () => apiGet<any>('/admin/overview'),
@@ -84,6 +98,11 @@ export const adminApi = {
   cmsUpdate: (resource: string, id: string, body: object) =>
     api.patch(`/admin/cms/${resource}/${id}`, body).then((r) => r.data.data),
   cmsDelete: (resource: string, id: string) => api.delete(`/admin/cms/${resource}/${id}`).then((r) => r.data),
+  cmsUploadImage: (file: File): Promise<{ url: string }> => {
+    const fd = new FormData();
+    fd.append('upload', file);
+    return api.post('/admin/cms/upload', fd).then((r) => ({ url: r.data.url }));
+  },
 
   // White-label branding
   getBranding: () => apiGet<any>('/admin/branding'),
@@ -122,6 +141,8 @@ export const adminApi = {
   leadStats: () => apiGet<any>('/admin/leads/stats'),
   updateLead: (id: string, body: object) => api.patch(`/admin/leads/${id}`, body).then((r) => r.data.data),
   deleteLead: (id: string) => api.delete(`/admin/leads/${id}`).then((r) => r.data),
+  exportLeads: (params?: { type?: string; status?: string; format?: 'csv' | 'xlsx' }) =>
+    download('/admin/leads/export', params || {}, `leads.${params?.format || 'csv'}`),
 };
 
 export default adminApi;

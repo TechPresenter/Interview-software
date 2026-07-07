@@ -56,9 +56,26 @@ async function resolveSmtp(company) {
   let value = null;
   if (company) {
     try {
-      const doc = await Company.findById(company).select('emailConfig name +emailConfig.pass').lean();
+      // Select only the `+` overrides (not the bare `emailConfig`) to avoid a
+      // MongoDB path-collision with the nested select:false sub-fields.
+      const doc = await Company.findById(company)
+        .select('+emailConfig.pass +emailConfig.gmail.refreshToken')
+        .lean();
       const ec = doc?.emailConfig;
-      if (ec?.enabled && ec.host) {
+      // 1) Connected Gmail account (OAuth 2.0) takes priority.
+      const gm = ec?.gmail;
+      if (gm?.connected && gm.email && gm.refreshToken && config.oauth.google.clientId) {
+        value = {
+          type: 'gmail',
+          user: gm.email,
+          refreshToken: decryptSecret(gm.refreshToken),
+          from: `${ec.fromName || doc.name || ''} <${gm.email}>`.trim(),
+          signature: ec.signature || '',
+          enabled: true,
+          source: 'gmail',
+        };
+      } else if (ec?.enabled && ec.host) {
+        // 2) Company SMTP.
         value = {
           host: ec.host,
           port: Number(ec.port || 587),
@@ -88,15 +105,35 @@ export function refreshSmtp(company) {
 }
 
 async function getTransporter(smtp) {
-  const sig = `${smtp.host}:${smtp.port}:${smtp.user}:${smtp.secure}`;
+  const sig =
+    smtp.type === 'gmail'
+      ? `gmail:${smtp.user}`
+      : `${smtp.host}:${smtp.port}:${smtp.user}:${smtp.secure}`;
   if (_txCache.has(sig)) return _txCache.get(sig);
   const { default: nodemailer } = await import('nodemailer');
-  const tx = nodemailer.createTransport({
-    host: smtp.host,
-    port: smtp.port,
-    secure: smtp.secure ?? smtp.port === 465,
-    auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined,
-  });
+
+  let tx;
+  if (smtp.type === 'gmail') {
+    // Gmail SMTP over OAuth2 — nodemailer exchanges the refresh token for a
+    // short-lived access token at send time (secure offline access).
+    tx = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        type: 'OAuth2',
+        user: smtp.user,
+        clientId: config.oauth.google.clientId,
+        clientSecret: config.oauth.google.clientSecret,
+        refreshToken: smtp.refreshToken,
+      },
+    });
+  } else {
+    tx = nodemailer.createTransport({
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.secure ?? smtp.port === 465,
+      auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined,
+    });
+  }
   _txCache.set(sig, tx);
   return tx;
 }

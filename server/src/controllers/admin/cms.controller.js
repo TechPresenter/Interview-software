@@ -10,6 +10,26 @@ import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { slugify } from '../../utils/slug.js';
 import { audit } from '../../services/audit.service.js';
+import { saveBuffer } from '../../services/file.service.js';
+import { config } from '../../config/index.js';
+
+/** Absolute base for served upload URLs (so embedded images resolve cross-origin). */
+const ASSET_BASE = config.apiPublicUrl
+  ? config.apiPublicUrl.replace(config.apiPrefix, '')
+  : `http://localhost:${config.port}`;
+
+/**
+ * POST /admin/cms/upload — image upload for the blog editor + CMS forms.
+ * Returns { url } (absolute) — the shape CKEditor's SimpleUploadAdapter expects.
+ */
+export const uploadImage = asyncHandler(async (req, res) => {
+  if (!req.file) throw ApiError.badRequest('No image uploaded');
+  const { url } = await saveBuffer(req.file.buffer, req.file.originalname);
+  const absolute = `${ASSET_BASE}${url}`;
+  await audit({ req, action: 'cms.image.upload', entityType: 'Upload' });
+  // `url` (top-level) is what CKEditor reads; `data` keeps our API envelope consistent.
+  return res.status(201).json({ success: true, url: absolute, data: { url: absolute } });
+});
 
 /**
  * Generic admin CRUD factory for CMS collections. Each resource gets list /

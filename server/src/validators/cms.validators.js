@@ -13,9 +13,12 @@ export const blogSchema = z.object({
   title: z.string().min(2),
   excerpt: z.string().optional(),
   content: z.string().optional(),
-  coverImage: z.string().url().optional(),
+  coverImage: z.string().url().optional().or(z.literal('')),
   tags: z.array(z.string()).optional(),
   status: status.optional(),
+  seo: z
+    .object({ title: z.string().optional(), description: z.string().optional() })
+    .optional(),
 });
 
 export const faqSchema = z.object({
@@ -30,7 +33,7 @@ export const testimonialSchema = z.object({
   name: z.string().min(2),
   role: z.string().optional(),
   company: z.string().optional(),
-  avatar: z.string().url().optional(),
+  avatar: z.string().url().optional().or(z.literal('')),
   quote: z.string().min(3),
   rating: z.number().min(1).max(5).optional(),
   isActive: z.boolean().optional(),

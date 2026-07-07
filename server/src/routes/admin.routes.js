@@ -29,7 +29,7 @@ import * as leads from '../controllers/admin/leads.controller.js';
 import { updateCandidateAdminSchema, createAiProviderSchema, updateAiProviderSchema } from '../validators/admin.validators.js';
 import { brandingSchema } from '../validators/branding.validators.js';
 import { leadUpdateSchema } from '../validators/lead.validators.js';
-import { uploadImage, uploadKnowledge } from '../middleware/upload.js';
+import { uploadImage, uploadKnowledge, uploadEditorImage } from '../middleware/upload.js';
 import * as knowledgeBase from '../controllers/knowledgeBase.controller.js';
 import * as email from '../controllers/admin/email.controller.js';
 import {
@@ -152,6 +152,9 @@ router.get('/system/:group', system.getSettingsGroup);
 router.put('/system/:group', validate(settingsGroupSchema), system.updateSettingsGroup);
 
 /* ── CMS ───────────────────────────────────────────────── */
+// Image upload for the blog editor + CMS media (before the generic resources).
+router.post('/cms/upload', uploadEditorImage, cms.uploadImage);
+
 const cmsResource = (path, ctrl, createSchema, updateSchema) => {
   router.get(`/cms/${path}`, ctrl.list);
   router.post(`/cms/${path}`, validate(createSchema), ctrl.create);
@@ -168,6 +171,7 @@ cmsResource('templates', cms.templates, templateSchema, templateUpdate);
 /* ── Website leads (contact enquiries + newsletter) ────── */
 router.get('/leads', leads.list);
 router.get('/leads/stats', leads.stats);
+router.get('/leads/export', leads.exportLeads);
 router.patch('/leads/:id', validate(leadUpdateSchema), leads.update);
 router.delete('/leads/:id', leads.remove);
 

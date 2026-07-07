@@ -26,6 +26,7 @@ logs/
 coverage/
 .vscode/
 .idea/
+.claude/
 *.pem
 uploads/
 

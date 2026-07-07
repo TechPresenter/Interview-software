@@ -59,6 +59,17 @@ const companySchema = new Schema(
       fromName: { type: String, trim: true },
       fromEmail: { type: String, lowercase: true, trim: true },
       signature: { type: String },
+
+      // Connected Gmail account (OAuth 2.0). When connected, outgoing email is
+      // sent through this Gmail account via the Gmail SMTP + OAuth2 transport.
+      // Refresh token is encrypted at rest; access token is a short-lived cache.
+      gmail: {
+        connected: { type: Boolean, default: false },
+        email: { type: String, lowercase: true, trim: true },
+        refreshToken: { type: String, select: false }, // encrypted blob
+        scope: { type: String },
+        connectedAt: { type: Date },
+      },
     },
   },
   { timestamps: true },

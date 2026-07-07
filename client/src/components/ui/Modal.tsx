@@ -3,6 +3,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '5xl';
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
@@ -10,10 +12,22 @@ interface ModalProps {
   description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Max width of the dialog. Defaults to `lg` (unchanged from before). */
+  size?: ModalSize;
 }
 
+const SIZE_CLASS: Record<ModalSize, string> = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
+  '5xl': 'max-w-5xl',
+};
+
 /** Accessible-ish animated dialog with a glass surface and backdrop blur. */
-export function Modal({ open, onClose, title, description, children, footer }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, footer, size = 'lg' }: ModalProps) {
   return (
     <AnimatePresence>
       {open && (
@@ -31,7 +45,7 @@ export function Modal({ open, onClose, title, description, children, footer }: M
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-            className="glass relative z-10 w-full max-w-lg rounded-2xl p-6"
+            className={`glass relative z-10 w-full ${SIZE_CLASS[size]} rounded-2xl p-6`}
           >
             <button
               onClick={onClose}

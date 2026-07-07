@@ -111,6 +111,10 @@ export const companyApi = {
   emailLogs: (params?: object) => getPaged<any>('/company/email-logs', params),
   retryEmail: (id: string) => apiPost<any>(`/company/email-logs/${id}/retry`),
 
+  // Connect Gmail (OAuth 2.0)
+  gmailAuthorizeUrl: () => apiGet<{ url: string }>('/company/email/gmail/authorize'),
+  disconnectGmail: () => apiPost<any>('/company/email/gmail/disconnect'),
+
   // Integration API keys
   apiKeys: () => apiGet<any[]>('/company/api-keys'),
   createApiKey: (body: object) => apiPost<any>('/company/api-keys', body),

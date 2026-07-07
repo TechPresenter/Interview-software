@@ -9,8 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-react": "^11.2.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@react-three/drei": "^9.111.3",
+    "@react-three/fiber": "^8.17.6",
     "@tanstack/react-query": "^5.51.23",
     "axios": "^1.7.4",
+    "ckeditor5": "^48.3.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.28",
@@ -22,8 +29,6 @@
     "socket.io-client": "^4.7.5",
     "tailwind-merge": "^2.5.2",
     "three": "^0.167.1",
-    "@react-three/fiber": "^8.17.6",
-    "@react-three/drei": "^9.111.3",
     "zustand": "^4.5.5"
   },
   "devDependencies": {

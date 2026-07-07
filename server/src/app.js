@@ -12,6 +12,7 @@ import { nanoid } from 'nanoid';
 import { config } from './config/index.js';
 import { logger } from './config/logger.js';
 import { globalLimiter } from './middleware/rateLimiter.js';
+import { csrfGuard } from './middleware/csrf.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 import { router as apiRouter } from './routes/index.js';
 import { router as webhookRouter } from './routes/webhook.routes.js';
@@ -32,11 +33,14 @@ export function createApp() {
     }),
   );
 
-  // CORS — credentialed, restricted to the client origin
+  // CORS — credentialed, restricted to the client origin. Expose
+  // Content-Disposition so browser downloads (CSV/Excel/PDF exports) can read
+  // the server-provided filename.
   app.use(
     cors({
       origin: config.clientUrl,
       credentials: true,
+      exposedHeaders: ['Content-Disposition'],
     }),
   );
 
@@ -80,8 +84,8 @@ export function createApp() {
     res.json({ success: true, status: 'ok', uptime: process.uptime(), ts: Date.now() }),
   );
 
-  // Rate limiting + API routes
-  app.use(config.apiPrefix, globalLimiter, apiRouter);
+  // Rate limiting + CSRF origin guard + API routes
+  app.use(config.apiPrefix, globalLimiter, csrfGuard, apiRouter);
 
   // 404 + central error handler
   app.use(notFound);

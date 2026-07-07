@@ -209,6 +209,26 @@ export const DEFAULT_TEMPLATES = {
     preheader: '{{subject}}',
     html: h('{{subject}}') + p('Hi {{name}},') + p('{{message}}') + button('{{link}}', 'Open dashboard'),
   },
+
+  contact_ack: {
+    name: 'Contact Form — Acknowledgement', category: 'Website',
+    subject: 'We received your message — {{platformName}}',
+    variables: ['name', 'subject', 'platformName', 'link'],
+    preheader: 'Thanks for reaching out — we’ll be in touch shortly.',
+    html: h('Thanks for reaching out') + p('Hi {{name}},') +
+      p('We’ve received your message about <strong>{{subject}}</strong> and a member of our team will get back to you shortly — typically within one business day.') +
+      p('In the meantime, feel free to explore more about {{platformName}}.') +
+      button('{{link}}', 'Visit {{platformName}}') + muted('This is an automated confirmation — no need to reply.'),
+  },
+  newsletter_welcome: {
+    name: 'Newsletter — Welcome', category: 'Website',
+    subject: 'You’re subscribed to {{platformName}} 🎉',
+    variables: ['platformName', 'link', 'email'],
+    preheader: 'Welcome aboard — here’s what to expect.',
+    html: h('Welcome aboard! 🎉') + p('Thanks for subscribing to the {{platformName}} newsletter.') +
+      p('You’ll get product updates, hiring insights, and the occasional tip — no spam, ever. You can unsubscribe anytime.') +
+      button('{{link}}', 'Explore {{platformName}}') + muted('You’re receiving this because {{email}} subscribed on our website.'),
+  },
 };
 
 export const TEMPLATE_KEYS = Object.keys(DEFAULT_TEMPLATES);

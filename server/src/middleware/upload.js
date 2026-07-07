@@ -42,6 +42,16 @@ export const uploadImage = multer({
   },
 }).single('image');
 
+/** Rich-text editor image upload (CKEditor SimpleUploadAdapter uses field "upload"). */
+export const uploadEditorImage = multer({
+  storage,
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) return cb(null, true);
+    cb(ApiError.badRequest('Only image files are allowed'));
+  },
+}).single('upload');
+
 /** Interview recording (webm/mp4 audio or video) captured via MediaRecorder. */
 export const uploadMedia = multer({
   storage,

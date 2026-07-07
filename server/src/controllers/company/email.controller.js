@@ -7,11 +7,16 @@ import { encryptSecret } from '../../utils/crypto.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { logActivity } from '../../services/audit.service.js';
 import { sendEmail, sendTemplated, smtpEnabled, refreshSmtp } from '../../services/email.service.js';
+import { gmailConfigured } from '../../services/email/gmail.js';
 
-/** Read + shape a company's email config (password never returned in plaintext). */
+/** Read + shape a company's email config (secrets never returned in plaintext). */
 async function readConfig(companyId) {
-  const doc = await Company.findById(companyId).select('emailConfig +emailConfig.pass').lean();
+  // NOTE: select only the `+` overrides — projecting the bare `emailConfig`
+  // together with a sub-path (emailConfig.pass) collides in MongoDB once the
+  // sub-doc has nested select:false fields (emailConfig.gmail.refreshToken).
+  const doc = await Company.findById(companyId).select('+emailConfig.pass').lean();
   const ec = doc?.emailConfig || {};
+  const gm = ec.gmail || {};
   return {
     enabled: Boolean(ec.enabled),
     host: ec.host || '',
@@ -22,6 +27,12 @@ async function readConfig(companyId) {
     fromEmail: ec.fromEmail || '',
     signature: ec.signature || '',
     passSet: Boolean(ec.pass),
+    gmail: {
+      available: gmailConfigured(), // server has Google OAuth credentials
+      connected: Boolean(gm.connected),
+      email: gm.email || '',
+      connectedAt: gm.connectedAt || null,
+    },
   };
 }
 

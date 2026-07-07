@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Mail, Save, Send, RefreshCw, Server } from 'lucide-react';
+import { Mail, Save, Send, RefreshCw, Server, Plug, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { companyApi } from '@/lib/company.api';
 import { dateTime } from '@/lib/format';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -24,6 +24,17 @@ export default function EmailSettingsPage() {
 
   useEffect(() => { if (data) setF(data); }, [data]);
   const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
+
+  // Handle the Gmail OAuth redirect result (?gmail=connected|error).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('gmail');
+    if (!status) return;
+    if (status === 'connected') toast.success(`Gmail connected${params.get('email') ? `: ${params.get('email')}` : ''}`);
+    else if (status === 'error') toast.error(`Gmail connection failed${params.get('reason') ? ` (${params.get('reason')})` : ''}`);
+    qc.invalidateQueries({ queryKey: ['email-config'] });
+    window.history.replaceState({}, '', '/dashboard/email-settings');
+  }, [qc]);
 
   const save = useMutation({
     mutationFn: () => companyApi.updateEmailConfig({ ...f, pass: pass || undefined }),
@@ -47,9 +58,69 @@ export default function EmailSettingsPage() {
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Retry failed'),
   });
 
+  const connectGmail = useMutation({
+    mutationFn: () => companyApi.gmailAuthorizeUrl(),
+    onSuccess: (r: any) => { if (r?.url) window.location.href = r.url; },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Could not start Gmail connection'),
+  });
+
+  const disconnectGmail = useMutation({
+    mutationFn: () => companyApi.disconnectGmail(),
+    onSuccess: () => { toast.success('Gmail disconnected'); qc.invalidateQueries({ queryKey: ['email-config'] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Disconnect failed'),
+  });
+
+  const gmail = f.gmail || {};
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Email settings" description="Send email from your own domain with your company SMTP." />
+      <PageHeader title="Email settings" description="Connect Gmail or your own SMTP — all outgoing email is sent from your account." />
+
+      {/* Connect Gmail (OAuth 2.0) */}
+      <GlassCard>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Plug className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                Gmail
+                {gmail.connected && <Badge tone="success">Connected</Badge>}
+              </h2>
+              {gmail.connected ? (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Sending as <span className="font-medium text-foreground">{gmail.email}</span> — used for all outgoing email.
+                </p>
+              ) : gmail.available ? (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Authenticate with Google to send email on behalf of your Gmail account (secure OAuth 2.0).
+                </p>
+              ) : (
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-yellow-500">
+                  <AlertTriangle className="h-4 w-4" /> Gmail integration isn’t configured on the server yet.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {gmail.connected ? (
+              <>
+                <Button variant="glass" magnetic={false} loading={connectGmail.isPending} onClick={() => connectGmail.mutate()}>
+                  <RefreshCw className="h-4 w-4" /> Reconnect
+                </Button>
+                <Button variant="ghost" magnetic={false} loading={disconnectGmail.isPending} onClick={() => disconnectGmail.mutate()}>
+                  Disconnect
+                </Button>
+              </>
+            ) : (
+              <Button magnetic={false} disabled={!gmail.available} loading={connectGmail.isPending} onClick={() => connectGmail.mutate()}>
+                <CheckCircle2 className="h-4 w-4" /> Connect Gmail
+              </Button>
+            )}
+          </div>
+        </div>
+      </GlassCard>
 
       <GlassCard>
         <div className="mb-4 flex items-center gap-2">

@@ -16,17 +16,24 @@ export const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: store(),
+  skip: () => !config.isProd, // never throttle the whole API in local development
   message: { success: false, message: 'Too many requests, please slow down.' },
 });
 
-/** Limiter for the public contact form (spam/abuse protection). */
+/**
+ * Limiter for public forms (contact + newsletter). Generous in production and
+ * fully disabled in development so testing the forms never trips a 429
+ * ("Too many submissions"). Real duplicate/spam protection is enforced in the
+ * controllers (idempotent upserts + short-window de-duplication).
+ */
 export const contactLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 20,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
   store: store(),
-  message: { success: false, message: 'Too many submissions, please try again later.' },
+  skip: () => !config.isProd, // no form throttling in local development
+  message: { success: false, message: 'Too many submissions, please try again in a little while.' },
 });
 
 /** Stricter limiter for auth endpoints (brute-force protection). Disabled in dev. */

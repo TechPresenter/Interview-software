@@ -27,6 +27,7 @@ import * as kb from '../controllers/knowledgeBase.controller.js';
 import * as staffCtrl from '../controllers/company/staff.controller.js';
 import * as roleCtrl from '../controllers/company/role.controller.js';
 import * as emailCtrl from '../controllers/company/email.controller.js';
+import * as gmailCtrl from '../controllers/company/gmail.controller.js';
 import * as apiKeys from '../controllers/company/apiKey.controller.js';
 import { createApiKeySchema } from '../validators/apiKey.validators.js';
 
@@ -102,6 +103,10 @@ router.put('/company/email-config', rbac(ROLES.COMPANY_ADMIN), emailCtrl.updateC
 router.post('/company/email-config/test', rbac(ROLES.COMPANY_ADMIN), emailCtrl.testConfig);
 router.get('/company/email-logs', rbac(ROLES.COMPANY_ADMIN), emailCtrl.logs);
 router.post('/company/email-logs/:id/retry', rbac(ROLES.COMPANY_ADMIN), emailCtrl.retry);
+
+/* ── Connect Gmail (OAuth 2.0) for outgoing email ── */
+router.get('/company/email/gmail/authorize', rbac(ROLES.COMPANY_ADMIN), gmailCtrl.authorize);
+router.post('/company/email/gmail/disconnect', rbac(ROLES.COMPANY_ADMIN), gmailCtrl.disconnect);
 
 /* ── Pipeline ──────────────────────────────────────────── */
 router.get('/pipeline', pipeline.board);

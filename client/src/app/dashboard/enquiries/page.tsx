@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Inbox, Mail, MessageSquare, Search, Trash2 } from 'lucide-react';
+import { Inbox, Mail, MessageSquare, Search, Trash2, Download } from 'lucide-react';
 import { useAuth } from '@/store/auth.store';
 import { adminApi } from '@/lib/admin.api';
 import { date } from '@/lib/format';
@@ -41,9 +41,22 @@ export default function EnquiriesPage() {
     const p: Record<string, unknown> = { page, limit: 15 };
     if (type) p.type = type;
     if (status) p.status = status;
-    if (q) p.search = q;
+    if (q) p.q = q; // backend list search param is `q`
     return p;
   }, [page, type, status, q]);
+
+  const [exporting, setExporting] = useState<'' | 'csv' | 'xlsx'>('');
+  const exportLeads = async (format: 'csv' | 'xlsx') => {
+    setExporting(format);
+    try {
+      await adminApi.exportLeads({ type: type || undefined, status: status || undefined, format });
+      toast.success(`Exported ${format.toUpperCase()}`);
+    } catch {
+      toast.error('Export failed');
+    } finally {
+      setExporting('');
+    }
+  };
 
   const { data: stats } = useQuery({ queryKey: ['lead-stats'], queryFn: adminApi.leadStats, enabled: isAdmin });
   const { data, isLoading } = useQuery({ queryKey: ['leads', params], queryFn: () => adminApi.leads(params), enabled: isAdmin });
@@ -105,6 +118,14 @@ export default function EnquiriesPage() {
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
         </select>
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant="glass" magnetic={false} loading={exporting === 'csv'} onClick={() => exportLeads('csv')}>
+            <Download className="h-4 w-4" /> CSV
+          </Button>
+          <Button size="sm" variant="glass" magnetic={false} loading={exporting === 'xlsx'} onClick={() => exportLeads('xlsx')}>
+            <Download className="h-4 w-4" /> Excel
+          </Button>
+        </div>
       </div>
 
       <DataTable
