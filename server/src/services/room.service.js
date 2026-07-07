@@ -14,6 +14,7 @@ import { getAiWeightage } from './settings.service.js';
 import { contextFor } from './knowledgeBase.service.js';
 import { logActivity } from './audit.service.js';
 import { notify } from './notification.service.js';
+import { safeSendTemplated } from './email.service.js';
 import { emitToCompany, emitToInterview } from '../socket/emitters.js';
 
 /**
@@ -294,6 +295,16 @@ export async function complete(interview) {
     candidate.stage = 'shortlisted';
     await candidate.save();
   }
+  // Thank-you email to the candidate (best-effort; scores stay internal).
+  if (candidate?.email) {
+    await safeSendTemplated('interview_completed', {
+      to: candidate.email,
+      vars: { name: candidate.name, jobTitle: job?.title || 'the role', link: config.clientUrl },
+      company: interview.company,
+      relatedUser: candidate.user,
+    });
+  }
+
   emitToCompany(interview.company, 'interview:completed', { id: interview._id, reportId: report?._id });
   if (interview.invitedBy) {
     await notify({

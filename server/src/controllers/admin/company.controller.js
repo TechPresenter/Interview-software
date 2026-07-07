@@ -11,7 +11,8 @@ import { slugify } from '../../utils/slug.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { audit, logActivity } from '../../services/audit.service.js';
 import { companyAnalytics } from '../../services/analytics.service.js';
-import { emails } from '../../services/email.service.js';
+import { safeSendTemplated } from '../../services/email.service.js';
+import { config } from '../../config/index.js';
 import { ROLES, PLANS } from '../../constants/enums.js';
 
 /** GET /admin/companies — paginated, searchable, filter by status/plan. */
@@ -64,7 +65,17 @@ export const create = asyncHandler(async (req, res) => {
       company: company._id,
     });
     company.owner = admin._id;
-    await emails.passwordReset(adminEmail, `Welcome to HireSense. Temporary password: ${tempPassword}`);
+    // Branded workspace-ready email carrying the temporary password.
+    await safeSendTemplated('system_notification', {
+      to: adminEmail,
+      vars: {
+        name: adminName || name,
+        subject: 'Your workspace is ready 🎉',
+        message: `A workspace “${name}” has been created for you. Sign in with your email and this temporary password: ${tempPassword}. Please change it after your first login.`,
+        link: `${config.clientUrl}/login`,
+      },
+      company: company._id,
+    });
   }
   await company.save();
 

@@ -75,6 +75,8 @@ export const register = asyncHandler(async (req, res) => {
   const code = generateNumericCode();
   await setCode('verify', String(user._id), code, 600);
   await emails.verification(email, code);
+  // Branded welcome/onboarding email for new workspace owners.
+  if (company) await emails.welcome(email, name).catch(() => {});
 
   await audit({ req, action: 'auth.register', entityType: 'User', entityId: user._id });
   return sendAuth(res, user, created);

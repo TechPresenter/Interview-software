@@ -8,7 +8,11 @@ import { Subscription } from '../../models/Subscription.js';
 import { Payment } from '../../models/Payment.js';
 import { Coupon } from '../../models/Coupon.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { config } from '../../config/index.js';
 import { logActivity } from '../audit.service.js';
+import { safeSendTemplated, formatMoney } from '../email.service.js';
+
+const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
 const PROVIDERS = { stripe: stripeProvider, razorpay: razorpayProvider, cashfree: cashfreeProvider };
 
@@ -128,6 +132,24 @@ export async function applyPaidPlan({ companyId, planKey, billingCycle, provider
   });
 
   await logActivity({ company: company._id, action: 'billing.paid', entityType: 'Payment', entityId: payment._id, summary: `Upgraded to ${plan.name}` });
+
+  // Branded billing emails (best-effort): plan confirmation + payment receipt.
+  const to = company.billingEmail || company.contactEmail;
+  if (to) {
+    const money = formatMoney(amount, currency);
+    const billingLink = `${config.clientUrl}/dashboard/billing`;
+    await safeSendTemplated('subscription_confirmation', {
+      to,
+      vars: { name: company.name, planName: plan.name, amount: money, renewalDate: fmtDate(periodEnd), link: billingLink },
+      company: company._id,
+    });
+    await safeSendTemplated('payment_receipt', {
+      to,
+      vars: { name: company.name, amount: money, invoiceNumber: payment.invoiceNumber, date: fmtDate(now), link: billingLink },
+      company: company._id,
+    });
+  }
+
   return { subscription, payment };
 }
 

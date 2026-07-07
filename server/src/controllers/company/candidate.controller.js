@@ -5,9 +5,11 @@ import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok, created } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
+import { Company } from '../../models/Company.js';
 import { saveBuffer, extractText } from '../../services/file.service.js';
 import { analyzeResume } from '../../services/ai/resume.analyzer.js';
 import { logActivity } from '../../services/audit.service.js';
+import { safeSendTemplated } from '../../services/email.service.js';
 import { config } from '../../config/index.js';
 
 const scope = (req, extra = {}) => ({ company: req.companyId, ...extra });
@@ -46,6 +48,21 @@ export const create = asyncHandler(async (req, res) => {
     entityId: candidate._id,
     summary: `Candidate ${candidate.name} added`,
   });
+
+  // Optional "application received" email (only when the recruiter opts in).
+  if (req.body.notifyCandidate && candidate.email) {
+    const [job, company] = await Promise.all([
+      candidate.job ? Job.findById(candidate.job).select('title').lean() : null,
+      Company.findById(req.companyId).select('name').lean(),
+    ]);
+    await safeSendTemplated('application_confirmation', {
+      to: candidate.email,
+      vars: { name: candidate.name, jobTitle: job?.title || 'the role', company: company?.name || 'the company' },
+      company: req.companyId,
+      relatedUser: candidate.user,
+    });
+  }
+
   return created(res, candidate, 'Candidate added');
 });
 

@@ -6,6 +6,7 @@ import { connectDB, disconnectDB } from './config/db.js';
 import { redis } from './config/redis.js';
 import { initSocket } from './socket/index.js';
 import { initObservability } from './services/observability.js';
+import { startScheduler } from './jobs/scheduler.js';
 
 /**
  * Boots the HTTP server, the database, and the realtime layer, and wires up
@@ -25,6 +26,9 @@ async function bootstrap() {
     logger.info(`🚀 API listening on http://localhost:${config.port}${config.apiPrefix}`);
     logger.info(`   env=${config.env}  ai=${config.ai.enabled ? 'on' : 'off'}`);
   });
+
+  // Background scheduler (trial-expiry + renewal reminders).
+  startScheduler();
 
   const shutdown = async (signal) => {
     logger.warn(`${signal} received — shutting down gracefully`);

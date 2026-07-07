@@ -167,6 +167,30 @@ export async function sendTemplated(key, { to, vars = {}, company, relatedUser, 
   return log;
 }
 
+/**
+ * Fire-and-forget templated send that never throws. Email problems must never
+ * break the business flow (payment, interview completion, stage change…) that
+ * triggered them, so failures are logged and swallowed.
+ */
+export async function safeSendTemplated(key, opts = {}) {
+  if (!opts.to) return null;
+  try {
+    return await sendTemplated(key, opts);
+  } catch (err) {
+    logger.warn({ err: err.message, key, to: opts.to }, 'email trigger failed');
+    return null;
+  }
+}
+
+/** Format a money amount for emails (major units, e.g. 9999 → ₹9,999). */
+export function formatMoney(amount, currency = 'USD') {
+  try {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Number(amount) || 0);
+  } catch {
+    return `${currency} ${amount}`;
+  }
+}
+
 /** Auth-flow convenience helpers — now branded + logged. */
 export const emails = {
   verification: (to, code, link) => sendTemplated('account_verification', { to, vars: { code, link: link || config.clientUrl } }),
