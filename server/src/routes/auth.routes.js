@@ -3,6 +3,8 @@ import * as auth from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
+import { uploadImage } from '../middleware/upload.js';
+import { updateProfileSchema } from '../validators/profile.validators.js';
 import {
   registerSchema,
   loginSchema,
@@ -35,6 +37,8 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), auth.
 // Authenticated
 router.get('/me', authenticate, auth.me);
 router.patch('/change-password', authenticate, validate(changePasswordSchema), auth.changePassword);
+router.patch('/profile', authenticate, validate(updateProfileSchema), auth.updateProfile);
+router.post('/avatar', authenticate, uploadImage, auth.uploadAvatar);
 router.post('/logout-all', authenticate, auth.logoutAll);
 router.post('/2fa/setup', authenticate, auth.setup2fa);
 router.post('/2fa/enable', authenticate, validate(enable2faSchema), auth.enable2fa);

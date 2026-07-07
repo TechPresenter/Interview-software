@@ -11,6 +11,12 @@ export const accountApi = {
   twoFactorDisable: () => apiPost('/auth/2fa/disable'),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.patch('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data),
+  updateProfile: (body: object) => api.patch('/auth/profile', body).then((r) => r.data.data),
+  uploadAvatar: (file: File) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    return api.post('/auth/avatar', fd).then((r) => r.data.data);
+  },
   logoutAll: () => apiPost('/auth/logout-all'),
 };
 

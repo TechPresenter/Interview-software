@@ -21,6 +21,7 @@ import {
 } from '../utils/otp.js';
 import { emails } from '../services/email.service.js';
 import { audit } from '../services/audit.service.js';
+import { saveBuffer } from '../services/file.service.js';
 import { ROLES } from '../constants/enums.js';
 
 const REFRESH_COOKIE = 'refreshToken';
@@ -148,6 +149,42 @@ export const logoutAll = asyncHandler(async (req, res) => {
 
 /** GET /auth/me */
 export const me = asyncHandler(async (req, res) => ok(res, { user: req.user }));
+
+/** PATCH /auth/profile — update the signed-in user's own profile (all roles). */
+export const updateProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) throw ApiError.notFound('User not found');
+
+  const { name, email, phone, dob, gender, address, city, state, country, postalCode } = req.body;
+
+  if (name) user.name = name;
+  if (phone !== undefined) user.phone = phone;
+  if (email && email !== user.email) {
+    const exists = await User.exists({ email, _id: { $ne: user._id } });
+    if (exists) throw ApiError.badRequest('That email is already in use');
+    user.email = email;
+    user.isEmailVerified = false;
+  }
+
+  const profile = { ...(user.meta?.profile || {}) };
+  for (const [k, v] of Object.entries({ dob, gender, address, city, state, country, postalCode })) {
+    if (v !== undefined) profile[k] = v;
+  }
+  user.meta = { ...(user.meta || {}), profile };
+  user.markModified('meta');
+  await user.save();
+
+  await audit({ req, action: 'account.profile.update', entityType: 'User', entityId: user._id });
+  return ok(res, { user }, 'Profile updated');
+});
+
+/** POST /auth/avatar — upload/replace the signed-in user's profile photo. */
+export const uploadAvatar = asyncHandler(async (req, res) => {
+  if (!req.file) throw ApiError.badRequest('Image file required (field "image")');
+  const { url } = await saveBuffer(req.file.buffer, req.file.originalname);
+  const user = await User.findByIdAndUpdate(req.user._id, { $set: { avatar: url } }, { new: true });
+  return ok(res, { user, url }, 'Profile photo updated');
+});
 
 /** POST /auth/verify-email */
 export const verifyEmail = asyncHandler(async (req, res) => {

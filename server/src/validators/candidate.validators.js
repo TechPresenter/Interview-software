@@ -9,6 +9,26 @@ export const updateProfileSchema = z.object({
       headline: z.string().max(160).optional(),
       location: z.string().optional(),
       skills: z.array(z.string()).optional(),
+      // Personal details
+      dob: z.string().max(20).optional(),
+      gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say', '']).optional(),
+      address: z.string().max(200).optional(),
+      city: z.string().max(80).optional(),
+      state: z.string().max(80).optional(),
+      country: z.string().max(80).optional(),
+      postalCode: z.string().max(20).optional(),
+      // Professional details
+      qualification: z.string().max(120).optional(),
+      totalExperience: z.string().max(40).optional(),
+      currentCompany: z.string().max(120).optional(),
+      currentDesignation: z.string().max(120).optional(),
+      currentSalary: z.string().max(40).optional(),
+      expectedSalary: z.string().max(40).optional(),
+      noticePeriod: z.string().max(60).optional(),
+      preferredLocation: z.string().max(120).optional(),
+      linkedin: z.string().max(200).optional(),
+      portfolio: z.string().max(200).optional(),
+      summary: z.string().max(4000).optional(),
       education: z
         .array(
           z.object({
