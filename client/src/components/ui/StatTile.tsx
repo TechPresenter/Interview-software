@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import type { LucideIcon } from 'lucide-react';
+import { ArrowUpRight, type LucideIcon } from 'lucide-react';
 import { AnimatedCounter } from './AnimatedCounter';
 import { cn } from '@/lib/utils';
 
@@ -28,23 +29,29 @@ interface Props {
   delta?: number;
   loading?: boolean;
   delay?: number;
+  /** When set, the whole tile becomes a link to this route. */
+  href?: string;
 }
 
 /** Colorful gradient KPI tile with animated counter, glow, and decorative orbs. */
-export function StatTile({ label, value, icon: Icon, color = 'violet', prefix, suffix, compact, sub, delta, loading, delay = 0 }: Props) {
-  return (
+export function StatTile({ label, value, icon: Icon, color = 'violet', prefix, suffix, compact, sub, delta, loading, delay = 0, href }: Props) {
+  const card = (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
       whileHover={{ y: -5 }}
       className={cn(
-        'relative overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white shadow-[0_14px_40px_-14px_rgba(0,0,0,0.5)]',
+        'group/tile relative h-full overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white shadow-[0_14px_40px_-14px_rgba(0,0,0,0.5)]',
+        href && 'cursor-pointer',
         GRAD[color],
       )}
     >
       <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/20 blur-2xl" />
       <div className="pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-black/10 blur-2xl" />
+      {href && (
+        <ArrowUpRight className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-white/50 opacity-0 transition-opacity group-hover/tile:opacity-100" />
+      )}
       <div className="relative flex items-start justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-white/80">{label}</p>
@@ -66,6 +73,8 @@ export function StatTile({ label, value, icon: Icon, color = 'violet', prefix, s
       </div>
     </motion.div>
   );
+
+  return href ? <Link href={href} className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">{card}</Link> : card;
 }
 
 export default StatTile;

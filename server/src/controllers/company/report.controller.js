@@ -1,5 +1,6 @@
 import { Report } from '../../models/Report.js';
 import { Job } from '../../models/Job.js';
+import { Branding } from '../../models/Branding.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
@@ -71,10 +72,12 @@ export const exportReport = asyncHandler(async (req, res) => {
     .lean();
   if (!report) throw ApiError.notFound('Report not found');
 
+  const branding = await Branding.getGlobal().catch(() => null);
   const { buffer, filename, contentType } = await reportToPdf({
     report,
     candidate: report.candidate,
     job: report.job,
+    branding: branding?.toObject?.() || branding,
   });
   res.setHeader('Content-Type', contentType);
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

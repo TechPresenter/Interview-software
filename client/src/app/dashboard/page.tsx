@@ -46,9 +46,9 @@ function CandidateOverview({ name }: { name: string }) {
   const { data: notif } = useQuery({ queryKey: ['my-notifications'], queryFn: candidateApi.notifications });
 
   const cards = [
-    { label: 'Upcoming Interviews', value: data?.upcoming?.length ?? 0, icon: CalendarCheck },
-    { label: 'Completed', value: data?.completed?.length ?? 0, icon: CalendarClock },
-    { label: 'Notifications', value: notif?.unread ?? 0, icon: FileBarChart },
+    { label: 'Upcoming Interviews', value: data?.upcoming?.length ?? 0, icon: CalendarCheck, href: '/dashboard/my-interviews' },
+    { label: 'Completed', value: data?.completed?.length ?? 0, icon: CalendarClock, href: '/dashboard/my-interviews' },
+    { label: 'Notifications', value: notif?.unread ?? 0, icon: FileBarChart, href: '/dashboard/notifications' },
   ];
 
   return (
@@ -109,10 +109,10 @@ function CompanyOverview({ name }: { name: string }) {
   const activity: any[] = data?.activity ?? [];
 
   const cards = [
-    { label: 'Active Jobs', value: k?.activeJobs ?? 0, icon: Briefcase, color: 'blue', sub: 'Open positions' },
-    { label: 'Candidates', value: k?.totalCandidates ?? 0, icon: Users, color: 'green', sub: 'In your pipeline' },
-    { label: 'Interviews Scheduled', value: k?.interviewsScheduled ?? 0, icon: CalendarClock, color: 'orange', sub: `${k?.interviewsCompleted ?? 0} completed` },
-    { label: 'Avg. Score', value: k?.avgScore ?? 0, icon: TrendingUp, color: 'violet', suffix: '%', sub: 'Across all reports' },
+    { label: 'Active Jobs', value: k?.activeJobs ?? 0, icon: Briefcase, color: 'blue', sub: 'Open positions', href: '/dashboard/jobs' },
+    { label: 'Candidates', value: k?.totalCandidates ?? 0, icon: Users, color: 'green', sub: 'In your pipeline', href: '/dashboard/candidates' },
+    { label: 'Interviews Scheduled', value: k?.interviewsScheduled ?? 0, icon: CalendarClock, color: 'orange', sub: `${k?.interviewsCompleted ?? 0} completed`, href: '/dashboard/interviews' },
+    { label: 'Avg. Score', value: k?.avgScore ?? 0, icon: TrendingUp, color: 'violet', suffix: '%', sub: 'Across all reports', href: '/dashboard/reports' },
   ] as const;
 
   const donutSegments = funnel
@@ -154,6 +154,7 @@ function CompanyOverview({ name }: { name: string }) {
             icon={c.icon}
             suffix={'suffix' in c ? c.suffix : undefined}
             sub={c.sub}
+            href={c.href}
             color={c.color as TileColor}
             loading={isLoading}
             delay={i * 0.06}
@@ -284,10 +285,10 @@ function SuperAdminOverview({ name }: { name: string }) {
   const { data: series } = useQuery({ queryKey: ['admin-timeseries'], queryFn: () => adminApi.timeseries(30) });
 
   const cards = [
-    { label: 'Total Companies', value: data?.totalCompanies ?? 0, icon: Building2 },
-    { label: 'Total Candidates', value: data?.totalCandidates ?? 0, icon: Users, compact: true },
-    { label: 'Total Interviews', value: data?.totalInterviews ?? 0, icon: CalendarClock, compact: true },
-    { label: 'MRR', value: Math.round((data?.mrr ?? 0) / 100), icon: TrendingUp, prefix: '$', compact: true },
+    { label: 'Total Companies', value: data?.totalCompanies ?? 0, icon: Building2, href: '/dashboard/companies' },
+    { label: 'Total Candidates', value: data?.totalCandidates ?? 0, icon: Users, compact: true, href: '/dashboard/candidates' },
+    { label: 'Total Interviews', value: data?.totalInterviews ?? 0, icon: CalendarClock, compact: true, href: '/dashboard/recordings' },
+    { label: 'MRR', value: Math.round((data?.mrr ?? 0) / 100), icon: TrendingUp, prefix: '$', compact: true, href: '/dashboard/subscriptions' },
   ];
   const interviewSeries = (series?.interviews ?? []).map((d: any) => ({ label: d._id, value: d.count }));
   const revenueSeries = (series?.revenue ?? []).map((d: any) => ({ label: d._id, value: Math.round((d.total ?? 0) / 100) }));

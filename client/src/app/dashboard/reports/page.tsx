@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { companyApi } from '@/lib/company.api';
@@ -20,6 +21,7 @@ const REC_TONE: Record<string, any> = {
 };
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const { data, isLoading } = useQuery({ queryKey: ['reports', page], queryFn: () => companyApi.reports({ page, limit: 10 }) });
   const { data: analytics } = useQuery({ queryKey: ['report-analytics'], queryFn: companyApi.reportAnalytics });
@@ -59,7 +61,7 @@ export default function ReportsPage() {
       header: '',
       className: 'text-right',
       render: (r) => (
-        <button onClick={() => exportOne(r._id)} title="Export PDF" className="text-muted-foreground hover:text-foreground">
+        <button onClick={(e) => { e.stopPropagation(); exportOne(r._id); }} title="Export PDF" className="text-muted-foreground hover:text-foreground">
           <Download className="h-4 w-4" />
         </button>
       ),
@@ -96,6 +98,7 @@ export default function ReportsPage() {
         loading={isLoading}
         emptyText="No reports yet — they appear once interviews are completed."
         rowKey={(r) => r._id}
+        onRowClick={(r) => router.push(`/dashboard/reports/${r._id}`)}
         page={data?.meta.page}
         pages={data?.meta.pages}
         total={data?.meta.total}

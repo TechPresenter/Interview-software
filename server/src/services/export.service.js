@@ -7,20 +7,22 @@ import ExcelJS from 'exceljs';
  */
 
 /** Render a single AI interview report as a PDF buffer. */
-export async function reportToPdf({ report, candidate, job }) {
+export async function reportToPdf({ report, candidate, job, branding }) {
+  const name = branding?.platformName || 'AIPL Hire';
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   const chunks = [];
   doc.on('data', (c) => chunks.push(c));
   const done = new Promise((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
 
   // Header
-  doc.fontSize(22).fillColor('#6366f1').text('HireSense', { continued: true });
+  doc.fontSize(22).fillColor('#6366f1').text(name, { continued: true });
   doc.fillColor('#111').fontSize(14).text('  · Interview Report');
   doc.moveDown();
 
   doc.fillColor('#111').fontSize(16).text(candidate?.name || 'Candidate');
   doc.fontSize(10).fillColor('#666').text(`${candidate?.email || ''}`);
   if (job?.title) doc.text(`Role: ${job.title}`);
+  if (report.createdAt) doc.text(`Date: ${new Date(report.createdAt).toLocaleDateString()}`);
   doc.moveDown();
 
   // Overall + recommendation
@@ -47,7 +49,7 @@ export async function reportToPdf({ report, candidate, job }) {
   }
 
   doc.moveDown(2);
-  doc.fontSize(8).fillColor('#999').text(`Generated ${new Date().toLocaleString()} · HireSense AI`, { align: 'center' });
+  doc.fontSize(8).fillColor('#999').text(`Generated ${new Date().toLocaleString()} · ${name} AI`, { align: 'center' });
 
   doc.end();
   const buffer = await done;
