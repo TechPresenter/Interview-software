@@ -5,7 +5,7 @@ import { config } from '../config/index.js';
 import { logger } from '../config/logger.js';
 
 /** Where contact submissions are delivered (env → SMTP from → sensible default). */
-const CONTACT_TO = process.env.CONTACT_TO || config.mail.from || 'support@hiresense.ai';
+const CONTACT_TO = process.env.CONTACT_TO || 'support@aipl.online';
 
 const escapeHtml = (s = '') =>
   String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
@@ -16,13 +16,14 @@ const escapeHtml = (s = '') =>
  * message is logged (mocked) and the request still succeeds so the UX is clean.
  */
 export const submitContact = asyncHandler(async (req, res) => {
-  const { name, email, company, phone, jobTitle, subject, message } = req.body;
+  const { name, email, company, phone, country, jobTitle, subject, message } = req.body;
 
   const fields = [
     ['Name', name],
     ['Email', email],
-    ['Company', company],
     ['Phone', phone],
+    ['Country', country],
+    ['Company', company],
     ['Job title', jobTitle],
     ['Subject', subject],
   ].filter(([, v]) => v);

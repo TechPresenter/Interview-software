@@ -66,7 +66,7 @@ function GeneralSettings() {
   useEffect(() => {
     const map: Record<string, any> = {
       appName: 'AIPL Hire', appUrl: 'https://aipl.online', tagline: 'AI-Powered Interview Platform',
-      email: 'noreply@hiresense.ai', timezone: 'UTC', currency: 'USD', dateFormat: 'MMM D, YYYY',
+      email: 'support@aipl.online', timezone: 'Asia/Kolkata', currency: 'INR', dateFormat: 'DD/MM/YYYY',
       timeFormat: '12h', defaultLanguage: 'en', langEn: true, langHi: true, maintenance: false,
     };
     for (const s of data ?? []) {

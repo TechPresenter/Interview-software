@@ -156,7 +156,7 @@ export default function TermsPage() {
           heading: 'Contact',
           body: (
             <p>
-              Questions about these Terms? Email <a href="mailto:legal@aipl.online">legal@aipl.online</a> or visit our{' '}
+              Questions about these Terms? Email <a href="mailto:support@aipl.online">support@aipl.online</a> or visit our{' '}
               <a href="/contact">Contact page</a>.
             </p>
           ),

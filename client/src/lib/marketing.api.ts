@@ -8,8 +8,9 @@ const http = axios.create({ baseURL: BASE });
 export interface ContactPayload {
   name: string;
   email: string;
-  company?: string;
   phone?: string;
+  country?: string;
+  company?: string;
   jobTitle?: string;
   subject: string;
   message: string;

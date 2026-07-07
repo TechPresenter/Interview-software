@@ -38,7 +38,7 @@ const schema = z.object({
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  MAIL_FROM: z.string().default('HireSense <no-reply@hiresense.ai>'),
+  MAIL_FROM: z.string().default('AIPL Hire <support@aipl.online>'),
 
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),

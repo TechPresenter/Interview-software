@@ -19,6 +19,30 @@ export const SITE = {
   description:
     'Enterprise AI interview platform. Screen resumes, run adaptive AI interviews, score candidates objectively, and get hire-ready reports — faster and fairer hiring.',
   email: 'support@aipl.online',
+  /** Primary contact phone (display + tel/WhatsApp links). */
+  phone: '+91 74919 32148',
+  phoneDial: '+917491932148',
+  whatsapp: '917491932148',
+  /** Registered office address. */
+  address: {
+    org: 'AIPL Online',
+    lines: [
+      'Mani Casadona, International Financial Hub (IFH)',
+      'Plot No. IIF/04, Action Area II',
+      'New Town, Kolkata – 700156',
+      'West Bengal, India',
+    ],
+    street: 'Mani Casadona, International Financial Hub (IFH), Plot No. IIF/04, Action Area II',
+    locality: 'New Town, Kolkata',
+    region: 'West Bengal',
+    postalCode: '700156',
+    country: 'IN',
+  },
+  hoursShort: 'Mon – Sat, 9:00 AM – 6:00 PM (IST)',
+  hours: [
+    { days: 'Monday – Saturday', time: '9:00 AM – 6:00 PM (IST)' },
+    { days: 'Sunday', time: 'Closed' },
+  ],
   /** Canonical production origin (no trailing slash). Override via env. */
   url: (process.env.NEXT_PUBLIC_SITE_URL || 'https://aipl.online').replace(/\/$/, ''),
   socials: {
