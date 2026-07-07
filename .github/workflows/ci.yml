@@ -60,6 +60,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build API image
-        run: docker build -t hiresense-api ./server
+        run: docker build -t aipl-hire-api ./server
       - name: Build Web image
-        run: docker build -t hiresense-web ./client
+        run: docker build -t aipl-hire-web ./client

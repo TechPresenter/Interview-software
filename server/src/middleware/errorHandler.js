@@ -14,7 +14,6 @@ export function notFound(req, _res, next) {
  * Central error handler. Normalizes known error types (Zod, Mongoose, JWT,
  * ApiError) into the standard error envelope and hides internals in prod.
  */
-// eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, _next) {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal server error';

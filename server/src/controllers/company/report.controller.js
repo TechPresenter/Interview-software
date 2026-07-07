@@ -1,5 +1,4 @@
 import { Report } from '../../models/Report.js';
-import { Candidate } from '../../models/Candidate.js';
 import { Job } from '../../models/Job.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok } from '../../utils/ApiResponse.js';
@@ -47,7 +46,6 @@ export const ranking = asyncHandler(async (req, res) => {
 
 /** GET /company/reports/analytics — hiring funnel + score distribution. */
 export const analytics = asyncHandler(async (req, res) => {
-  const filter = scope(req);
   const [byRecommendation, scoreBuckets] = await Promise.all([
     Report.aggregate([{ $match: { company: req.companyId } }, { $group: { _id: '$recommendation', count: { $sum: 1 } } }]),
     Report.aggregate([

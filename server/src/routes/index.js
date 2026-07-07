@@ -15,7 +15,7 @@ export const router = Router();
 router.get('/', (_req, res) =>
   res.json({
     success: true,
-    name: 'HireSense API',
+    name: 'AIPL Hire API',
     version: 'v1',
     modules: {
       auth: 'ready',
@@ -23,15 +23,12 @@ router.get('/', (_req, res) =>
       company: 'ready',
       interviewRoom: 'ready',
       candidatePortal: 'ready',
+      jobs: 'ready',
+      candidates: 'ready',
+      interviews: 'ready',
+      reports: 'ready',
       billing: 'ready',
       cms: 'ready',
-      company: 'planned',
-      jobs: 'planned',
-      candidates: 'planned',
-      interviews: 'planned',
-      reports: 'planned',
-      billing: 'planned',
-      cms: 'planned',
     },
   }),
 );

@@ -10,7 +10,7 @@ import { config } from '../../config/index.js';
 import { logActivity } from '../../services/audit.service.js';
 import { safeSendTemplated } from '../../services/email.service.js';
 import { effectivePermissions } from '../../services/permission.service.js';
-import { ROLES, COMPANY_ROLES } from '../../constants/enums.js';
+import { COMPANY_ROLES } from '../../constants/enums.js';
 
 const STAFF_ROLES = COMPANY_ROLES; // company_admin, recruiter, hr_manager
 

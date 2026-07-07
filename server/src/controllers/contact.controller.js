@@ -1,7 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/ApiResponse.js';
 import { sendEmail } from '../services/email.service.js';
-import { config } from '../config/index.js';
 import { logger } from '../config/logger.js';
 
 /** Where contact submissions are delivered (env → SMTP from → sensible default). */

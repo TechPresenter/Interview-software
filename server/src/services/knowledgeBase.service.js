@@ -93,7 +93,7 @@ export async function applySources(kb, segments, { append = false } = {}) {
 export function deriveTopics(content, limit = 12) {
   const stop = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'are', 'from', 'will', 'your', 'you', 'have', 'has', 'was', 'were', 'can', 'all', 'any', 'our', 'their', 'they', 'which', 'when', 'what', 'how', 'into', 'use', 'used', 'using', 'about', 'these', 'those', 'such', 'also', 'than', 'then', 'each']);
   const freq = new Map();
-  for (const w of (content || '').toLowerCase().match(/[a-z][a-z+#.\-]{3,}/g) || []) {
+  for (const w of (content || '').toLowerCase().match(/[a-z][a-z+#.-]{3,}/g) || []) {
     if (stop.has(w)) continue;
     freq.set(w, (freq.get(w) || 0) + 1);
   }
