@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import {
   Building2,
   Users,
@@ -13,9 +14,12 @@ import {
   Circle,
   PartyPopper,
   ArrowRight,
+  Plus,
+  UserPlus,
+  Activity,
 } from 'lucide-react';
 import { StatTile, type TileColor } from '@/components/ui/StatTile';
-import { AreaChart } from '@/components/ui/Charts';
+import { AreaChart, BarList, Donut } from '@/components/ui/Charts';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import Link from 'next/link';
@@ -89,49 +93,111 @@ function CandidateOverview({ name }: { name: string }) {
 }
 
 /* ── Company roles: live data ──────────────────────────── */
+const STAGE_COLORS: Record<string, string> = {
+  applied: 'hsl(217 91% 60%)',
+  screening: 'hsl(199 89% 48%)',
+  interview: 'hsl(258 90% 66%)',
+  shortlisted: 'hsl(160 84% 39%)',
+  hired: 'hsl(142 71% 45%)',
+  rejected: 'hsl(0 84% 60%)',
+};
+
 function CompanyOverview({ name }: { name: string }) {
   const { data, isLoading } = useQuery({ queryKey: ['company-overview'], queryFn: companyApi.overview });
   const k = data?.kpis;
+  const funnel: any[] = data?.funnel ?? [];
+  const activity: any[] = data?.activity ?? [];
+
   const cards = [
-    { label: 'Active Jobs', value: k?.activeJobs ?? 0, icon: Briefcase },
-    { label: 'Candidates', value: k?.totalCandidates ?? 0, icon: Users },
-    { label: 'Interviews Scheduled', value: k?.interviewsScheduled ?? 0, icon: CalendarClock },
-    { label: 'Avg. Score', value: k?.avgScore ?? 0, icon: TrendingUp, suffix: '%' },
-  ];
+    { label: 'Active Jobs', value: k?.activeJobs ?? 0, icon: Briefcase, color: 'blue', sub: 'Open positions' },
+    { label: 'Candidates', value: k?.totalCandidates ?? 0, icon: Users, color: 'green', sub: 'In your pipeline' },
+    { label: 'Interviews Scheduled', value: k?.interviewsScheduled ?? 0, icon: CalendarClock, color: 'orange', sub: `${k?.interviewsCompleted ?? 0} completed` },
+    { label: 'Avg. Score', value: k?.avgScore ?? 0, icon: TrendingUp, color: 'violet', suffix: '%', sub: 'Across all reports' },
+  ] as const;
+
+  const donutSegments = funnel
+    .filter((f) => f.count > 0)
+    .map((f) => ({ label: f.stage, value: f.count, color: STAGE_COLORS[f.stage] || 'hsl(var(--primary))' }));
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold">
-          {greetingIST()}, <span className="text-gradient">{name?.split(' ')[0]}</span>
-        </h1>
-        <p className="mt-1 text-muted-foreground">Your hiring at a glance.</p>
-      </header>
+      {/* Header + quick actions */}
+      <motion.header
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-3xl border border-border p-6 md:p-8"
+      >
+        <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-40" />
+        <div className="pointer-events-none absolute right-0 top-0 -z-10 h-56 w-80 aurora opacity-50" />
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">
+              {greetingIST()}, <span className="text-gradient">{name?.split(' ')[0]}</span>
+            </h1>
+            <p className="mt-1 text-muted-foreground">Your hiring at a glance.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/dashboard/jobs"><Button size="sm" magnetic={false}><Plus className="h-4 w-4" /> Post a job</Button></Link>
+            <Link href="/dashboard/candidates"><Button size="sm" variant="glass" magnetic={false}><UserPlus className="h-4 w-4" /> Add candidate</Button></Link>
+            <Link href="/dashboard/reports"><Button size="sm" variant="glass" magnetic={false}><FileBarChart className="h-4 w-4" /> Reports</Button></Link>
+          </div>
+        </div>
+      </motion.header>
 
       <OnboardingCard ob={data?.onboarding} />
 
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((c, i) => (
-          <StatTile key={c.label} {...c} color={(['blue', 'green', 'orange', 'violet'] as TileColor[])[i]} loading={isLoading} delay={i * 0.06} />
+          <StatTile
+            key={c.label}
+            label={c.label}
+            value={c.value}
+            icon={c.icon}
+            suffix={'suffix' in c ? c.suffix : undefined}
+            sub={c.sub}
+            color={c.color as TileColor}
+            loading={isLoading}
+            delay={i * 0.06}
+          />
         ))}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
         <GlassCard className="lg:col-span-2">
-          <h2 className="text-lg font-semibold">Hiring funnel</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Hiring funnel</h2>
+            <Link href="/dashboard/pipeline"><Button size="sm" variant="ghost" magnetic={false}>Open pipeline <ArrowRight className="h-4 w-4" /></Button></Link>
+          </div>
+          <BarList data={funnel.map((f) => ({ label: f.stage, value: f.count }))} />
+        </GlassCard>
+
+        <GlassCard>
+          <h2 className="mb-4 text-lg font-semibold">Candidate mix</h2>
+          {donutSegments.length ? (
+            <Donut segments={donutSegments} size={140} />
+          ) : (
+            <div className="grid h-[150px] place-items-center text-sm text-muted-foreground">No candidates yet.</div>
+          )}
+        </GlassCard>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <GlassCard className="lg:col-span-2">
+          <h2 className="text-lg font-semibold">Recent activity</h2>
           <div className="mt-4 space-y-3">
-            {(data?.funnel ?? []).map((f: any) => {
-              const max = Math.max(1, ...(data?.funnel ?? []).map((x: any) => x.count));
-              return (
-                <div key={f.stage} className="flex items-center gap-3">
-                  <span className="w-24 text-sm capitalize text-muted-foreground">{f.stage}</span>
-                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-gradient-brand" style={{ width: `${(f.count / max) * 100}%` }} />
-                  </div>
-                  <span className="w-8 text-right text-sm tabular-nums">{f.count}</span>
-                </div>
-              );
-            })}
+            {activity.length === 0 && (
+              <p className="text-sm text-muted-foreground">No recent activity yet — actions across your workspace will show up here.</p>
+            )}
+            {activity.map((a, i) => (
+              <motion.div
+                key={a._id || i}
+                initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
+                className="flex items-center gap-3 border-b border-border/40 pb-3 text-sm last:border-0"
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Activity className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1 truncate">{a.summary ?? a.action}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(a.createdAt)}</span>
+              </motion.div>
+            ))}
           </div>
         </GlassCard>
 
@@ -141,6 +207,9 @@ function CompanyOverview({ name }: { name: string }) {
             <Usage label="Active jobs" used={data?.usage?.usage?.activeJobs} limit={data?.usage?.limits?.activeJobs} />
             <Usage label="Interviews (mo)" used={data?.usage?.usage?.interviewsThisMonth} limit={data?.usage?.limits?.interviewsPerMonth} />
           </div>
+          <Link href="/dashboard/billing" className="mt-5 block">
+            <Button size="sm" variant="glass" className="w-full" magnetic={false}>Manage plan</Button>
+          </Link>
         </GlassCard>
       </div>
     </div>
