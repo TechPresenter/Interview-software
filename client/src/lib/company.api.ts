@@ -90,6 +90,19 @@ export const companyApi = {
   reportAnalytics: () => apiGet<any>('/reports/analytics'),
   exportReport: (id: string) => download(`/reports/${id}/export`, { format: 'pdf' }, 'report.pdf'),
   exportRanking: (job?: string) => download('/reports/ranking/export', { job }, 'ranking.xlsx'),
+
+  // RBAC — staff & roles
+  myPermissions: () => apiGet<any>('/company/me/permissions'),
+  staff: () => apiGet<any[]>('/company/staff'),
+  addStaff: (body: object) => apiPost<any>('/company/staff', body),
+  updateStaff: (id: string, body: object) => api.patch(`/company/staff/${id}`, body).then((r) => r.data.data),
+  removeStaff: (id: string) => api.delete(`/company/staff/${id}`).then((r) => r.data),
+  loginHistory: () => apiGet<any[]>('/company/staff/login-history'),
+  roles: () => apiGet<any[]>('/company/roles'),
+  rolesCatalog: () => apiGet<any>('/company/roles/catalog'),
+  createRole: (body: object) => apiPost<any>('/company/roles', body),
+  updateRole: (id: string, body: object) => api.patch(`/company/roles/${id}`, body).then((r) => r.data.data),
+  deleteRole: (id: string) => api.delete(`/company/roles/${id}`).then((r) => r.data),
 };
 
 export default companyApi;

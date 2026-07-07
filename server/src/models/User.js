@@ -25,6 +25,9 @@ const userSchema = new Schema(
     // Tenancy: null for super_admin and (some) candidates; set for company staff.
     company: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
 
+    // Optional custom RBAC role (refines the coarse `role` with granular perms).
+    customRole: { type: Schema.Types.ObjectId, ref: 'Role' },
+
     avatar: { type: String },
     isActive: { type: Boolean, default: true },
 

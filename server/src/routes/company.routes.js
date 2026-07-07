@@ -24,6 +24,8 @@ import * as pipeline from '../controllers/company/pipeline.controller.js';
 import * as reports from '../controllers/company/report.controller.js';
 import * as billing from '../controllers/company/billing.controller.js';
 import * as kb from '../controllers/knowledgeBase.controller.js';
+import * as staffCtrl from '../controllers/company/staff.controller.js';
+import * as roleCtrl from '../controllers/company/role.controller.js';
 
 export const router = Router();
 
@@ -71,6 +73,20 @@ router.post('/interviews/:id/pause', interviews.pause);
 router.post('/interviews/:id/resume', interviews.resume);
 router.post('/interviews/:id/terminate', interviews.terminate);
 router.post('/interviews/:id/cancel', interviews.cancel);
+
+/* ── Staff & RBAC (company admin only; permissions readable by all staff) ── */
+router.get('/company/me/permissions', staffCtrl.myPermissions);
+router.get('/company/staff', rbac(ROLES.COMPANY_ADMIN), staffCtrl.list);
+router.post('/company/staff', rbac(ROLES.COMPANY_ADMIN), staffCtrl.create);
+router.get('/company/staff/login-history', rbac(ROLES.COMPANY_ADMIN), staffCtrl.loginHistory);
+router.patch('/company/staff/:id', rbac(ROLES.COMPANY_ADMIN), staffCtrl.update);
+router.delete('/company/staff/:id', rbac(ROLES.COMPANY_ADMIN), staffCtrl.remove);
+
+router.get('/company/roles/catalog', rbac(ROLES.COMPANY_ADMIN), roleCtrl.catalog);
+router.get('/company/roles', rbac(ROLES.COMPANY_ADMIN), roleCtrl.list);
+router.post('/company/roles', rbac(ROLES.COMPANY_ADMIN), roleCtrl.create);
+router.patch('/company/roles/:id', rbac(ROLES.COMPANY_ADMIN), roleCtrl.update);
+router.delete('/company/roles/:id', rbac(ROLES.COMPANY_ADMIN), roleCtrl.remove);
 
 /* ── Pipeline ──────────────────────────────────────────── */
 router.get('/pipeline', pipeline.board);

@@ -17,6 +17,8 @@ import {
   Film,
   BookOpen,
   Mail,
+  UserCog,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/store/auth.store';
@@ -53,6 +55,8 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Knowledge Base', href: '/dashboard/knowledge', icon: BookOpen },
     { label: 'AI Interviewer', href: '/dashboard/interviewer', icon: Bot },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
+    { label: 'Staff', href: '/dashboard/staff', icon: UserCog },
+    { label: 'Roles', href: '/dashboard/roles', icon: ShieldCheck },
     { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   ],
   recruiter: [
