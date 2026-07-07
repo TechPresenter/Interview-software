@@ -29,9 +29,11 @@ export const INTERVIEW_TYPES = ['hr', 'technical', 'behavioral', 'aptitude', 'co
 export const INTERVIEW_STATUS = [
   'scheduled',
   'in_progress',
+  'paused',
   'completed',
   'expired',
   'cancelled',
+  'terminated',
   'flagged',
 ];
 

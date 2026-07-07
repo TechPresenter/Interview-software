@@ -57,6 +57,11 @@ export const companyApi = {
   autoSchedule: (body: object) => apiPost<any>('/interviews/auto', body),
   invite: (id: string) => apiPost<any>(`/interviews/${id}/invite`),
   cancelInterview: (id: string) => apiPost<any>(`/interviews/${id}/cancel`),
+  // Live monitoring + force controls
+  monitor: (id: string) => apiGet<any>(`/interviews/${id}/monitor`),
+  pauseInterview: (id: string) => apiPost<any>(`/interviews/${id}/pause`),
+  resumeInterview: (id: string) => apiPost<any>(`/interviews/${id}/resume`),
+  terminateInterview: (id: string) => apiPost<any>(`/interviews/${id}/terminate`),
 
   // Pipeline
   pipeline: (job?: string) => apiGet<any>('/pipeline', { job }),

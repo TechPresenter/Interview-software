@@ -31,6 +31,7 @@ export async function loadByToken(token, { lean = false } = {}) {
   const interview = lean ? await q.lean() : await q;
   if (!interview) throw ApiError.notFound('Interview not found');
   if (interview.status === 'cancelled') throw ApiError.forbidden('This interview was cancelled');
+  if (interview.status === 'terminated') throw ApiError.forbidden('This interview was ended by the interviewer');
   if (interview.expiresAt && interview.expiresAt < new Date() && interview.status === 'scheduled') {
     throw ApiError.forbidden('This interview link has expired');
   }
@@ -124,6 +125,7 @@ export async function start(interview, { language } = {}) {
  * @param {{answer:string, durationSeconds?:number, audioUrl?:string}} payload
  */
 export async function answer(interview, payload) {
+  if (interview.status === 'paused') throw ApiError.badRequest('The interviewer paused this interview — please wait a moment.', { code: 'PAUSED' });
   if (interview.status !== 'in_progress') throw ApiError.badRequest('Interview is not in progress');
   const pending = interview.engineState.pendingQuestion;
   if (!pending?.text) throw ApiError.badRequest('No question is awaiting an answer');

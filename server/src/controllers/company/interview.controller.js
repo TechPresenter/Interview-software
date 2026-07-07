@@ -6,8 +6,13 @@ import { ok, created } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { scheduleInterview, sendInvite, interviewLink } from '../../services/interview.service.js';
+import { logActivity } from '../../services/audit.service.js';
+import { emitToCompany, emitToInterview } from '../../socket/emitters.js';
 
 const scope = (req, extra = {}) => ({ company: req.companyId, ...extra });
+
+// A candidate is considered "connected" if the room saved activity recently.
+const STALE_MS = 45_000;
 
 /** GET /company/interviews */
 export const list = asyncHandler(async (req, res) => {
@@ -121,6 +126,82 @@ export const invite = asyncHandler(async (req, res) => {
   if (!interview) throw ApiError.notFound('Interview not found');
   const result = await sendInvite(interview);
   return ok(res, result, 'Invitation sent');
+});
+
+/** GET /company/interviews/:id/monitor — live snapshot for the monitoring view. */
+export const monitor = asyncHandler(async (req, res) => {
+  const interview = await Interview.findOne(scope(req, { _id: req.params.id }))
+    .populate('candidate', 'name email')
+    .populate('job', 'title')
+    .lean();
+  if (!interview) throw ApiError.notFound('Interview not found');
+
+  const total = interview.config?.questionCount || 8;
+  const current = Math.min(interview.engineState?.currentIndex || 0, total);
+  const events = interview.proctoring?.events || [];
+  const lastActivityAt = interview.updatedAt || interview.startedAt || interview.createdAt;
+  const live = interview.status === 'in_progress' || interview.status === 'flagged';
+  const connected = live && Date.now() - new Date(lastActivityAt).getTime() < STALE_MS;
+
+  return ok(res, {
+    id: interview._id,
+    status: interview.status,
+    candidate: interview.candidate,
+    job: interview.job,
+    startedAt: interview.startedAt,
+    progress: { current, total, percent: Math.round((current / total) * 100) },
+    integrityScore: interview.proctoring?.integrityScore ?? 100,
+    proctoring: {
+      events: events.length,
+      high: events.filter((e) => e.severity === 'high').length,
+      last: events[events.length - 1] || null,
+    },
+    recording: { video: Boolean(interview.recordings?.videoUrl), audio: Boolean(interview.recordings?.audioUrl) },
+    connection: connected ? 'connected' : live ? 'reconnecting' : 'offline',
+    lastActivityAt,
+    transcript: (interview.transcript || []).slice(-10),
+  });
+});
+
+/** Shared helper for the force controls. */
+async function controlInterview(req, { from, to, event, action, message }) {
+  const interview = await Interview.findOne(scope(req, { _id: req.params.id }));
+  if (!interview) throw ApiError.notFound('Interview not found');
+  if (!from.includes(interview.status)) throw ApiError.badRequest(message.error);
+  interview.status = to;
+  if (to === 'terminated') interview.completedAt = new Date();
+  await interview.save();
+  emitToInterview(interview._id, event, { id: interview._id, status: to });
+  emitToCompany(interview.company, event, { id: interview._id, status: to });
+  await logActivity({ company: interview.company, actor: req.user._id, action, entityType: 'Interview', entityId: interview._id, summary: message.log });
+  return interview;
+}
+
+/** POST /company/interviews/:id/pause — interviewer pauses a live interview. */
+export const pause = asyncHandler(async (req, res) => {
+  const i = await controlInterview(req, {
+    from: ['in_progress', 'flagged'], to: 'paused', event: 'interview:paused', action: 'interview.paused',
+    message: { error: 'Only a live interview can be paused', log: 'Interview paused by interviewer' },
+  });
+  return ok(res, { status: i.status }, 'Interview paused');
+});
+
+/** POST /company/interviews/:id/resume — resume a paused interview. */
+export const resume = asyncHandler(async (req, res) => {
+  const i = await controlInterview(req, {
+    from: ['paused'], to: 'in_progress', event: 'interview:resumed', action: 'interview.resumed',
+    message: { error: 'Only a paused interview can be resumed', log: 'Interview resumed by interviewer' },
+  });
+  return ok(res, { status: i.status }, 'Interview resumed');
+});
+
+/** POST /company/interviews/:id/terminate — force-stop a live/paused interview. */
+export const terminate = asyncHandler(async (req, res) => {
+  const i = await controlInterview(req, {
+    from: ['in_progress', 'flagged', 'paused'], to: 'terminated', event: 'interview:terminated', action: 'interview.terminated',
+    message: { error: 'This interview cannot be terminated', log: 'Interview terminated by interviewer' },
+  });
+  return ok(res, { status: i.status }, 'Interview terminated');
 });
 
 /** POST /company/interviews/:id/cancel */

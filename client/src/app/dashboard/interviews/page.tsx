@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Send, Link2, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Send, Link2, XCircle, Activity } from 'lucide-react';
 import { companyApi } from '@/lib/company.api';
 import { dateTime, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -79,7 +80,12 @@ export default function InterviewsPage() {
           <button onClick={() => invite.mutate(r._id)} title="Send invite" className="text-primary hover:text-primary/80">
             <Send className="h-4 w-4" />
           </button>
-          {['scheduled', 'in_progress'].includes(r.status) && (
+          {['in_progress', 'paused', 'flagged'].includes(r.status) && (
+            <Link href={`/dashboard/interviews/${r._id}/monitor`} title="Monitor live" className="text-accent hover:text-accent/80">
+              <Activity className="h-4 w-4" />
+            </Link>
+          )}
+          {['scheduled', 'in_progress', 'paused'].includes(r.status) && (
             <button onClick={() => cancel.mutate(r._id)} title="Cancel" className="text-destructive hover:text-destructive/80">
               <XCircle className="h-4 w-4" />
             </button>

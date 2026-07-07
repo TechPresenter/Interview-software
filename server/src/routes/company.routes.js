@@ -65,7 +65,11 @@ router.get('/recordings', interviews.recordings);
 router.post('/interviews', validate(scheduleInterviewSchema), interviews.schedule);
 router.post('/interviews/auto', validate(autoInterviewSchema), interviews.autoSchedule);
 router.get('/interviews/:id', interviews.getOne);
+router.get('/interviews/:id/monitor', interviews.monitor);
 router.post('/interviews/:id/invite', interviews.invite);
+router.post('/interviews/:id/pause', interviews.pause);
+router.post('/interviews/:id/resume', interviews.resume);
+router.post('/interviews/:id/terminate', interviews.terminate);
 router.post('/interviews/:id/cancel', interviews.cancel);
 
 /* ── Pipeline ──────────────────────────────────────────── */
