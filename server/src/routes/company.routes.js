@@ -26,6 +26,7 @@ import * as billing from '../controllers/company/billing.controller.js';
 import * as kb from '../controllers/knowledgeBase.controller.js';
 import * as staffCtrl from '../controllers/company/staff.controller.js';
 import * as roleCtrl from '../controllers/company/role.controller.js';
+import * as emailCtrl from '../controllers/company/email.controller.js';
 
 export const router = Router();
 
@@ -87,6 +88,13 @@ router.get('/company/roles', rbac(ROLES.COMPANY_ADMIN), roleCtrl.list);
 router.post('/company/roles', rbac(ROLES.COMPANY_ADMIN), roleCtrl.create);
 router.patch('/company/roles/:id', rbac(ROLES.COMPANY_ADMIN), roleCtrl.update);
 router.delete('/company/roles/:id', rbac(ROLES.COMPANY_ADMIN), roleCtrl.remove);
+
+/* ── Company email / SMTP (company admin) ── */
+router.get('/company/email-config', rbac(ROLES.COMPANY_ADMIN), emailCtrl.getConfig);
+router.put('/company/email-config', rbac(ROLES.COMPANY_ADMIN), emailCtrl.updateConfig);
+router.post('/company/email-config/test', rbac(ROLES.COMPANY_ADMIN), emailCtrl.testConfig);
+router.get('/company/email-logs', rbac(ROLES.COMPANY_ADMIN), emailCtrl.logs);
+router.post('/company/email-logs/:id/retry', rbac(ROLES.COMPANY_ADMIN), emailCtrl.retry);
 
 /* ── Pipeline ──────────────────────────────────────────── */
 router.get('/pipeline', pipeline.board);

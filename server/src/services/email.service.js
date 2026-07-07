@@ -2,8 +2,10 @@ import { config } from '../config/index.js';
 import { logger } from '../config/logger.js';
 import { getGroup } from './settings.service.js';
 import { Branding } from '../models/Branding.js';
+import { Company } from '../models/Company.js';
 import { Template } from '../models/Template.js';
 import { EmailLog } from '../models/EmailLog.js';
+import { decryptSecret } from '../utils/crypto.js';
 import { interpolate } from './template.service.js';
 import { renderBranded } from './email/layout.js';
 import { DEFAULT_TEMPLATES } from './email/templates.js';
@@ -20,17 +22,15 @@ import { DEFAULT_TEMPLATES } from './email/templates.js';
 const API_BASE = config.apiPublicUrl || `http://localhost:${config.port}${config.apiPrefix}`;
 const ASSET_BASE = config.apiPublicUrl ? config.apiPublicUrl.replace(config.apiPrefix, '') : `http://localhost:${config.port}`;
 
-let _tx = null;
-let _sig = null;
-let _smtpCache = null;
-let _smtpAt = 0;
+const _txCache = new Map(); // transporter signature -> nodemailer transport
+const _smtpCache = new Map(); // scope key -> { value, at }
+const SMTP_TTL = 30000;
 
-/** Merge admin-panel SMTP settings over env defaults (cached 30s). */
-async function resolveSmtp() {
-  if (_smtpCache && Date.now() - _smtpAt < 30000) return _smtpCache;
+/** Global SMTP: admin-panel settings (group "smtp") over env defaults. */
+async function resolveGlobalSmtp() {
   let db = {};
   try {
-    const rows = await getGroup('smtp');
+    const rows = await getGroup('smtp', { unmask: true });
     db = Object.fromEntries((rows || []).map((r) => [r.key.replace('smtp.', ''), r.value]));
   } catch {
     /* settings unavailable — fall back to env */
@@ -40,43 +40,83 @@ async function resolveSmtp() {
   const user = db.user || config.mail.user;
   const pass = db.password ?? db.pass ?? config.mail.pass;
   const from = db.from || config.mail.from;
-  _smtpCache = { host, port, user, pass, from, enabled: Boolean(host) };
-  _smtpAt = Date.now();
-  return _smtpCache;
+  return { host, port, secure: port === 465, user, pass, from, signature: '', enabled: Boolean(host), source: 'global' };
 }
 
-/** Invalidate the cached transporter/SMTP after settings change. */
-export function refreshSmtp() {
-  _smtpCache = null;
-  _tx = null;
-  _sig = null;
+/**
+ * Resolve the SMTP config for a send. When a company id is given and that company
+ * has its own SMTP enabled, use it (decrypting the stored password); otherwise
+ * fall back to the platform-wide config. Cached 30s per scope.
+ */
+async function resolveSmtp(company) {
+  const scope = company ? `c:${company}` : 'global';
+  const hit = _smtpCache.get(scope);
+  if (hit && Date.now() - hit.at < SMTP_TTL) return hit.value;
+
+  let value = null;
+  if (company) {
+    try {
+      const doc = await Company.findById(company).select('emailConfig name +emailConfig.pass').lean();
+      const ec = doc?.emailConfig;
+      if (ec?.enabled && ec.host) {
+        value = {
+          host: ec.host,
+          port: Number(ec.port || 587),
+          secure: ec.secure ?? Number(ec.port) === 465,
+          user: ec.user,
+          pass: decryptSecret(ec.pass),
+          from: ec.fromEmail ? `${ec.fromName || doc.name || ''} <${ec.fromEmail}>`.trim() : undefined,
+          signature: ec.signature || '',
+          enabled: true,
+          source: 'company',
+        };
+      }
+    } catch {
+      /* fall back to global */
+    }
+  }
+  if (!value) value = await resolveGlobalSmtp();
+  _smtpCache.set(scope, { value, at: Date.now() });
+  return value;
+}
+
+/** Invalidate cached SMTP + transporters (call after a settings change). */
+export function refreshSmtp(company) {
+  if (company) _smtpCache.delete(`c:${company}`);
+  else _smtpCache.clear();
+  _txCache.clear();
 }
 
 async function getTransporter(smtp) {
-  const sig = `${smtp.host}:${smtp.port}:${smtp.user}`;
-  if (_tx && _sig === sig) return _tx;
+  const sig = `${smtp.host}:${smtp.port}:${smtp.user}:${smtp.secure}`;
+  if (_txCache.has(sig)) return _txCache.get(sig);
   const { default: nodemailer } = await import('nodemailer');
-  _tx = nodemailer.createTransport({
+  const tx = nodemailer.createTransport({
     host: smtp.host,
     port: smtp.port,
-    secure: smtp.port === 465,
+    secure: smtp.secure ?? smtp.port === 465,
     auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined,
   });
-  _sig = sig;
-  return _tx;
+  _txCache.set(sig, tx);
+  return tx;
 }
 
-/** True when SMTP is configured (admin panel or env). */
-export async function smtpEnabled() {
-  return (await resolveSmtp()).enabled;
+/** True when SMTP is configured (for a company or platform-wide). */
+export async function smtpEnabled(company) {
+  return (await resolveSmtp(company)).enabled;
+}
+
+/** Resolve the effective HTML signature for a company (empty if none). */
+export async function emailSignature(company) {
+  return (await resolveSmtp(company)).signature || '';
 }
 
 /**
  * Low-level send. Returns { delivered, mocked?, messageId?, error? }.
- * @param {{ to:string, subject:string, html?:string, text?:string, from?:string }} msg
+ * @param {{ to:string, subject:string, html?:string, text?:string, from?:string, company?:string }} msg
  */
-export async function sendEmail({ to, subject, html, text, from, replyTo }) {
-  const smtp = await resolveSmtp();
+export async function sendEmail({ to, subject, html, text, from, replyTo, company }) {
+  const smtp = await resolveSmtp(company);
   if (!smtp.enabled) {
     logger.info({ to, subject }, '✉️  [dev] email (SMTP not configured — not sent)');
     return { delivered: false, mocked: true };
@@ -156,9 +196,13 @@ export async function sendTemplated(key, { to, vars = {}, company, relatedUser, 
   });
   if (log.status === 'scheduled') return log; // a scheduler/cron will dispatch it later
 
+  // Company-specific signature appended to the body (per-company SMTP).
+  const signature = await emailSignature(company);
+  const bodyHtml = signature ? `${tpl.bodyHtml}<div style="margin-top:20px;color:#8b8b9a;font-size:13px;">${signature}</div>` : tpl.bodyHtml;
+
   const pixel = `${API_BASE}/track/open/${log._id}`;
-  const html = renderBranded({ branding, subject: tpl.subject, bodyHtml: tpl.bodyHtml, preheader: tpl.preheader, assetBase: ASSET_BASE, trackingPixel: pixel });
-  const result = await sendEmail({ to, subject: tpl.subject, html, text: stripHtml(tpl.bodyHtml) });
+  const html = renderBranded({ branding, subject: tpl.subject, bodyHtml, preheader: tpl.preheader, assetBase: ASSET_BASE, trackingPixel: pixel });
+  const result = await sendEmail({ to, subject: tpl.subject, html, text: stripHtml(bodyHtml), company });
   log.status = result.delivered ? 'sent' : result.mocked ? 'mocked' : 'failed';
   log.messageId = result.messageId;
   log.error = result.error;

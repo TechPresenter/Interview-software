@@ -57,6 +57,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'Staff', href: '/dashboard/staff', icon: UserCog },
     { label: 'Roles', href: '/dashboard/roles', icon: ShieldCheck },
+    { label: 'Email', href: '/dashboard/email-settings', icon: Mail },
     { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   ],
   recruiter: [

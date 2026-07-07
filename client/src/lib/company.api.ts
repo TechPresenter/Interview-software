@@ -103,6 +103,13 @@ export const companyApi = {
   createRole: (body: object) => apiPost<any>('/company/roles', body),
   updateRole: (id: string, body: object) => api.patch(`/company/roles/${id}`, body).then((r) => r.data.data),
   deleteRole: (id: string) => api.delete(`/company/roles/${id}`).then((r) => r.data),
+
+  // Company email / SMTP
+  emailConfig: () => apiGet<any>('/company/email-config'),
+  updateEmailConfig: (body: object) => api.put('/company/email-config', body).then((r) => r.data.data),
+  testEmailConfig: (to?: string) => apiPost<any>('/company/email-config/test', { to }),
+  emailLogs: (params?: object) => getPaged<any>('/company/email-logs', params),
+  retryEmail: (id: string) => apiPost<any>(`/company/email-logs/${id}/retry`),
 };
 
 export default companyApi;

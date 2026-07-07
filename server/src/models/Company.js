@@ -46,6 +46,20 @@ const companySchema = new Schema(
 
     contactEmail: { type: String, lowercase: true },
     billingEmail: { type: String, lowercase: true },
+
+    // Per-company outbound email (SMTP). `pass` is encrypted at rest. When
+    // enabled + host set, the email service uses this instead of the global one.
+    emailConfig: {
+      enabled: { type: Boolean, default: false },
+      host: { type: String, trim: true },
+      port: { type: Number, default: 587 },
+      secure: { type: Boolean, default: false },
+      user: { type: String, trim: true },
+      pass: { type: String, select: false }, // encrypted blob
+      fromName: { type: String, trim: true },
+      fromEmail: { type: String, lowercase: true, trim: true },
+      signature: { type: String },
+    },
   },
   { timestamps: true },
 );
