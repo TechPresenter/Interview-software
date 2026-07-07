@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Shield, LogOut } from 'lucide-react';
+import { Shield, LogOut, KeyRound } from 'lucide-react';
 import { accountApi } from '@/lib/account.api';
 import { useAuth } from '@/store/auth.store';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
 import { toast } from '@/components/ui/toast';
 
@@ -18,6 +19,13 @@ export default function SecurityPage() {
   const [setup, setSetup] = useState<any>(null);
   const [code, setCode] = useState('');
 
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
+  const changePw = useMutation({
+    mutationFn: () => accountApi.changePassword(pw.current, pw.next),
+    onSuccess: async () => { toast.success('Password changed — please sign in again.'); await logout(); },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Could not change password'),
+  });
+
   const startSetup = useMutation({ mutationFn: () => accountApi.twoFactorSetup(), onSuccess: (d: any) => setSetup(d), onError: () => toast.error('Could not start 2FA setup') });
   const enable = useMutation({ mutationFn: () => accountApi.twoFactorEnable(code), onSuccess: () => { toast.success('Two-factor enabled'); setSetup(null); setCode(''); refetch(); }, onError: () => toast.error('Invalid code — try again') });
   const disable = useMutation({ mutationFn: () => accountApi.twoFactorDisable(), onSuccess: () => { toast.success('Two-factor disabled'); refetch(); }, onError: () => toast.error('Failed to disable') });
@@ -25,7 +33,30 @@ export default function SecurityPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Security Center" description="Two-factor authentication and active sessions." />
+      <PageHeader title="Security Center" description="Password, two-factor authentication, and active sessions." />
+
+      <GlassCard>
+        <div className="mb-4 flex items-center gap-2">
+          <KeyRound className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Change password</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">Choose a strong new password. You’ll be signed out of all sessions afterwards.</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Current password" type="password" value={pw.current} onChange={(v) => setPw((p) => ({ ...p, current: v }))} autoComplete="current-password" />
+          <Field label="New password" type="password" value={pw.next} onChange={(v) => setPw((p) => ({ ...p, next: v }))} autoComplete="new-password" />
+          <Field label="Confirm new password" type="password" value={pw.confirm} onChange={(v) => setPw((p) => ({ ...p, confirm: v }))} autoComplete="new-password" />
+        </div>
+        <Button
+          className="mt-5"
+          magnetic={false}
+          loading={changePw.isPending}
+          disabled={!pw.current || pw.next.length < 8 || pw.next !== pw.confirm}
+          onClick={() => changePw.mutate()}
+        >
+          Update password
+        </Button>
+        {pw.next && pw.confirm && pw.next !== pw.confirm && <p className="mt-2 text-sm text-destructive">Passwords don’t match.</p>}
+      </GlassCard>
 
       <GlassCard>
         <div className="mb-4 flex items-center gap-2">

@@ -215,6 +215,21 @@ export const resetPassword = asyncHandler(async (req, res) => {
   return ok(res, null, 'Password updated, please log in again');
 });
 
+/** PATCH /auth/change-password — authenticated password change. */
+export const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const user = await User.findById(req.user._id).select('+password');
+  if (!user?.password) throw ApiError.badRequest('Password change isn’t available for social-login accounts');
+  if (!(await user.comparePassword(currentPassword))) throw ApiError.unauthorized('Current password is incorrect');
+  if (await user.comparePassword(newPassword)) throw ApiError.badRequest('New password must be different from the current one');
+  user.password = newPassword;
+  user.tokenVersion += 1; // sign out other sessions for safety
+  await user.save();
+  await revokeAllRefreshTokens(String(user._id));
+  await audit({ req, action: 'auth.password_change', entityType: 'User', entityId: user._id });
+  return ok(res, null, 'Password changed — please sign in again');
+});
+
 /**
  * POST /auth/google — sign in / sign up with a Google ID token (credential)
  * issued by Google Identity Services on the client. We verify the token against

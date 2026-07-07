@@ -43,6 +43,11 @@ export const resetPasswordSchema = z.object({
   password,
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: password,
+});
+
 export const enable2faSchema = z.object({ token: z.string().length(6) });
 
 export const googleLoginSchema = z.object({

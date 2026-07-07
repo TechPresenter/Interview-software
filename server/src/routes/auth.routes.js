@@ -12,6 +12,7 @@ import {
   otpLoginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
   enable2faSchema,
   googleLoginSchema,
 } from '../validators/auth.validators.js';
@@ -33,6 +34,7 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), auth.
 
 // Authenticated
 router.get('/me', authenticate, auth.me);
+router.patch('/change-password', authenticate, validate(changePasswordSchema), auth.changePassword);
 router.post('/logout-all', authenticate, auth.logoutAll);
 router.post('/2fa/setup', authenticate, auth.setup2fa);
 router.post('/2fa/enable', authenticate, validate(enable2faSchema), auth.enable2fa);

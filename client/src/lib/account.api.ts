@@ -9,6 +9,8 @@ export const accountApi = {
   twoFactorSetup: () => apiPost<any>('/auth/2fa/setup'),
   twoFactorEnable: (token: string) => apiPost('/auth/2fa/enable', { token }),
   twoFactorDisable: () => apiPost('/auth/2fa/disable'),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.patch('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data),
   logoutAll: () => apiPost('/auth/logout-all'),
 };
 

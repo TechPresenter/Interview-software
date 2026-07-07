@@ -7,7 +7,9 @@ import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Field } from '@/components/ui/Field';
 import { GoogleButton } from '@/components/auth/GoogleButton';
+import { AuthCredit } from '@/components/auth/AuthCredit';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAuth } from '@/store/auth.store';
 
@@ -107,33 +109,9 @@ export default function LoginPage() {
             <Link href="/register" className="hover:text-foreground">Create account</Link>
           </div>
         </GlassCard>
+
+        <AuthCredit />
       </motion.div>
     </main>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = 'text',
-  ...rest
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-muted-foreground">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-input bg-background/60 px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/40"
-        {...rest}
-      />
-    </label>
   );
 }

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Field } from '@/components/ui/Field';
 import { GoogleButton } from '@/components/auth/GoogleButton';
+import { AuthCredit } from '@/components/auth/AuthCredit';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/store/auth.store';
@@ -115,6 +116,8 @@ export default function RegisterPage() {
             <Link href="/login" className="text-foreground hover:underline">Sign in</Link>
           </p>
         </GlassCard>
+
+        <AuthCredit />
       </motion.div>
     </main>
   );
