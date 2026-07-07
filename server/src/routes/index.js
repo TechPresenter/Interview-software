@@ -6,6 +6,7 @@ import { router as roomRoutes } from './room.routes.js';
 import { router as candidateRoutes } from './candidate.routes.js';
 import { router as contentRoutes } from './content.routes.js';
 import { router as contactRoutes } from './contact.routes.js';
+import { router as newsletterRoutes } from './newsletter.routes.js';
 import { router as trackingRoutes } from './tracking.routes.js';
 import { router as notificationRoutes } from './notification.routes.js';
 
@@ -39,6 +40,7 @@ router.use('/interview-room', roomRoutes);
 router.use('/me', candidateRoutes);
 router.use('/content', contentRoutes);
 router.use('/contact', contactRoutes);
+router.use('/newsletter', newsletterRoutes);
 router.use('/track', trackingRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/', companyRoutes);

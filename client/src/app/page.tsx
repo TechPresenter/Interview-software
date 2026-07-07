@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Bot, BarChart3, ShieldCheck, FileSearch, Video, Sparkles, ArrowRight, Check,
-  Workflow, Star, Zap, PlayCircle,
+  Workflow, Zap, PlayCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -16,7 +16,6 @@ import { AiDemo, Eyebrow } from '@/components/landing/AiDemo';
 import { Testimonials } from '@/components/landing/Testimonials';
 import { Faq } from '@/components/landing/Faq';
 import { HeroVisual } from '@/components/landing/HeroVisual';
-import { LogoMarquee } from '@/components/landing/LogoMarquee';
 import { cn } from '@/lib/utils';
 
 const features = [
@@ -100,47 +99,16 @@ export default function LandingPage() {
             <Link href="/login"><Button size="lg" variant="glass" magnetic={false}><PlayCircle className="h-5 w-5" /> Book a demo</Button></Link>
           </motion.div>
 
-          {/* Social proof */}
-          <motion.div
+          <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.32 }}
-            className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6"
+            className="mt-8 text-xs text-muted-foreground"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2.5" aria-hidden>
-                {[
-                  'from-violet-500 to-indigo-500',
-                  'from-sky-500 to-cyan-500',
-                  'from-fuchsia-500 to-pink-500',
-                  'from-emerald-500 to-teal-500',
-                  'from-amber-500 to-orange-500',
-                ].map((g, i) => (
-                  <span key={i} className={cn('grid h-8 w-8 place-items-center rounded-full border-2 border-background bg-gradient-to-br text-[11px] font-bold text-white', g)}>
-                    {['A', 'K', 'M', 'S', 'R'][i]}
-                  </span>
-                ))}
-              </div>
-              <div className="text-left">
-                <div className="flex items-center gap-0.5 text-amber-400">
-                  {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-current" />)}
-                </div>
-                <p className="text-xs text-muted-foreground">Trusted by <strong className="text-foreground">500+</strong> hiring teams</p>
-              </div>
-            </div>
-            <span className="hidden h-8 w-px bg-border sm:block" aria-hidden />
-            <p className="text-xs text-muted-foreground">No credit card required · Free forever plan</p>
-          </motion.div>
+            No credit card required · Free forever plan
+          </motion.p>
         </div>
 
         {/* AI-themed hero visual */}
         <HeroVisual />
-      </section>
-
-      {/* ── Trust row ──────────────────────────────────── */}
-      <section className="container -mt-10 pb-16">
-        <p className="text-center text-xs uppercase tracking-widest text-muted-foreground">Trusted by modern hiring teams</p>
-        <div className="mt-8">
-          <LogoMarquee />
-        </div>
       </section>
 
       {/* ── AI demo ────────────────────────────────────── */}
@@ -189,31 +157,6 @@ export default function LandingPage() {
             </motion.div>
           ))}
         </div>
-      </section>
-
-      {/* ── Dashboard preview ──────────────────────────── */}
-      <section className="container py-24">
-        <div className="mx-auto max-w-2xl text-center">
-          <Eyebrow>Built for teams</Eyebrow>
-          <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">A dashboard your team will love</h2>
-        </div>
-        <GlassCard className="mx-auto mt-14 max-w-5xl p-3">
-          <div className="rounded-xl border border-border bg-muted/20 p-5">
-            <div className="grid gap-4 sm:grid-cols-4">
-              {[{ l: 'Active Jobs', v: 14 }, { l: 'Candidates', v: 612 }, { l: 'Interviews', v: 37 }, { l: 'Hire Rate', v: 24, s: '%' }].map((k) => (
-                <div key={k.l} className="rounded-xl border border-border bg-card/60 p-4">
-                  <p className="text-xs text-muted-foreground">{k.l}</p>
-                  <p className="mt-1 text-2xl font-bold"><AnimatedCounter value={k.v} suffix={k.s} /></p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 flex h-40 items-end gap-2 rounded-xl border border-border bg-card/60 p-4">
-              {[40, 65, 50, 80, 60, 92, 70, 85, 55, 78, 95, 68].map((h, i) => (
-                <motion.div key={i} className="flex-1 rounded-t-md bg-[linear-gradient(180deg,hsl(var(--primary)),hsl(var(--accent)/0.4))]" initial={{ height: 0 }} whileInView={{ height: `${h}%` }} viewport={{ once: true }} transition={{ duration: 0.7, delay: i * 0.04 }} />
-              ))}
-            </div>
-          </div>
-        </GlassCard>
       </section>
 
       {/* ── Stats ──────────────────────────────────────── */}

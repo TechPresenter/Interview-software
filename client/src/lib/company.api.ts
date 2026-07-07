@@ -110,6 +110,11 @@ export const companyApi = {
   testEmailConfig: (to?: string) => apiPost<any>('/company/email-config/test', { to }),
   emailLogs: (params?: object) => getPaged<any>('/company/email-logs', params),
   retryEmail: (id: string) => apiPost<any>(`/company/email-logs/${id}/retry`),
+
+  // Integration API keys
+  apiKeys: () => apiGet<any[]>('/company/api-keys'),
+  createApiKey: (body: object) => apiPost<any>('/company/api-keys', body),
+  revokeApiKey: (id: string) => api.delete(`/company/api-keys/${id}`).then((r) => r.data),
 };
 
 export default companyApi;

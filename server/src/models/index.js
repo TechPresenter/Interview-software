@@ -24,3 +24,5 @@ export { Announcement } from './Announcement.js';
 export { Template } from './Template.js';
 export { Branding } from './Branding.js';
 export { AiProvider } from './AiProvider.js';
+export { Lead } from './Lead.js';
+export { ApiKey } from './ApiKey.js';

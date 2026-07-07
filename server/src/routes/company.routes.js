@@ -27,6 +27,8 @@ import * as kb from '../controllers/knowledgeBase.controller.js';
 import * as staffCtrl from '../controllers/company/staff.controller.js';
 import * as roleCtrl from '../controllers/company/role.controller.js';
 import * as emailCtrl from '../controllers/company/email.controller.js';
+import * as apiKeys from '../controllers/company/apiKey.controller.js';
+import { createApiKeySchema } from '../validators/apiKey.validators.js';
 
 export const router = Router();
 
@@ -41,6 +43,11 @@ router.get('/company/overview', overview.overview);
 router.get('/company/ai-interviewer', overview.getInterviewer);
 router.put('/company/ai-interviewer', overview.updateInterviewer);
 router.post('/company/ai-interviewer/avatar', uploadImage, overview.uploadInterviewerAvatar);
+
+/* ── Integration API keys (company_admin) ──────────────── */
+router.get('/company/api-keys', rbac(ROLES.COMPANY_ADMIN), apiKeys.list);
+router.post('/company/api-keys', rbac(ROLES.COMPANY_ADMIN), validate(createApiKeySchema), apiKeys.create);
+router.delete('/company/api-keys/:id', rbac(ROLES.COMPANY_ADMIN), apiKeys.revoke);
 
 /* ── Jobs ──────────────────────────────────────────────── */
 router.get('/jobs', jobs.list);

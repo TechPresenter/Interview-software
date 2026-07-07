@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Topbar } from '@/components/dashboard/Topbar';
 import { Toaster } from '@/components/ui/toast';
+import { CreditFooter } from '@/components/ui/CreditFooter';
 import { useAuth } from '@/store/auth.store';
 
 /** Protected shell: redirects unauthenticated users to /login. */
@@ -32,8 +33,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Topbar />
         <main className="flex-1 p-6 lg:p-10">
           {children}
-          <footer className="mt-10 border-t border-border pt-6 text-center text-xs text-muted-foreground sm:text-left">
-            © {new Date().getFullYear()} AIPL Hire
+          <footer className="mt-10 flex flex-col items-center gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+            <span>© {new Date().getFullYear()} AIPL Hire</span>
+            <CreditFooter />
           </footer>
         </main>
       </div>

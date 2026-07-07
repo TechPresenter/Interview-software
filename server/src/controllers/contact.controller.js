@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/ApiResponse.js';
 import { sendEmail } from '../services/email.service.js';
 import { logger } from '../config/logger.js';
+import { Lead } from '../models/Lead.js';
 
 /** Where contact submissions are delivered (env → SMTP from → sensible default). */
 const CONTACT_TO = process.env.CONTACT_TO || 'support@aipl.online';
@@ -16,6 +17,18 @@ const escapeHtml = (s = '') =>
  */
 export const submitContact = asyncHandler(async (req, res) => {
   const { name, email, company, phone, country, jobTitle, subject, message } = req.body;
+
+  // Persist the enquiry so it is visible + manageable from the Admin Panel.
+  try {
+    await Lead.create({
+      type: 'contact',
+      name, email, company, phone, country, jobTitle, subject, message,
+      source: subject === 'Careers' ? 'careers' : 'contact_form',
+      meta: { ip: req.ip, userAgent: req.headers['user-agent'] },
+    });
+  } catch (err) {
+    logger.error({ err: err.message }, 'contact lead save failed');
+  }
 
   const fields = [
     ['Name', name],

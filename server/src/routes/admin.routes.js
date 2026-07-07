@@ -25,8 +25,10 @@ import * as cms from '../controllers/admin/cms.controller.js';
 import * as adminCandidates from '../controllers/admin/candidate.controller.js';
 import * as branding from '../controllers/admin/branding.controller.js';
 import * as aiProviders from '../controllers/admin/aiProvider.controller.js';
+import * as leads from '../controllers/admin/leads.controller.js';
 import { updateCandidateAdminSchema, createAiProviderSchema, updateAiProviderSchema } from '../validators/admin.validators.js';
 import { brandingSchema } from '../validators/branding.validators.js';
+import { leadUpdateSchema } from '../validators/lead.validators.js';
 import { uploadImage, uploadKnowledge } from '../middleware/upload.js';
 import * as knowledgeBase from '../controllers/knowledgeBase.controller.js';
 import * as email from '../controllers/admin/email.controller.js';
@@ -162,5 +164,11 @@ cmsResource('faqs', cms.faqs, faqSchema, faqUpdate);
 cmsResource('testimonials', cms.testimonials, testimonialSchema, testimonialUpdate);
 cmsResource('announcements', cms.announcements, announcementSchema, announcementUpdate);
 cmsResource('templates', cms.templates, templateSchema, templateUpdate);
+
+/* ── Website leads (contact enquiries + newsletter) ────── */
+router.get('/leads', leads.list);
+router.get('/leads/stats', leads.stats);
+router.patch('/leads/:id', validate(leadUpdateSchema), leads.update);
+router.delete('/leads/:id', leads.remove);
 
 export default router;

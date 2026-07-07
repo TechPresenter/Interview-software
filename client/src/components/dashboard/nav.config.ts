@@ -19,6 +19,7 @@ import {
   Mail,
   UserCog,
   ShieldCheck,
+  Inbox,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/store/auth.store';
@@ -43,6 +44,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'White Label', href: '/dashboard/branding', icon: Palette },
     { label: 'CMS', href: '/dashboard/cms', icon: Newspaper },
+    { label: 'Enquiries', href: '/dashboard/enquiries', icon: Inbox },
     { label: 'System', href: '/dashboard/system', icon: Settings },
   ],
   company_admin: [

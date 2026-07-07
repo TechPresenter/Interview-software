@@ -116,6 +116,12 @@ export const adminApi = {
   auditLogs: (params?: object) => getPaged<any>('/admin/audit-logs', params),
   clearAuditLogs: (before?: string) =>
     api.delete('/admin/audit-logs', { params: before ? { before } : {} }).then((r) => r.data),
+
+  // Website leads (contact enquiries + newsletter subscribers)
+  leads: (params?: object) => getPaged<any>('/admin/leads', params),
+  leadStats: () => apiGet<any>('/admin/leads/stats'),
+  updateLead: (id: string, body: object) => api.patch(`/admin/leads/${id}`, body).then((r) => r.data.data),
+  deleteLead: (id: string) => api.delete(`/admin/leads/${id}`).then((r) => r.data),
 };
 
 export default adminApi;

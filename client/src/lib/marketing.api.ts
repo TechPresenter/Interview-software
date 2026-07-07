@@ -20,6 +20,7 @@ export interface ContactPayload {
 
 export const marketingApi = {
   contact: (payload: ContactPayload) => http.post('/contact', payload).then((r) => r.data),
+  newsletter: (email: string) => http.post('/newsletter', { email }).then((r) => r.data),
 };
 
 export default marketingApi;
