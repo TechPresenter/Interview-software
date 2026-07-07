@@ -17,8 +17,9 @@ export const metadata: Metadata = pageMetadata({
 
 const A = SITE.address;
 const WA = `https://wa.me/${SITE.whatsapp}`;
-const MAP_SRC =
-  'https://www.google.com/maps?q=Mani+Casadona+International+Financial+Hub+IFH+New+Town+Kolkata+700156&output=embed';
+// Reliable, keyless embed with a marker + zoom, geocoded from the office address.
+const MAP_QUERY = `${A.org}, ${A.street}, ${A.locality}, ${A.region} ${A.postalCode}`;
+const MAP_SRC = `https://maps.google.com/maps?q=${encodeURIComponent(MAP_QUERY)}&z=16&output=embed`;
 
 const channels = [
   { icon: Mail, title: 'Email us', desc: 'Sales, support & partnerships.', value: SITE.email, href: `mailto:${SITE.email}` },
@@ -139,6 +140,17 @@ export default function ContactPage() {
 
       {/* Map */}
       <section className="mt-10">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><MapPin className="h-5 w-5 text-accent" /> Find us in New Town, Kolkata</h2>
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(MAP_QUERY)}`}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Get directions →
+          </a>
+        </div>
         <div className="overflow-hidden rounded-2xl border border-border">
           <iframe
             title={`${A.org} office location`}
