@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, Save } from 'lucide-react';
+import { Camera, Save, Shield, KeyRound } from 'lucide-react';
 import { useAuth } from '@/store/auth.store';
 import { accountApi } from '@/lib/account.api';
 import { date } from '@/lib/format';
@@ -153,6 +154,15 @@ export default function ProfileDetailsPage() {
 
         <div className="mt-6">
           <Button magnetic={false} loading={saving} onClick={save}><Save className="h-4 w-4" /> Save changes</Button>
+        </div>
+      </GlassCard>
+
+      <GlassCard>
+        <h2 className="text-lg font-semibold">Password &amp; security</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Change your password and manage two-factor authentication.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/dashboard/security"><Button variant="glass" size="sm" magnetic={false}><KeyRound className="h-4 w-4" /> Change password</Button></Link>
+          <Link href="/dashboard/security"><Button variant="glass" size="sm" magnetic={false}><Shield className="h-4 w-4" /> Two-factor authentication</Button></Link>
         </div>
       </GlassCard>
     </div>

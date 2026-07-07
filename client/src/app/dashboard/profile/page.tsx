@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Upload, FileText, Camera } from 'lucide-react';
+import { Save, Upload, FileText, Camera, Shield, KeyRound } from 'lucide-react';
 import { candidateApi } from '@/lib/candidate.api';
 import { accountApi } from '@/lib/account.api';
 import { useAuth } from '@/store/auth.store';
@@ -175,6 +176,16 @@ export default function ProfilePage() {
         </Button>
         <input ref={resumeRef} type="file" accept=".pdf,.docx,.txt" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadResume.mutate(f); e.target.value = ''; }} />
         <p className="mt-3 text-xs text-muted-foreground">PDF, DOCX, or TXT. Used by recruiters and AI matching.</p>
+      </GlassCard>
+
+      {/* Security */}
+      <GlassCard>
+        <h2 className="text-lg font-semibold">Password &amp; security</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Change your password and manage two-factor authentication.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/dashboard/security"><Button variant="glass" size="sm" magnetic={false}><KeyRound className="h-4 w-4" /> Change password</Button></Link>
+          <Link href="/dashboard/security"><Button variant="glass" size="sm" magnetic={false}><Shield className="h-4 w-4" /> Two-factor authentication</Button></Link>
+        </div>
       </GlassCard>
     </div>
   );
