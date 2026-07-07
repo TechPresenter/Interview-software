@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User, CreditCard, Receipt, Shield, Settings, Bell, KeyRound, ScrollText, LogOut, ChevronDown } from 'lucide-react';
+import { User, CreditCard, Receipt, Shield, Settings, Bell, KeyRound, ScrollText, LogOut, ChevronDown, Menu } from 'lucide-react';
 import { useAuth } from '@/store/auth.store';
 
 /** Dashboard top bar with the profile dropdown (Company + Admin + all roles). */
-export function Topbar() {
+export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
   const router = useRouter();
@@ -38,8 +38,17 @@ export function Topbar() {
   }
 
   return (
-    <div className="sticky top-0 z-30 flex h-16 items-center justify-end gap-3 border-b border-border bg-background/70 px-6 backdrop-blur-xl lg:px-10">
-      <div className="relative">
+    <div className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/70 px-4 backdrop-blur-xl sm:px-6 lg:px-10">
+      {/* Mobile / tablet nav toggle */}
+      <button
+        onClick={onMenuClick}
+        className="grid h-9 w-9 place-items-center rounded-xl border border-border text-muted-foreground transition hover:bg-muted/60 hover:text-foreground lg:hidden"
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      <div className="relative ml-auto">
         <button
           onClick={() => setOpen((o) => !o)}
           className="flex items-center gap-2 rounded-xl border border-border px-2 py-1.5 transition hover:bg-muted/50"

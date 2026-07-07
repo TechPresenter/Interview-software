@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Topbar } from '@/components/dashboard/Topbar';
@@ -12,6 +12,7 @@ import { useAuth } from '@/store/auth.store';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const status = useAuth((s) => s.status);
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login');
@@ -28,10 +29,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="relative flex min-h-screen">
       <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-30" />
-      <Sidebar />
-      <div className="flex min-h-screen flex-1 flex-col">
-        <Topbar />
-        <main className="flex-1 p-6 lg:p-10">
+      <Sidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <Topbar onMenuClick={() => setNavOpen(true)} />
+        <main className="flex-1 p-4 sm:p-6 lg:p-10">
           {children}
           <footer className="mt-10 flex flex-col items-center gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
             <span>© {new Date().getFullYear()} AIPL Hire</span>
