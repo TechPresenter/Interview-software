@@ -125,7 +125,7 @@ function Health() {
       </div>
       <div className="grid gap-4 sm:grid-cols-4">
         <HealthItem label="Database" value={data?.db} ok={data?.db === 'up'} />
-        <HealthItem label="Redis" value={data?.redis} ok={data?.redis === 'up'} />
+        <HealthItem label="Cache" value={data?.redis} ok={data?.redis === 'up'} />
         <HealthItem label="Uptime" value={data ? `${Math.round((data.uptimeSeconds ?? 0) / 60)}m` : '—'} ok />
         <HealthItem label="Memory" value={data ? `${data.memory?.rssMb}MB` : '—'} ok />
       </div>

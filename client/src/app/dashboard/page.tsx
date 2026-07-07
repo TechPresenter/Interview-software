@@ -233,8 +233,8 @@ function SuperAdminOverview({ name }: { name: string }) {
           <p className="mt-1 text-muted-foreground">Platform overview.</p>
         </div>
         <div className="flex gap-2">
-          <Badge tone={health?.db === 'up' ? 'success' : 'danger'}>DB {health?.db ?? '…'}</Badge>
-          <Badge tone={health?.redis === 'up' ? 'success' : 'danger'}>Redis {health?.redis ?? '…'}</Badge>
+          <Badge tone={health?.db === 'up' ? 'success' : 'danger'}>Database {health?.db ?? '…'}</Badge>
+          <Badge tone={health?.redis === 'up' ? 'success' : 'danger'}>Cache {health?.redis ?? '…'}</Badge>
         </div>
       </header>
 

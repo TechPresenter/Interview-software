@@ -20,7 +20,7 @@ import { LogoMarquee } from '@/components/landing/LogoMarquee';
 import { cn } from '@/lib/utils';
 
 const features = [
-  { icon: Bot, title: 'Adaptive AI Interviewer', desc: 'Claude-powered interviews that ask, follow up, and adapt difficulty in real time.' },
+  { icon: Bot, title: 'Adaptive AI Interviewer', desc: 'AI-powered interviews that ask, follow up, and adapt difficulty in real time.' },
   { icon: BarChart3, title: 'Competency Scoring', desc: 'Objective scores across 7 competencies with transparent, evidence-based reasoning.' },
   { icon: FileSearch, title: 'Resume Intelligence', desc: 'ATS score, skill extraction, gap analysis, and job-match % in seconds.' },
   { icon: ShieldCheck, title: 'Proctoring & Anti-Cheat', desc: 'Tab, blur, paste, and face detection with a live integrity score.' },
@@ -57,14 +57,14 @@ export default function LandingPage() {
       <SiteHeader />
 
       {/* ── Hero ───────────────────────────────────────── */}
-      <section className="relative grid min-h-screen place-items-center overflow-hidden px-6 pt-28">
+      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pb-16 pt-32 text-center">
         <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-70" />
         <div className="pointer-events-none absolute inset-0 -z-10 grid-bg" />
         <div className="pointer-events-none absolute left-1/2 top-[-8%] -z-10 h-[620px] w-[1100px] -translate-x-1/2 aurora opacity-80" />
         <div className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/20 blur-[140px]" />
         <div className="pointer-events-none absolute right-[8%] top-[30%] -z-10 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
 
-        <div className="mx-auto max-w-5xl text-center">
+        <div className="mx-auto w-full max-w-5xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             className="group mx-auto mb-7 inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-medium"
@@ -72,7 +72,7 @@ export default function LandingPage() {
             <span className="inline-flex items-center gap-1 rounded-full bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
               <Zap className="h-3 w-3" /> New
             </span>
-            Powered by Claude — adaptive, fair &amp; explainable
+            Powered by advanced AI — adaptive, fair &amp; explainable
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </motion.div>
 

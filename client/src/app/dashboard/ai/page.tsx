@@ -236,7 +236,7 @@ function Providers() {
         ))}
         {!isLoading && providers.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            No providers configured. The built-in Claude key from your environment is used by default — add a provider to switch or route per module.
+            No providers configured. The built-in default AI key from your environment is used — add a provider to switch or route per module.
           </div>
         )}
       </div>
@@ -462,7 +462,7 @@ function Settings() {
   const test = useMutation({
     mutationFn: () => adminApi.testAi(),
     onSuccess: (res: any) => {
-      if (res?.ok) toast.success(`Claude OK · ${res.model} · ${res.latencyMs}ms`);
+      if (res?.ok) toast.success(`Connection OK · ${res.model} · ${res.latencyMs}ms`);
       else toast.error(`Connection failed: ${res?.error || 'unknown'}`);
     },
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Test failed'),

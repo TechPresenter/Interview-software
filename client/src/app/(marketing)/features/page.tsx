@@ -17,7 +17,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 const features: Feature[] = [
-  { icon: Bot, title: 'Adaptive AI Interviewer', desc: 'Claude-powered interviews that ask, follow up, and adapt difficulty in real time to each candidate.' },
+  { icon: Bot, title: 'Adaptive AI Interviewer', desc: 'AI-powered interviews that ask, follow up, and adapt difficulty in real time to each candidate.' },
   { icon: BarChart3, title: 'Competency Scoring', desc: 'Objective scores across seven competencies with transparent, evidence-based reasoning behind every number.' },
   { icon: FileSearch, title: 'Resume Intelligence', desc: 'ATS score, skill extraction, gap analysis, and job-match percentage generated in seconds.' },
   { icon: ShieldCheck, title: 'Proctoring & Anti-Cheat', desc: 'Tab, blur, copy/paste, and face-presence signals combine into a live integrity score.' },
