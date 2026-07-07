@@ -40,7 +40,14 @@ export async function getGroup(group, { unmask = false } = {}) {
 
 /** Upsert a batch of settings within a group. */
 export async function setMany(group, entries, userId) {
-  const ops = entries.map(({ key, value, isSecret, description }) => ({
+  // Never overwrite a stored secret with its masked placeholder (••••1234): if a
+  // secret field still contains the mask char, the admin didn't change it.
+  const clean = (entries || []).filter((e) => {
+    const secret = Boolean(e.isSecret) || SECRET_HINT.test(e.key);
+    if (secret && typeof e.value === 'string' && e.value.includes('•')) return false;
+    return true;
+  });
+  const ops = clean.map(({ key, value, isSecret, description }) => ({
     updateOne: {
       filter: { key },
       update: {
@@ -57,7 +64,7 @@ export async function setMany(group, entries, userId) {
   }));
   if (ops.length) await SystemSetting.bulkWrite(ops);
   // Invalidate cache for touched keys.
-  await Promise.all(entries.map((e) => redis.del(cacheKey(e.key))));
+  await Promise.all(clean.map((e) => redis.del(cacheKey(e.key))));
   return getGroup(group);
 }
 

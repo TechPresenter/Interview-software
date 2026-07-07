@@ -145,6 +145,7 @@ router.get('/audit-logs', system.auditLogs);
 router.delete('/audit-logs', system.clearAuditLogs);
 router.post('/backup', system.triggerBackup);
 router.post('/system/test-email', system.testEmail);
+router.post('/system/test-voice', system.testVoice);
 router.get('/system/:group', system.getSettingsGroup);
 router.put('/system/:group', validate(settingsGroupSchema), system.updateSettingsGroup);
 

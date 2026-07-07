@@ -108,6 +108,8 @@ export const adminApi = {
   // System
   runBackup: () => apiPost<any>('/admin/backup'),
   testEmail: (to?: string) => apiPost<any>('/admin/system/test-email', { to }),
+  testVoice: (opts?: { lang?: 'en' | 'hi'; gender?: 'female' | 'male'; text?: string }) =>
+    apiPost<any>('/admin/system/test-voice', opts || {}),
   settingsGroup: (group: string) => apiGet<any[]>(`/admin/system/${group}`),
   updateSettingsGroup: (group: string, entries: object[]) =>
     api.put(`/admin/system/${group}`, { entries }).then((r) => r.data.data),

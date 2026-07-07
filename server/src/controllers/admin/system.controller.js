@@ -5,10 +5,11 @@ import { getGroup, setMany } from '../../services/settings.service.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { AuditLog } from '../../models/AuditLog.js';
 import { audit } from '../../services/audit.service.js';
-import { sendEmail } from '../../services/email.service.js';
+import { sendEmail, refreshSmtp } from '../../services/email.service.js';
+import * as ttsService from '../../services/tts.service.js';
 import { config } from '../../config/index.js';
 
-const ALLOWED_GROUPS = ['smtp', 'sms', 'payment', 'security', 'general', 'feature_flag'];
+const ALLOWED_GROUPS = ['smtp', 'sms', 'payment', 'security', 'general', 'feature_flag', 'voice'];
 
 /** GET /admin/system/:group — settings for a group (secrets masked). */
 export const getSettingsGroup = asyncHandler(async (req, res) => {
@@ -22,8 +23,37 @@ export const updateSettingsGroup = asyncHandler(async (req, res) => {
   const { group } = req.params;
   if (!ALLOWED_GROUPS.includes(group)) throw ApiError.badRequest('Unknown settings group');
   const result = await setMany(group, req.body.entries, req.user._id);
+  // Apply integration changes immediately (bypass the short read caches).
+  if (group === 'voice') ttsService.refreshVoice();
+  if (group === 'smtp') refreshSmtp();
   await audit({ req, action: 'system.settings.update', meta: { group } });
   return ok(res, result, 'Settings saved');
+});
+
+/**
+ * POST /admin/system/test-voice — synthesize a short sample with the current
+ * Sarvam config so the admin can hear the selected voice. Returns base64 WAV
+ * ({ audios, mime }); { enabled:false } when Sarvam isn't configured.
+ */
+export const testVoice = asyncHandler(async (req, res) => {
+  const lang = req.body?.lang === 'hi' ? 'hi' : 'en';
+  const gender = req.body?.gender === 'male' ? 'male' : 'female';
+  const sample =
+    (req.body?.text && String(req.body.text).slice(0, 300)) ||
+    (lang === 'hi'
+      ? 'नमस्ते! मैं आपकी AI इंटरव्यूअर हूँ। यह Sarvam आवाज़ का एक परीक्षण है।'
+      : 'Hello! I am your AI interviewer. This is a test of the Sarvam voice.');
+  const result = await ttsService.synthesize({ text: sample, lang, gender });
+  await audit({ req, action: 'system.voice.test', status: result ? 'success' : 'failure', meta: { lang, gender } });
+  if (!result) {
+    const enabled = await ttsService.ttsEnabled();
+    return ok(
+      res,
+      { audios: [], mime: null, enabled },
+      enabled ? 'Voice generation failed — check the API key or server logs' : 'Sarvam voice is not configured',
+    );
+  }
+  return ok(res, { ...result, enabled: true }, 'Voice sample generated');
 });
 
 /** GET /admin/audit-logs — filterable security trail. */

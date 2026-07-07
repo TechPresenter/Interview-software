@@ -55,7 +55,7 @@ export const tts = asyncHandler(async (req, res) => {
     lang: lang === 'hi' ? 'hi' : 'en',
     gender: gender === 'male' ? 'male' : gender === 'auto' ? 'auto' : 'female',
   });
-  return ok(res, result || { audios: [], mime: null, enabled: ttsService.ttsEnabled() });
+  return ok(res, result || { audios: [], mime: null });
 });
 
 /** POST /interview-room/:token/complete */
