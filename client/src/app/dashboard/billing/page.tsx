@@ -13,6 +13,31 @@ import { Badge, statusTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { toast } from '@/components/ui/toast';
 
+/** Load an external script once (returns when ready). */
+function loadScript(src: string, id: string) {
+  return new Promise<void>((resolve, reject) => {
+    if (document.getElementById(id)) return resolve();
+    const s = document.createElement('script');
+    s.id = id; s.src = src; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('script load failed'));
+    document.head.appendChild(s);
+  });
+}
+
+/** Open Cashfree's hosted checkout for the payment session and redirect back on completion. */
+async function openCashfree(paymentSessionId: string, mode?: string) {
+  try {
+    await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js', 'cashfree-sdk-v3');
+    const Cashfree = (window as any).Cashfree;
+    if (!Cashfree) { toast.error('Could not load the Cashfree checkout.'); return; }
+    const cashfree = Cashfree({ mode: mode === 'production' ? 'production' : 'sandbox' });
+    await cashfree.checkout({ paymentSessionId, redirectTarget: '_self' });
+  } catch {
+    toast.error('Could not open the Cashfree checkout — please try again.');
+  }
+}
+
 export default function BillingPage() {
   const qc = useQueryClient();
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
@@ -20,15 +45,20 @@ export default function BillingPage() {
   const { data: invoices } = useQuery({ queryKey: ['billing-invoices'], queryFn: companyApi.billingInvoices });
 
   const currentPlan = data?.subscription?.plan || 'free';
-  const provider = data?.providers?.[0]; // default to first configured provider
+  // Cashfree is the platform default gateway; fall back to any configured provider.
+  const provider = data?.defaultProvider || data?.providers?.[0] || 'cashfree';
 
   const checkout = useMutation({
     mutationFn: (planKey: string) => companyApi.checkout({ provider, plan: planKey, billingCycle: cycle }),
-    onSuccess: (res: any) => {
-      if (res?.url) {
+    onSuccess: async (res: any) => {
+      if (res?.provider === 'cashfree' && res?.paymentSessionId) {
+        await openCashfree(res.paymentSessionId, res.mode); // redirect to Cashfree checkout
+      } else if (res?.url) {
         window.location.href = res.url; // Stripe hosted checkout
       } else if (res?.orderId) {
-        toast.info('Razorpay order created — open the Razorpay checkout widget to complete.');
+        toast.info('Order created — complete the payment in the checkout window.');
+      } else {
+        toast.error('Could not start the payment flow.');
       }
     },
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Checkout unavailable'),
@@ -84,7 +114,7 @@ export default function BillingPage() {
       <div className="grid gap-5 sm:grid-cols-3">
         <UsageCard label="Plan" value={titleCase(currentPlan)} sub={data?.subscription?.status} />
         <UsageMeter label="Active jobs" used={data?.usage?.usage?.activeJobs} limit={data?.usage?.limits?.activeJobs} />
-        <UsageMeter label="Interviews this month" used={data?.usage?.usage?.interviewsThisMonth} limit={data?.usage?.limits?.interviewsPerMonth} />
+        <UsageMeter label={currentPlan === 'free' ? 'Interviews (one-time)' : 'Interviews this month'} used={data?.usage?.usage?.interviewsUsed ?? data?.usage?.usage?.interviewsThisMonth} limit={data?.usage?.limits?.interviewsPerMonth} />
       </div>
 
       {/* Plans */}
@@ -119,8 +149,10 @@ export default function BillingPage() {
         })}
       </div>
 
-      {!provider && (
-        <p className="text-sm text-yellow-400">No payment provider is configured. Set Stripe or Razorpay keys to enable checkout.</p>
+      {data && !(data.providers?.length) && (
+        <p className="text-sm text-yellow-400">
+          Cashfree isn’t configured on the server yet — add <code>CASHFREE_APP_ID</code> and <code>CASHFREE_SECRET_KEY</code> to enable checkout.
+        </p>
       )}
 
       {/* Invoices */}

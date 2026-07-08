@@ -30,6 +30,18 @@ export function availableProviders() {
     .map((p) => p.name);
 }
 
+/**
+ * The default payment gateway for subscription purchases. Cashfree is the
+ * platform default; if it isn't configured we fall back to any other configured
+ * provider, else still return 'cashfree' so the UI shows it (and the checkout
+ * returns a clear "not configured" message until CASHFREE_* env vars are set).
+ */
+export function defaultProvider() {
+  const available = availableProviders();
+  if (available.includes('cashfree')) return 'cashfree';
+  return available[0] || 'cashfree';
+}
+
 /** Compute the price for a plan/cycle, applying an optional coupon. */
 export async function priceFor(plan, billingCycle, couponCode) {
   let amount = billingCycle === 'yearly' ? plan.pricing.yearly : plan.pricing.monthly;
@@ -153,4 +165,4 @@ export async function applyPaidPlan({ companyId, planKey, billingCycle, provider
   return { subscription, payment };
 }
 
-export default { getProvider, availableProviders, startCheckout, applyPaidPlan, priceFor };
+export default { getProvider, availableProviders, defaultProvider, startCheckout, applyPaidPlan, priceFor };

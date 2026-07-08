@@ -7,7 +7,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { Company } from '../../models/Company.js';
 import { saveBuffer, extractText } from '../../services/file.service.js';
-import { analyzeResume } from '../../services/ai/resume.analyzer.js';
+import { analyzeResume, parsedToCandidate } from '../../services/ai/resume.analyzer.js';
 import { logActivity } from '../../services/audit.service.js';
 import { safeSendTemplated } from '../../services/email.service.js';
 import { config } from '../../config/index.js';
@@ -160,8 +160,9 @@ export const uploadResumeFile = asyncHandler(async (req, res) => {
 
   candidate.resume = { url, filename, text, uploadedAt: new Date() };
 
-  // Best-effort AI analysis (don't fail the upload if AI is unavailable).
+  // Best-effort AI analysis + profile extraction (don't fail the upload if AI is down).
   let analysis = null;
+  let parsed = null;
   if (config.ai.enabled && text) {
     try {
       analysis = await analyzeResume({
@@ -171,8 +172,15 @@ export const uploadResumeFile = asyncHandler(async (req, res) => {
         company: req.companyId,
       });
       candidate.resumeAnalysis = analysis;
-      if (analysis.extractedSkills?.length) {
-        candidate.skills = Array.from(new Set([...(candidate.skills || []), ...analysis.extractedSkills]));
+      // Auto-fill EMPTY candidate fields from the parsed resume (never overwrite
+      // data a recruiter already entered). Skills always merge.
+      parsed = parsedToCandidate(analysis);
+      for (const [k, v] of Object.entries(parsed)) {
+        if (k === 'skills') {
+          candidate.skills = Array.from(new Set([...(candidate.skills || []), ...v]));
+        } else if (isEmptyField(candidate[k])) {
+          candidate[k] = v;
+        }
       }
     } catch {
       /* analysis is optional */
@@ -180,7 +188,45 @@ export const uploadResumeFile = asyncHandler(async (req, res) => {
   }
   await candidate.save();
 
-  return ok(res, { resume: candidate.resume, analysis }, 'Resume uploaded');
+  return ok(res, { resume: candidate.resume, analysis, parsed }, 'Resume uploaded');
+});
+
+const isEmptyField = (v) => v == null || v === '' || (Array.isArray(v) && v.length === 0);
+
+/**
+ * POST /company/candidates/parse-resume — upload + AI-parse a resume WITHOUT
+ * creating a candidate. Returns the stored file + extracted fields so the "Add
+ * candidate" form can be pre-filled for the recruiter to review/edit before save.
+ * The original file is preserved and its URL returned to attach on save.
+ */
+export const parseResume = asyncHandler(async (req, res) => {
+  if (!req.file) throw ApiError.badRequest('Resume file is required (field "resume")');
+
+  const [{ url, filename }, text] = await Promise.all([
+    saveBuffer(req.file.buffer, req.file.originalname),
+    extractText(req.file.buffer, req.file.mimetype, req.file.originalname),
+  ]);
+  if (!text || text.trim().length < 30) {
+    return ok(res, { resume: { url, filename }, fields: {}, analysis: null, warning: 'Could not read enough text from this file to auto-fill.' }, 'Resume stored');
+  }
+
+  let analysis = null;
+  let fields = {};
+  if (config.ai.enabled) {
+    try {
+      const job = req.query.job ? await Job.findOne(scope(req, { _id: req.query.job })).select('title skills').lean() : null;
+      analysis = await analyzeResume({
+        resumeText: text,
+        jobTitle: job?.title,
+        requiredSkills: (job?.skills || []).map((s) => s.name),
+        company: req.companyId,
+      });
+      fields = parsedToCandidate(analysis);
+    } catch {
+      /* parsing optional — the file is still stored */
+    }
+  }
+  return ok(res, { resume: { url, filename, text, uploadedAt: new Date() }, fields, analysis }, 'Resume parsed');
 });
 
 /** GET /company/candidates/:id/resume-analysis — re-run analysis on stored text. */

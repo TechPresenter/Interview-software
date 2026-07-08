@@ -68,6 +68,7 @@ router.post('/jobs/:id/clone', jobs.clone);
 router.get('/candidates', candidates.list);
 router.post('/candidates', validate(createCandidateSchema), candidates.create);
 router.post('/candidates/import', uploadCsv, candidates.importCsv);
+router.post('/candidates/parse-resume', uploadResume, candidates.parseResume);
 router.get('/candidates/:id', candidates.getOne);
 router.patch('/candidates/:id', validate(updateCandidateSchema), candidates.update);
 router.delete('/candidates/:id', candidates.remove);

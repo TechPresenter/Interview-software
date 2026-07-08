@@ -69,6 +69,35 @@ export const createCandidateSchema = z.object({
     )
     .optional(),
   portfolioLinks: z.array(z.object({ label: z.string(), url: z.string().url() })).optional(),
+
+  // Extended profile (§ candidate profile expansion). All optional; resume
+  // parsing pre-fills these for review before save.
+  whatsapp: z.string().optional(),
+  photo: z.string().optional(),
+  dob: z.string().optional(),
+  gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say', '']).optional(),
+  nationality: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  postalCode: z.string().optional(),
+  linkedin: z.string().optional(),
+  website: z.string().optional(),
+  languages: z.array(z.string()).optional(),
+  currentCompany: z.string().optional(),
+  currentDesignation: z.string().optional(),
+  totalExperienceYears: z.number().optional(),
+  currentSalary: z.string().optional(),
+  expectedSalary: z.string().optional(),
+  noticePeriod: z.string().optional(),
+  preferredLocation: z.string().optional(),
+  employmentType: z.string().optional(),
+  highestQualification: z.string().optional(),
+  certifications: z.array(z.object({ name: z.string().optional(), issuer: z.string().optional(), year: z.string().optional() })).optional(),
+  projects: z.array(z.object({ name: z.string().optional(), description: z.string().optional(), url: z.string().optional() })).optional(),
+  resume: z.object({ url: z.string().optional(), filename: z.string().optional(), text: z.string().optional(), uploadedAt: z.coerce.date().optional() }).optional(),
+  notifyCandidate: z.boolean().optional(),
 });
 
 export const updateCandidateSchema = createCandidateSchema.partial();

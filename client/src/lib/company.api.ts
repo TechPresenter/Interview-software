@@ -47,6 +47,12 @@ export const companyApi = {
     fd.append('resume', file);
     return api.post(`/candidates/${id}/resume`, fd).then((r) => r.data.data);
   },
+  /** Parse a resume WITHOUT creating a candidate — returns extracted fields to review before save. */
+  parseResume: (file: File, job?: string) => {
+    const fd = new FormData();
+    fd.append('resume', file);
+    return api.post('/candidates/parse-resume', fd, { params: { job } }).then((r) => r.data.data as { resume: any; fields: Record<string, any>; analysis: any; warning?: string });
+  },
   moveStage: (id: string, stage: string) => api.patch(`/candidates/${id}/stage`, { stage }).then((r) => r.data.data),
 
   // Interviews

@@ -73,11 +73,11 @@ export const prompts = {
 
   /** Resume analysis against a job. */
   analyzeResume: ({ resumeText, jobTitle, requiredSkills }) => ({
-    system: `You are an ATS and technical recruiter. Analyze the resume objectively against the target role.`,
+    system: `You are an ATS + resume-parsing engine and technical recruiter. Analyze the resume objectively against the target role AND extract structured candidate data. Only extract fields that genuinely appear in the resume — never fabricate contact details, salary, or employers. Use "" or [] when a field is not present.`,
     messages: [
       {
         role: 'user',
-        content: `Target role: ${jobTitle || 'general'}\nRequired skills: ${(requiredSkills || []).join(', ') || 'n/a'}\nResume text:\n"""${(resumeText || '').slice(0, 12000)}"""\n\nReturn JSON:\n{"extractedSkills": string[], "missingSkills": string[], "yearsExperience": number, "atsScore": number 0-100, "jobMatch": number 0-100, "summary": string, "strengths": string[], "redFlags": string[]}`,
+        content: `Target role: ${jobTitle || 'general'}\nRequired skills: ${(requiredSkills || []).join(', ') || 'n/a'}\nResume text:\n"""${(resumeText || '').slice(0, 14000)}"""\n\nReturn ONLY JSON:\n{"extractedSkills": string[], "missingSkills": string[], "yearsExperience": number, "atsScore": number 0-100, "jobMatch": number 0-100, "summary": string, "strengths": string[], "redFlags": string[], "parsed": {"fullName": string, "email": string, "phone": string, "whatsapp": string, "address": string, "city": string, "state": string, "country": string, "nationality": string, "linkedin": string, "website": string, "currentCompany": string, "currentDesignation": string, "totalExperienceYears": number, "highestQualification": string, "languages": string[], "certifications": [{"name": string, "issuer": string, "year": string}], "education": [{"degree": string, "institution": string, "field": string, "startYear": number, "endYear": number}], "workExperience": [{"title": string, "company": string, "startDate": string, "endDate": string, "current": boolean, "description": string}], "projects": [{"name": string, "description": string, "url": string}]}}`,
       },
     ],
   }),

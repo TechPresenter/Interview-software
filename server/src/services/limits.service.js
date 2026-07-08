@@ -19,9 +19,10 @@ const startOfMonth = () => {
 /** Current usage counters for a company. */
 export async function getUsage(companyId) {
   const since = startOfMonth();
-  const [activeJobs, interviewsThisMonth, aiAgg] = await Promise.all([
+  const [activeJobs, interviewsThisMonth, interviewsTotal, aiAgg] = await Promise.all([
     Job.countDocuments({ company: companyId, status: { $in: ['open', 'paused', 'draft'] } }),
     Interview.countDocuments({ company: companyId, createdAt: { $gte: since } }),
+    Interview.countDocuments({ company: companyId }), // all-time (Free plan is one-time)
     AiUsage.aggregate([
       { $match: { company: toId(companyId), createdAt: { $gte: since } } },
       { $group: { _id: null, tokens: { $sum: '$totalTokens' } } },
@@ -30,6 +31,7 @@ export async function getUsage(companyId) {
   return {
     activeJobs,
     interviewsThisMonth,
+    interviewsTotal,
     aiTokensThisMonth: aiAgg[0]?.tokens || 0,
   };
 }
@@ -39,12 +41,14 @@ export async function usageReport(companyId) {
   const company = await Company.findById(companyId).lean();
   const usage = await getUsage(companyId);
   const limits = company?.limits || {};
+  const isFree = (company?.plan || 'free') === 'free';
+  const interviewsUsed = isFree ? usage.interviewsTotal : usage.interviewsThisMonth;
   return {
     limits,
-    usage,
+    usage: { ...usage, interviewsUsed },
     remaining: {
       activeJobs: nullableRemaining(limits.activeJobs, usage.activeJobs),
-      interviews: nullableRemaining(limits.interviewsPerMonth, usage.interviewsThisMonth),
+      interviews: nullableRemaining(limits.interviewsPerMonth, interviewsUsed),
       aiTokens: nullableRemaining(limits.aiTokensPerMonth, usage.aiTokensThisMonth),
     },
   };
@@ -67,9 +71,16 @@ export async function assertWithinLimit(companyId, resource) {
       });
     }
   } else if (resource === 'interviews') {
-    if (usage.interviewsThisMonth >= company.limits.interviewsPerMonth) {
+    // Free plan interviews are a ONE-TIME allowance (all-time total); paid plans
+    // reset monthly.
+    const isFree = (company.plan || 'free') === 'free';
+    const used = isFree ? usage.interviewsTotal : usage.interviewsThisMonth;
+    const limit = company.limits.interviewsPerMonth;
+    if (used >= limit) {
       throw ApiError.forbidden(
-        `Monthly interview limit reached (${company.limits.interviewsPerMonth}). Upgrade your plan.`,
+        isFree
+          ? `You've used all ${limit} free interviews. Upgrade your plan for more.`
+          : `Monthly interview limit reached (${limit}). Upgrade your plan.`,
         { code: 'LIMIT_REACHED' },
       );
     }

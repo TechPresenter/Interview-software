@@ -23,11 +23,13 @@ const companySchema = new Schema(
     subscription: { type: Schema.Types.ObjectId, ref: 'Subscription' },
 
     // Usage limits derived from plan (enforced by middleware/services).
+    // Defaults match the Free plan (see Plan.defaults): 1 active job + 3
+    // one-time interviews. Upgrading snapshots the paid plan's limits here.
     limits: {
-      seats: { type: Number, default: 3 },
-      activeJobs: { type: Number, default: 3 },
-      interviewsPerMonth: { type: Number, default: 50 },
-      aiTokensPerMonth: { type: Number, default: 500_000 },
+      seats: { type: Number, default: 1 },
+      activeJobs: { type: Number, default: 1 },
+      interviewsPerMonth: { type: Number, default: 3 },
+      aiTokensPerMonth: { type: Number, default: 50_000 },
     },
 
     // Per-company branding for the candidate experience.

@@ -17,7 +17,33 @@ const candidateSchema = new Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true, index: true },
     phone: { type: String },
+    whatsapp: { type: String },
     location: { type: String },
+
+    // Personal details.
+    photo: { type: String }, // uploaded profile photo URL
+    dob: { type: String }, // stored ISO or DD/MM/YYYY (free-form to match resumes)
+    gender: { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say', ''], default: '' },
+    nationality: { type: String },
+    address: { type: String },
+    city: { type: String },
+    state: { type: String },
+    country: { type: String },
+    postalCode: { type: String },
+    linkedin: { type: String },
+    website: { type: String }, // portfolio / personal site
+    languages: [String],
+
+    // Professional details.
+    currentCompany: { type: String },
+    currentDesignation: { type: String },
+    totalExperienceYears: { type: Number },
+    currentSalary: { type: String },
+    expectedSalary: { type: String },
+    noticePeriod: { type: String },
+    preferredLocation: { type: String },
+    employmentType: { type: String }, // full_time | part_time | contract | internship | remote
+    highestQualification: { type: String },
 
     education: [
       {
@@ -38,6 +64,8 @@ const candidateSchema = new Schema(
         description: String,
       },
     ],
+    certifications: [{ name: String, issuer: String, year: String }],
+    projects: [{ name: String, description: String, url: String }],
     skills: [String],
     portfolioLinks: [{ label: String, url: String }],
 

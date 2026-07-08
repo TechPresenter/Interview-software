@@ -19,7 +19,13 @@ export const summary = asyncHandler(async (req, res) => {
     usageReport(req.companyId),
     Plan.find({ isActive: true }).sort('sortOrder').lean(),
   ]);
-  return ok(res, { subscription, usage, plans, providers: payments.availableProviders() });
+  return ok(res, {
+    subscription,
+    usage,
+    plans,
+    providers: payments.availableProviders(),
+    defaultProvider: payments.defaultProvider(), // Cashfree by default
+  });
 });
 
 /** GET /billing/invoices */
@@ -41,8 +47,10 @@ export const invoicePdf = asyncHandler(async (req, res) => {
 
 /** POST /billing/checkout — start a provider checkout. */
 export const checkout = asyncHandler(async (req, res) => {
-  const { provider, plan, billingCycle = 'monthly', coupon } = req.body;
-  if (!provider || !plan) throw ApiError.badRequest('provider and plan are required');
+  const { plan, billingCycle = 'monthly', coupon } = req.body;
+  // Default to the platform gateway (Cashfree) when the client doesn't specify.
+  const provider = req.body.provider || payments.defaultProvider();
+  if (!plan) throw ApiError.badRequest('plan is required');
 
   const result = await payments.startCheckout({
     companyId: req.companyId,
