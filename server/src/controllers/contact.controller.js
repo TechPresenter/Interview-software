@@ -1,6 +1,8 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/ApiResponse.js';
+import { ApiError } from '../utils/ApiError.js';
 import { sendEmail, safeSendTemplated } from '../services/email.service.js';
+import { verifyCaptcha } from '../services/captcha.service.js';
 import { config } from '../config/index.js';
 import { logger } from '../config/logger.js';
 import { Lead } from '../models/Lead.js';
@@ -25,7 +27,18 @@ const escapeHtml = (s = '') =>
  * still succeeds so the UX stays clean.
  */
 export const submitContact = asyncHandler(async (req, res) => {
-  const { name, email, company, phone, country, jobTitle, subject, message } = req.body;
+  const { name, email, company, phone, country, jobTitle, subject, message, company_website, captchaToken } = req.body;
+
+  // Honeypot: hidden field only bots fill. Pretend success (don't tip off bots)
+  // but skip saving/emailing. Legit browsers leave it empty.
+  if (company_website) {
+    logger.info({ email }, 'contact honeypot triggered — ignored');
+    return ok(res, { received: true }, 'Thanks — your message has been received.');
+  }
+
+  // CAPTCHA (only enforced when enabled for the contact form in Admin → System).
+  const captcha = await verifyCaptcha(captchaToken, req.ip, 'contact');
+  if (!captcha.success) throw ApiError.badRequest(captcha.error || 'CAPTCHA verification failed');
 
   // Idempotency: same email + message submitted moments ago ⇒ treat as duplicate.
   const recentDuplicate = await Lead.findOne({

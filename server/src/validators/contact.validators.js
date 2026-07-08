@@ -12,8 +12,11 @@ export const contactSchema = z.object({
   jobTitle: optional(120),
   subject: z.enum(['Sales', 'Support', 'Partnerships', 'Media & Press', 'Careers', 'Other']).default('Sales'),
   message: z.string().trim().min(10, 'Message must be at least 10 characters').max(5000),
-  // Honeypot — legitimate users leave this empty; bots tend to fill every field.
-  company_website: z.string().max(0).optional(),
+  // Honeypot — checked in the controller (NOT hard-failed here) so a browser /
+  // password-manager that autofills this hidden field can't block a real user.
+  company_website: z.string().max(200).optional(),
+  // Optional CAPTCHA token (verified in the controller when captcha is enabled).
+  captchaToken: z.string().max(4000).optional(),
 });
 
 export default contactSchema;

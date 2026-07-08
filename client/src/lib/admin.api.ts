@@ -136,6 +136,10 @@ export const adminApi = {
   clearAuditLogs: (before?: string) =>
     api.delete('/admin/audit-logs', { params: before ? { before } : {} }).then((r) => r.data),
 
+  // Spam protection (CAPTCHA)
+  captchaConfig: () => apiGet<any>('/admin/captcha'),
+  updateCaptcha: (body: object) => api.put('/admin/captcha', body).then((r) => r.data.data),
+
   // Website leads (contact enquiries + newsletter subscribers)
   leads: (params?: object) => getPaged<any>('/admin/leads', params),
   leadStats: () => apiGet<any>('/admin/leads/stats'),

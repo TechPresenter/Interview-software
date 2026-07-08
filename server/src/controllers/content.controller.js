@@ -9,6 +9,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../utils/query.js';
+import { getPublicCaptchaConfig } from '../services/captcha.service.js';
 
 /**
  * Public, read-only content endpoints for the marketing site. Only published /
@@ -71,6 +72,11 @@ export const announcements = asyncHandler(async (_req, res) => {
 export const plans = asyncHandler(async (_req, res) => {
   const items = await Plan.find({ isActive: true }).sort('sortOrder').lean();
   return ok(res, items);
+});
+
+/** GET /content/captcha — public CAPTCHA config for the site forms (no secret). */
+export const captcha = asyncHandler(async (_req, res) => {
+  return ok(res, await getPublicCaptchaConfig());
 });
 
 /** GET /content/branding — public white-label config (no secrets). */

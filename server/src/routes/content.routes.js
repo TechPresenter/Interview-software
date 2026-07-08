@@ -11,6 +11,7 @@ router.use((_req, res, next) => {
 });
 
 router.get('/branding', content.branding);
+router.get('/captcha', content.captcha);
 router.get('/plans', content.plans);
 router.get('/faqs', content.faqs);
 router.get('/testimonials', content.testimonials);

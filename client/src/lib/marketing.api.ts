@@ -16,11 +16,22 @@ export interface ContactPayload {
   message: string;
   /** Honeypot — must stay empty. */
   company_website?: string;
+  /** CAPTCHA token (when spam protection is enabled). */
+  captchaToken?: string;
+}
+
+export interface CaptchaConfig {
+  enabled: boolean;
+  provider: 'none' | 'recaptcha_v2' | 'recaptcha_v3' | 'hcaptcha';
+  siteKey: string;
+  forms: string[];
 }
 
 export const marketingApi = {
   contact: (payload: ContactPayload) => http.post('/contact', payload).then((r) => r.data),
-  newsletter: (email: string) => http.post('/newsletter', { email }).then((r) => r.data),
+  newsletter: (email: string, extra?: { captchaToken?: string; company_website?: string }) =>
+    http.post('/newsletter', { email, ...extra }).then((r) => r.data),
+  captcha: (): Promise<CaptchaConfig> => http.get('/content/captcha').then((r) => r.data.data),
 };
 
 export default marketingApi;

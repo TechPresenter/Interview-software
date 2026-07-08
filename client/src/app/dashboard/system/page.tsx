@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, DatabaseBackup, ShieldCheck, Activity, Mail, Trash2, Volume2, Play } from 'lucide-react';
+import { Save, DatabaseBackup, ShieldCheck, Activity, Mail, Trash2, Volume2, Play, ShieldAlert } from 'lucide-react';
 import { adminApi } from '@/lib/admin.api';
 import { dateTime, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -48,9 +48,99 @@ export default function SystemPage() {
         <TestEmail />
       </div>
       <VoiceSettings />
+      <SpamProtection />
       <SettingsEditor />
       <AuditLogs />
     </div>
+  );
+}
+
+const CAPTCHA_PROVIDERS = [
+  { label: 'Off (no CAPTCHA)', value: 'none' },
+  { label: 'Google reCAPTCHA v2 (checkbox)', value: 'recaptcha_v2' },
+  { label: 'Google reCAPTCHA v3 (invisible score)', value: 'recaptcha_v3' },
+  { label: 'hCaptcha', value: 'hcaptcha' },
+];
+
+function SpamProtection() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['captcha-config'], queryFn: adminApi.captchaConfig });
+  const [f, setF] = useState<Record<string, any>>({ enabled: false, provider: 'none', siteKey: '', secretKey: '', minScore: 0.5, forms: ['contact', 'newsletter'], secretKeySet: false });
+
+  useEffect(() => {
+    if (data) setF({ ...data, secretKey: '' });
+  }, [data]);
+
+  const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
+  const toggleForm = (name: string) =>
+    setF((p) => {
+      const forms: string[] = p.forms || [];
+      return { ...p, forms: forms.includes(name) ? forms.filter((x) => x !== name) : [...forms, name] };
+    });
+
+  const save = useMutation({
+    mutationFn: () =>
+      adminApi.updateCaptcha({
+        enabled: !!f.enabled,
+        provider: f.provider,
+        siteKey: f.siteKey,
+        secretKey: f.secretKey || undefined, // omit when blank so the stored secret is kept
+        minScore: Number(f.minScore) || 0.5,
+        forms: f.forms,
+      }),
+    onSuccess: () => { toast.success('Spam protection saved'); qc.invalidateQueries({ queryKey: ['captcha-config'] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Save failed'),
+  });
+
+  const isRecaptcha = f.provider === 'recaptcha_v2' || f.provider === 'recaptcha_v3';
+  const keysUrl = f.provider === 'hcaptcha' ? 'https://dashboard.hcaptcha.com' : 'https://www.google.com/recaptcha/admin';
+
+  return (
+    <GlassCard>
+      <div className="mb-4 flex items-center gap-2">
+        <ShieldAlert className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold">Spam protection (CAPTCHA)</h2>
+        <label className="ml-auto flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={!!f.enabled} onChange={(e) => set('enabled', e.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+          Enabled
+        </label>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Protect the public contact &amp; newsletter forms from bots. Add your CAPTCHA keys from{' '}
+        <a href={keysUrl} target="_blank" rel="noreferrer noopener" className="text-primary underline underline-offset-4">{f.provider === 'hcaptcha' ? 'hCaptcha' : 'Google reCAPTCHA'} admin</a>.
+      </p>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <Select label="Provider" value={f.provider ?? 'none'} onChange={(v) => set('provider', v)} options={CAPTCHA_PROVIDERS} />
+        {f.provider === 'recaptcha_v3' && (
+          <Field label="Min score (0–1, e.g. 0.5)" value={String(f.minScore ?? 0.5)} onChange={(v) => set('minScore', v)} />
+        )}
+        {f.provider !== 'none' && (
+          <>
+            <Field label="Site key (public)" value={f.siteKey ?? ''} onChange={(v) => set('siteKey', v)} placeholder={isRecaptcha ? '6Lc…' : '10000000-ffff-…'} autoComplete="off" />
+            <Field label="Secret key" type="password" value={f.secretKey ?? ''} onChange={(v) => set('secretKey', v)} placeholder={f.secretKeySet ? '•••• (saved — leave blank to keep)' : 'Secret key'} autoComplete="off" />
+          </>
+        )}
+      </div>
+
+      {f.provider !== 'none' && (
+        <div className="mt-4">
+          <span className="mb-1.5 block text-sm font-medium text-muted-foreground">Protect these forms</span>
+          <div className="flex flex-wrap gap-4 text-sm">
+            {['contact', 'newsletter'].map((name) => (
+              <label key={name} className="flex items-center gap-2 capitalize">
+                <input type="checkbox" checked={(f.forms || []).includes(name)} onChange={() => toggleForm(name)} className="accent-[hsl(var(--primary))]" /> {name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Button className="mt-5" magnetic={false} loading={save.isPending} onClick={() => save.mutate()}>
+        <Save className="h-4 w-4" /> Save spam protection
+      </Button>
+      <p className="mt-3 text-xs text-muted-foreground">The secret key is stored encrypted and shown masked. The site key is public and safe to display.</p>
+    </GlassCard>
   );
 }
 

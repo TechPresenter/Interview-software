@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { toast } from '@/components/ui/toast';
-import { marketingApi } from '@/lib/marketing.api';
+import { marketingApi, type CaptchaConfig } from '@/lib/marketing.api';
+import { Captcha, type CaptchaHandle } from '@/components/public/Captcha';
 import { COUNTRIES, DEFAULT_COUNTRY, formatNational } from '@/lib/countries';
 
 const fieldCls =
@@ -36,6 +37,16 @@ export function ContactForm({ defaultSubject = 'Sales' }: { defaultSubject?: str
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Spam protection (loaded from the admin config).
+  const [captchaCfg, setCaptchaCfg] = useState<CaptchaConfig | null>(null);
+  const [captchaSolved, setCaptchaSolved] = useState(false);
+  const captchaRef = useRef<CaptchaHandle>(null);
+  useEffect(() => {
+    marketingApi.captcha().then(setCaptchaCfg).catch(() => setCaptchaCfg(null));
+  }, []);
+  const captchaOn = !!captchaCfg?.enabled && captchaCfg.provider !== 'none' && (captchaCfg.forms?.includes('contact') ?? true);
+  const needsInteractiveCaptcha = captchaOn && captchaCfg?.provider !== 'recaptcha_v3';
+
   const country = useMemo(() => COUNTRIES.find((c) => c.code === form.countryCode) || DEFAULT_COUNTRY, [form.countryCode]);
 
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -60,8 +71,13 @@ export function ContactForm({ defaultSubject = 'Sales' }: { defaultSubject?: str
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    if (needsInteractiveCaptcha && !captchaSolved) {
+      toast.error('Please complete the CAPTCHA to continue.');
+      return;
+    }
     setSubmitting(true);
     try {
+      const captchaToken = captchaOn ? await captchaRef.current?.getToken() : undefined;
       const digits = form.phone.replace(/\D/g, '');
       await marketingApi.contact({
         name: form.name.trim(),
@@ -73,12 +89,26 @@ export function ContactForm({ defaultSubject = 'Sales' }: { defaultSubject?: str
         subject: form.subject,
         message: form.message.trim(),
         company_website: form.company_website,
+        captchaToken: captchaToken || undefined,
       });
       toast.success('Message sent — we will get back to you shortly.');
       setSent(true);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Something went wrong. Please try again or email us directly.';
-      toast.error(msg);
+      // Surface field-specific validation errors from the server, not just a generic message.
+      const details = err?.response?.data?.details as Record<string, string[]> | undefined;
+      if (details && typeof details === 'object') {
+        const mapped: Partial<Record<keyof Form, string>> = {};
+        for (const [field, msgs] of Object.entries(details)) {
+          if (field in form) mapped[field as keyof Form] = Array.isArray(msgs) ? msgs[0] : String(msgs);
+        }
+        setErrors((prev) => ({ ...prev, ...mapped }));
+        const first = Object.values(mapped)[0];
+        toast.error(first || err?.response?.data?.message || 'Please check the highlighted fields.');
+      } else {
+        toast.error(err?.response?.data?.message || 'Something went wrong. Please try again or email us directly.');
+      }
+      captchaRef.current?.reset();
+      setCaptchaSolved(false);
     } finally {
       setSubmitting(false);
     }
@@ -160,9 +190,20 @@ export function ContactForm({ defaultSubject = 'Sales' }: { defaultSubject?: str
         </Field>
       </div>
 
+      {captchaOn && captchaCfg && (
+        <div className="mt-5">
+          <Captcha
+            ref={captchaRef}
+            provider={captchaCfg.provider}
+            siteKey={captchaCfg.siteKey}
+            onSolvedChange={setCaptchaSolved}
+          />
+        </div>
+      )}
+
       <div className="mt-6 flex items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">We respect your privacy. No spam, ever.</p>
-        <Button type="submit" loading={submitting} magnetic={false}>
+        <Button type="submit" loading={submitting} magnetic={false} disabled={needsInteractiveCaptcha && !captchaSolved}>
           Send message <Send className="h-4 w-4" />
         </Button>
       </div>
