@@ -104,5 +104,5 @@ export const exportLeads = asyncHandler(async (req, res) => {
   const body = rows.map((r) => columns.map(([, get]) => csvCell(get(r))).join(',')).join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${base}-${stamp}.csv"`);
-  return res.send(`﻿${header}\n${body}`);
+  return res.send(`\uFEFF${header}\n${body}`);
 });

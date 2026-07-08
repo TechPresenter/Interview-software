@@ -137,5 +137,5 @@ export const exportCsv = asyncHandler(async (req, res) => {
   const body = rows.map((r) => cols.map(([, get]) => csvCell(get(r))).join(',')).join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="proctoring-audit-${new Date().toISOString().slice(0, 10)}.csv"`);
-  return res.send(`﻿${header}\n${body}`);
+  return res.send(`\uFEFF${header}\n${body}`);
 });
