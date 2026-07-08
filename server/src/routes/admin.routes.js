@@ -28,6 +28,8 @@ import * as aiProviders from '../controllers/admin/aiProvider.controller.js';
 import * as leads from '../controllers/admin/leads.controller.js';
 import * as captcha from '../controllers/admin/captcha.controller.js';
 import * as proctoring from '../controllers/proctoring.controller.js';
+import * as demo from '../controllers/admin/demoBooking.controller.js';
+import { demoUpdateSchema } from '../validators/demo.validators.js';
 import { updateCandidateAdminSchema, createAiProviderSchema, updateAiProviderSchema } from '../validators/admin.validators.js';
 import { brandingSchema } from '../validators/branding.validators.js';
 import { leadUpdateSchema } from '../validators/lead.validators.js';
@@ -179,6 +181,15 @@ cmsResource('faqs', cms.faqs, faqSchema, faqUpdate);
 cmsResource('testimonials', cms.testimonials, testimonialSchema, testimonialUpdate);
 cmsResource('announcements', cms.announcements, announcementSchema, announcementUpdate);
 cmsResource('templates', cms.templates, templateSchema, templateUpdate);
+
+/* ── Demo bookings (Enquiries → Demo Bookings) ─────────── */
+router.get('/demo-bookings', demo.list);
+router.get('/demo-bookings/stats', demo.stats);
+router.get('/demo-bookings/export', demo.exportCsv);
+router.get('/demo-bookings/assignees', demo.assignees);
+router.get('/demo-bookings/:id', demo.detail);
+router.patch('/demo-bookings/:id', validate(demoUpdateSchema), demo.update);
+router.delete('/demo-bookings/:id', demo.remove);
 
 /* ── Website leads (contact enquiries + newsletter) ────── */
 router.get('/leads', leads.list);

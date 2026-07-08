@@ -229,6 +229,17 @@ export const DEFAULT_TEMPLATES = {
       p('You’ll get product updates, hiring insights, and the occasional tip — no spam, ever. You can unsubscribe anytime.') +
       button('{{link}}', 'Explore {{platformName}}') + muted('You’re receiving this because {{email}} subscribed on our website.'),
   },
+  demo_ack: {
+    name: 'Demo Booking — Confirmation', category: 'Website',
+    subject: 'We received your demo request — {{platformName}}',
+    variables: ['name', 'date', 'timeSlot', 'platformName', 'link'],
+    preheader: 'Thanks for booking a demo — we’ll confirm the details shortly.',
+    html: h('Your demo request is in! 🎬') + p('Hi {{name}},') +
+      p('Thanks for requesting a personalised demo of {{platformName}}. Here’s what we have so far:') +
+      details([['Preferred date', '{{date}}'], ['Preferred time', '{{timeSlot}}'], ['Status', 'Pending confirmation']]) +
+      p('Our team will review and confirm your slot by email shortly. If you need to change anything, just reply to this message.') +
+      button('{{link}}', 'Visit {{platformName}}'),
+  },
 };
 
 export const TEMPLATE_KEYS = Object.keys(DEFAULT_TEMPLATES);

@@ -27,8 +27,24 @@ export interface CaptchaConfig {
   forms: string[];
 }
 
+export interface DemoPayload {
+  name: string;
+  company?: string;
+  email: string;
+  phone: string;
+  country?: string;
+  preferredDate?: string;
+  timeSlot?: string;
+  timezone?: string;
+  employees?: string;
+  message?: string;
+  company_website?: string;
+  captchaToken?: string;
+}
+
 export const marketingApi = {
   contact: (payload: ContactPayload) => http.post('/contact', payload).then((r) => r.data),
+  demo: (payload: DemoPayload) => http.post('/demo', payload).then((r) => r.data),
   newsletter: (email: string, extra?: { captchaToken?: string; company_website?: string }) =>
     http.post('/newsletter', { email, ...extra }).then((r) => r.data),
   captcha: (): Promise<CaptchaConfig> => http.get('/content/captcha').then((r) => r.data.data),

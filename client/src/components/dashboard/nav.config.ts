@@ -47,6 +47,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'White Label', href: '/dashboard/branding', icon: Palette },
     { label: 'CMS', href: '/dashboard/cms', icon: Newspaper },
     { label: 'Enquiries', href: '/dashboard/enquiries', icon: Inbox },
+    { label: 'Demo Bookings', href: '/dashboard/demo-bookings', icon: CalendarClock },
     { label: 'System', href: '/dashboard/system', icon: Settings },
   ],
   company_admin: [

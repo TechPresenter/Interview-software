@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Bot, BarChart3, ShieldCheck, FileSearch, Video, Sparkles, ArrowRight, Check,
-  Workflow, Zap, PlayCircle,
+  Workflow, Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { BookDemoButton } from '@/components/landing/BookDemoButton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { SiteHeader } from '@/components/public/SiteHeader';
@@ -96,7 +97,7 @@ export default function LandingPage() {
             className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <Link href="/register"><Button size="lg">Start hiring free <ArrowRight className="h-5 w-5" /></Button></Link>
-            <Link href="/login"><Button size="lg" variant="glass" magnetic={false}><PlayCircle className="h-5 w-5" /> Book a demo</Button></Link>
+            <BookDemoButton />
           </motion.div>
 
           <motion.p

@@ -136,6 +136,15 @@ export const adminApi = {
   clearAuditLogs: (before?: string) =>
     api.delete('/admin/audit-logs', { params: before ? { before } : {} }).then((r) => r.data),
 
+  // Demo bookings (Enquiries → Demo Bookings)
+  demoBookings: (params?: object) => getPaged<any>('/admin/demo-bookings', params),
+  demoBookingStats: () => apiGet<any>('/admin/demo-bookings/stats'),
+  demoBooking: (id: string) => apiGet<any>(`/admin/demo-bookings/${id}`),
+  demoAssignees: () => apiGet<any[]>('/admin/demo-bookings/assignees'),
+  updateDemoBooking: (id: string, body: object) => api.patch(`/admin/demo-bookings/${id}`, body).then((r) => r.data.data),
+  deleteDemoBooking: (id: string) => api.delete(`/admin/demo-bookings/${id}`).then((r) => r.data),
+  exportDemoBookings: (params?: { status?: string }) => download('/admin/demo-bookings/export', params || {}, 'demo-bookings.csv'),
+
   // Spam protection (CAPTCHA)
   captchaConfig: () => apiGet<any>('/admin/captcha'),
   updateCaptcha: (body: object) => api.put('/admin/captcha', body).then((r) => r.data.data),
