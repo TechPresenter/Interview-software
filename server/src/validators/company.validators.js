@@ -103,4 +103,10 @@ export const autoInterviewSchema = z.object({
   sendInvite: z.boolean().optional(),
 });
 
+/** Company workspace deletion — requires typing the exact company name. */
+export const deleteAccountSchema = z.object({
+  confirm: z.string().min(1, 'Type the company name to confirm'),
+  staffAction: z.enum(['delete', 'deactivate']).optional(),
+});
+
 export { objectId };

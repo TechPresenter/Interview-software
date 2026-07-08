@@ -30,7 +30,9 @@ import * as emailCtrl from '../controllers/company/email.controller.js';
 import * as gmailCtrl from '../controllers/company/gmail.controller.js';
 import * as apiKeys from '../controllers/company/apiKey.controller.js';
 import * as proctoring from '../controllers/proctoring.controller.js';
+import * as account from '../controllers/company/account.controller.js';
 import { createApiKeySchema } from '../validators/apiKey.validators.js';
+import { deleteAccountSchema } from '../validators/company.validators.js';
 
 export const router = Router();
 
@@ -45,6 +47,9 @@ router.get('/company/overview', overview.overview);
 router.get('/company/ai-interviewer', overview.getInterviewer);
 router.put('/company/ai-interviewer', overview.updateInterviewer);
 router.post('/company/ai-interviewer/avatar', uploadImage, overview.uploadInterviewerAvatar);
+
+/* ── Account (company_admin: delete the whole workspace) ── */
+router.delete('/company/account', rbac(ROLES.COMPANY_ADMIN), validate(deleteAccountSchema), account.deleteAccount);
 
 /* ── Integration API keys (company_admin) ──────────────── */
 router.get('/company/api-keys', rbac(ROLES.COMPANY_ADMIN), apiKeys.list);

@@ -12,6 +12,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
+import { PhoneField, DateOfBirthField, splitPhone, joinPhone } from '@/components/ui/ProfileFields';
 import { toast } from '@/components/ui/toast';
 
 const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
@@ -24,7 +25,7 @@ const GENDERS: [string, string][] = [
   ['prefer_not_to_say', 'Prefer not to say'],
 ];
 
-const EMPTY = { name: '', email: '', phone: '', dob: '', gender: '', address: '', city: '', state: '', country: '', postalCode: '' };
+const EMPTY = { name: '', email: '', phone: '', phoneCode: 'IN', dob: '', gender: '', address: '', city: '', state: '', country: '', postalCode: '' };
 
 export default function ProfileDetailsPage() {
   const hydrate = useAuth((s) => s.hydrate);
@@ -40,8 +41,9 @@ export default function ProfileDetailsPage() {
   useEffect(() => {
     if (!u) return;
     const p = u.meta?.profile || {};
+    const ph = splitPhone(u.phone);
     setForm({
-      name: u.name || '', email: u.email || '', phone: u.phone || '',
+      name: u.name || '', email: u.email || '', phone: ph.national, phoneCode: ph.code,
       dob: p.dob || '', gender: p.gender || '', address: p.address || '',
       city: p.city || '', state: p.state || '', country: p.country || '', postalCode: p.postalCode || '',
     });
@@ -53,7 +55,7 @@ export default function ProfileDetailsPage() {
     if (form.name.trim().length < 2) { toast.error('Enter your full name.'); return; }
     setSaving(true);
     try {
-      await accountApi.updateProfile(form);
+      await accountApi.updateProfile({ ...form, phone: joinPhone(form.phoneCode, form.phone) });
       await hydrate();
       qc.invalidateQueries({ queryKey: ['me'] });
       toast.success('Profile updated');
@@ -127,8 +129,8 @@ export default function ProfileDetailsPage() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Field label="Full name" value={form.name} onChange={set('name')} autoComplete="name" />
           <Field label="Email address" type="email" value={form.email} onChange={set('email')} autoComplete="email" />
-          <Field label="Mobile number" type="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" />
-          <Field label="Date of birth" type="date" value={form.dob} onChange={set('dob')} />
+          <PhoneField label="Mobile number" code={form.phoneCode} national={form.phone} onCode={set('phoneCode')} onNational={set('phone')} />
+          <DateOfBirthField label="Date of birth" value={form.dob} onChange={set('dob')} />
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Gender</label>
             <select

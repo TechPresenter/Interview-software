@@ -98,6 +98,7 @@ export const FOOTER_NAV: NavColumn[] = [
     links: [
       { label: 'Privacy Policy', href: '/privacy-policy' },
       { label: 'Terms & Conditions', href: '/terms' },
+      { label: 'Refund & Return Policy', href: '/refund-policy' },
       { label: 'Cookie Policy', href: '/cookies' },
       { label: 'Security', href: '/security' },
       { label: 'Data Processing (DPA)', href: '/dpa' },

@@ -20,6 +20,8 @@ export interface ProctorConfig {
   windowMonitor: boolean;
   audio: boolean;
   vision: boolean;
+  /** MediaPipe FaceLandmarker (gaze/liveness) — heavy; disable on low-power/mobile. */
+  faceMesh: boolean;
   input: boolean;
   screenshots: boolean;
   visionIntervalMs: number;
@@ -33,6 +35,7 @@ export const DEFAULT_CONFIG: ProctorConfig = {
   windowMonitor: true,
   audio: true,
   vision: true,
+  faceMesh: true,
   input: true,
   screenshots: true,
   visionIntervalMs: 3500,
@@ -133,7 +136,8 @@ export class ProctoringEngine {
     if (this.cfg.windowMonitor) this.installWindowMonitor();
     if (this.cfg.input) this.installInputMonitor();
     if (this.cfg.audio) void this.startAudio();
-    if (this.cfg.vision) { void this.startVision(); void this.startFaceMesh(); }
+    if (this.cfg.vision) void this.startVision();
+    if (this.cfg.vision && this.cfg.faceMesh) void this.startFaceMesh();
 
     this.flushTimer = setInterval(() => this.flush(), this.cfg.flushMs);
   }

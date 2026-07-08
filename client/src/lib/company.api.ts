@@ -115,6 +115,10 @@ export const companyApi = {
   gmailAuthorizeUrl: () => apiGet<{ url: string }>('/company/email/gmail/authorize'),
   disconnectGmail: () => apiPost<any>('/company/email/gmail/disconnect'),
 
+  // Danger zone — permanently delete the company workspace
+  deleteAccount: (body: { confirm: string; staffAction: 'delete' | 'deactivate' }) =>
+    api.delete('/company/account', { data: body }).then((r) => r.data),
+
   // Integration API keys
   apiKeys: () => apiGet<any[]>('/company/api-keys'),
   createApiKey: (body: object) => apiPost<any>('/company/api-keys', body),

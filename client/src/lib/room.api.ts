@@ -6,7 +6,9 @@ const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
  * Interview-room client. These endpoints are token-gated (no auth header), so we
  * use a bare axios instance keyed by the interview accessToken in the URL.
  */
-const http = axios.create({ baseURL: `${BASE}/interview-room` });
+// 30s timeout so a hung request (flaky mobile network) can't freeze the room
+// on "submitting" — the caller recovers and lets the candidate retry.
+const http = axios.create({ baseURL: `${BASE}/interview-room`, timeout: 30000 });
 
 export interface RoomQuestion {
   text: string;

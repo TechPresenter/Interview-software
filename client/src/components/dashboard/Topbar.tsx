@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { User, CreditCard, Receipt, Shield, Settings, Bell, KeyRound, ScrollText, LogOut, ChevronDown, Menu } from 'lucide-react';
 import { useAuth } from '@/store/auth.store';
 
+const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+
 /** Dashboard top bar with the profile dropdown (Company + Admin + all roles). */
 export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const user = useAuth((s) => s.user);
@@ -31,6 +33,7 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   ];
 
   const initial = user.name?.[0]?.toUpperCase() || 'U';
+  const avatarUrl = user.avatar ? `${API_ORIGIN}${user.avatar}` : null;
   async function doLogout() {
     setOpen(false);
     await logout();
@@ -53,7 +56,11 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
           onClick={() => setOpen((o) => !o)}
           className="flex items-center gap-2 rounded-xl border border-border px-2 py-1.5 transition hover:bg-muted/50"
         >
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-sm font-bold text-white">{initial}</span>
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={user.name} className="h-8 w-8 rounded-lg object-cover" />
+          ) : (
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-sm font-bold text-white">{initial}</span>
+          )}
           <span className="hidden text-left sm:block">
             <span className="block text-sm font-medium leading-tight">{user.name}</span>
             <span className="block text-xs capitalize leading-tight text-muted-foreground">{role.replace('_', ' ')}</span>

@@ -7,6 +7,7 @@ import { AiAvatar } from './AiAvatar';
 import { Waveform } from './Waveform';
 import { Button } from '@/components/ui/Button';
 import { roomApi, type RoomQuestion, type RoomProgress } from '@/lib/room.api';
+import { toast } from '@/components/ui/toast';
 import { enterFullscreen } from '@/hooks/useAntiCheat';
 import { useProctoring } from '@/hooks/useProctoring';
 import { loadVoices, speak, playAudios, stopSpeaking, type Lang } from '@/lib/voice';
@@ -58,12 +59,21 @@ export function InterviewRoom({
 
   const displayAnswer = (committed + (interim ? (committed ? ' ' : '') + interim : '')).trimStart();
 
+  // Device / browser capabilities (computed once, client-side).
+  const [caps] = useState(() => ({
+    mobile: typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(navigator.userAgent),
+    speech: typeof window !== 'undefined' && !!((window as any).webkitSpeechRecognition || (window as any).SpeechRecognition),
+  }));
+
   // Full AI proctoring engine: browser lock, tab/window, noise, input analytics,
   // webcam person/face detection, device fingerprint, screenshots + live fraud score.
+  // On mobile the heavy MediaPipe gaze model is dropped and vision runs slower so
+  // the interview stays smooth on low-power devices.
   const proctor = useProctoring({
     token,
     enabled: phase === 'active' || phase === 'submitting',
     getVideo: () => selfVideoRef.current,
+    config: caps.mobile ? { faceMesh: false, visionIntervalMs: 7000 } : undefined,
   });
   const violations = proctor.violations;
 
@@ -88,6 +98,9 @@ export function InterviewRoom({
   }, [speakText]);
 
   /* ── Live speech-to-text into the answer box ── */
+  // Tracks the user's intent so mobile browsers (which auto-stop after a pause)
+  // can transparently restart the mic while the candidate still wants to speak.
+  const wantListenRef = useRef(false);
   const startRecognition = useCallback((l: Lang) => {
     const SR = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     if (!SR) return null;
@@ -106,23 +119,38 @@ export function InterviewRoom({
       if (finalText) setCommitted((c) => (c ? `${c} ${finalText}` : finalText));
       setInterim(interimText);
     };
-    rec.onend = () => setListening(false);
+    rec.onerror = (e: any) => {
+      // Permission/hardware errors are fatal; transient ones let onend restart.
+      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed' || e?.error === 'audio-capture') {
+        wantListenRef.current = false;
+        setListening(false);
+      }
+    };
+    rec.onend = () => {
+      // Auto-restart on mobile browsers that stop after a short silence.
+      if (wantListenRef.current) {
+        try { rec.start(); return; } catch { /* fall through to stop */ }
+      }
+      setListening(false);
+    };
     return rec;
   }, []);
 
+  const stopListening = useCallback(() => {
+    wantListenRef.current = false;
+    try { recognitionRef.current?.stop(); } catch { /* noop */ }
+    setListening(false);
+    setInterim('');
+  }, []);
+
   const toggleListening = useCallback(() => {
-    if (listening) {
-      recognitionRef.current?.stop();
-      setListening(false);
-      setInterim('');
-      return;
-    }
+    if (listening) { stopListening(); return; }
     const rec = startRecognition(lang);
-    if (!rec) return;
+    if (!rec) { toast.error('Voice input isn’t supported on this browser — please type your answer.'); return; }
     recognitionRef.current = rec;
-    rec.start();
-    setListening(true);
-  }, [listening, lang, startRecognition]);
+    wantListenRef.current = true;
+    try { rec.start(); setListening(true); } catch { wantListenRef.current = false; }
+  }, [listening, lang, startRecognition, stopListening]);
 
   /* ── Recording ── */
   const startRecording = useCallback(() => {
@@ -191,14 +219,20 @@ export function InterviewRoom({
     if (next === lang) return;
     setLang(next);
     await roomApi.setLanguage(token, next).catch(() => {});
-    if (listening) { recognitionRef.current?.stop(); setTimeout(() => { const r = startRecognition(next); if (r) { recognitionRef.current = r; r.start(); setListening(true); } }, 250); }
+    if (listening) {
+      wantListenRef.current = false;
+      try { recognitionRef.current?.stop(); } catch { /* noop */ }
+      setTimeout(() => {
+        const r = startRecognition(next);
+        if (r) { recognitionRef.current = r; wantListenRef.current = true; try { r.start(); setListening(true); } catch { wantListenRef.current = false; } }
+      }, 300);
+    }
   }
 
   async function submit() {
     if (phase !== 'active') return;
     setPhase('submitting');
-    recognitionRef.current?.stop();
-    setListening(false);
+    stopListening();
     const text = displayAnswer.trim();
     setTranscript((t) => [...t, { role: 'candidate', text: text || '(no answer)' }]);
     localStorage.removeItem(`iv:${token}:${progress.current}`);
@@ -206,15 +240,30 @@ export function InterviewRoom({
       const res = await roomApi.answer(token, { answer: text, durationSeconds: Math.round((Date.now() - answerStart.current) / 1000) });
       setCommitted(''); setInterim('');
       if (res.done) { pushAi(res.message, lang); await finish(); return; }
+      if (!res.question) {
+        // Backend advanced but returned no question — recover to active so the
+        // room is never stuck; the candidate can submit again to fetch the next.
+        answerStart.current = Date.now();
+        setPhase('active');
+        toast.info(lang === 'hi' ? 'अगला प्रश्न लोड हो रहा है…' : 'Loading the next question…');
+        return;
+      }
       setQuestion(res.question); setProgress(res.progress); pushAi(res.question.text, lang);
       answerStart.current = Date.now(); setPhase('active');
-    } catch { setPhase('active'); }
+    } catch {
+      // Never leave the room frozen on "submitting" (e.g. a dropped mobile
+      // connection): restore the answer, drop the optimistic turn, and let them retry.
+      setCommitted(text);
+      setTranscript((t) => (t[t.length - 1]?.role === 'candidate' ? t.slice(0, -1) : t));
+      setPhase('active');
+      toast.error(lang === 'hi' ? 'उत्तर सबमिट नहीं हुआ — कृपया दोबारा प्रयास करें।' : 'Couldn’t submit — check your connection and try again.');
+    }
   }
 
   async function skipQuestion() {
     if (phase !== 'active' || skipsLeft <= 0) return;
     setPhase('submitting');
-    recognitionRef.current?.stop(); setListening(false);
+    stopListening();
     setTranscript((t) => [...t, { role: 'candidate', text: '(skipped)' }]);
     try {
       const res = await roomApi.skip(token);
@@ -222,9 +271,13 @@ export function InterviewRoom({
       if (typeof res.skipsRemaining === 'number') setSkipsLeft(res.skipsRemaining);
       else setSkipsLeft((s) => Math.max(0, s - 1));
       if (res.done) { pushAi(res.message, lang); await finish(); return; }
-      setQuestion(res.question); setProgress(res.progress); pushAi(res.question.text, lang);
+      if (res.question) { setQuestion(res.question); setProgress(res.progress); pushAi(res.question.text, lang); }
       answerStart.current = Date.now(); setPhase('active');
-    } catch { setPhase('active'); }
+    } catch {
+      setTranscript((t) => (t[t.length - 1]?.role === 'candidate' ? t.slice(0, -1) : t));
+      setPhase('active');
+      toast.error(lang === 'hi' ? 'स्किप नहीं हुआ — दोबारा प्रयास करें।' : 'Couldn’t skip — please try again.');
+    }
   }
 
   async function finish() {
@@ -324,7 +377,7 @@ export function InterviewRoom({
           <textarea
             value={displayAnswer}
             onChange={(e) => { setCommitted(e.target.value); setInterim(''); }}
-            placeholder={lang === 'hi' ? 'अपना उत्तर लिखें, या बोलने के लिए माइक दबाएँ…' : 'Type your answer, or tap the mic to speak…'}
+            placeholder={caps.speech ? (lang === 'hi' ? 'अपना उत्तर लिखें, या बोलने के लिए माइक दबाएँ…' : 'Type your answer, or tap the mic to speak…') : (lang === 'hi' ? 'अपना उत्तर यहाँ लिखें…' : 'Type your answer here…')}
             rows={4}
             disabled={phase !== 'active'}
             className="w-full resize-none rounded-xl border border-input bg-background/60 p-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/40"
@@ -338,7 +391,12 @@ export function InterviewRoom({
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Button variant={listening ? 'primary' : 'glass'} size="sm" magnetic={false} onClick={toggleListening}>
+              <Button
+                variant={listening ? 'primary' : 'glass'} size="sm" magnetic={false}
+                disabled={phase !== 'active' || !caps.speech}
+                title={!caps.speech ? 'Voice input isn’t supported on this browser — please type your answer' : undefined}
+                onClick={toggleListening}
+              >
                 {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />} {listening ? (lang === 'hi' ? 'रोकें' : 'Stop') : (lang === 'hi' ? 'बोलें' : 'Speak')}
               </Button>
               {allowSkip && (
