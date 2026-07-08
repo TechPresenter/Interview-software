@@ -184,12 +184,15 @@ export async function recordEvents(interview, events, opts = {}) {
   };
 }
 
-/** Persist the device + network fingerprint (§10). */
-export async function setDeviceNetwork(interview, { device, network, attentionScore, eyeContactPct } = {}) {
+/** Persist the device + network fingerprint (§10) + identity signals (§1). */
+export async function setDeviceNetwork(interview, { device, network, attentionScore, eyeContactPct, identity } = {}) {
   if (device) interview.proctoring.device = { ...interview.proctoring.device?.toObject?.(), ...device };
   if (network) interview.proctoring.network = { ...interview.proctoring.network?.toObject?.(), ...network };
   if (typeof attentionScore === 'number') interview.proctoring.attentionScore = Math.max(0, Math.min(100, attentionScore));
   if (typeof eyeContactPct === 'number') interview.proctoring.eyeContactPct = Math.max(0, Math.min(100, eyeContactPct));
+  if (identity && typeof identity === 'object') {
+    interview.proctoring.identity = { ...interview.proctoring.identity?.toObject?.(), ...identity };
+  }
   await interview.save();
   return interview.proctoring;
 }

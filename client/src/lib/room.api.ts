@@ -37,7 +37,7 @@ export const roomApi = {
   proctoringBatch: (token: string, events: Array<{ type: string; severity?: string; detail?: unknown; at?: number }>) =>
     http.post(`/${token}/proctoring`, { events }).then((r) => r.data.data).catch(() => null),
   /** Device + network fingerprint (§10). */
-  device: (token: string, payload: { device?: unknown; network?: unknown; attentionScore?: number; eyeContactPct?: number }) =>
+  device: (token: string, payload: { device?: unknown; network?: unknown; attentionScore?: number; eyeContactPct?: number; identity?: { livenessPassed?: boolean; faceMatch?: number; verified?: boolean; method?: string } }) =>
     http.post(`/${token}/device`, payload).then((r) => r.data.data).catch(() => null),
   /** Evidence screenshot / webcam snapshot (§13). */
   evidence: (token: string, imageBase64: string, reason?: string, type = 'screenshot') =>

@@ -1,6 +1,7 @@
 import { roomApi } from '@/lib/room.api';
 import { captureDevice, captureNetwork, requestPreciseLocation } from './device';
 import { VisionDetector } from './vision';
+import { FaceMeshDetector } from './faceMesh';
 
 /**
  * Proctoring engine — orchestrates every browser-side detector, batches events,
@@ -86,6 +87,15 @@ export class ProctoringEngine {
   private cleanups: Array<() => void> = [];
 
   private vision = new VisionDetector();
+  private faceMesh = new FaceMeshDetector();
+  private faceMeshTimer?: ReturnType<typeof setInterval>;
+  // §4 attention accumulators + §1 passive liveness.
+  private attFrames = 0;
+  private totFrames = 0;
+  private eyeFrames = 0;
+  private eyesClosedTicks = 0;
+  private livenessPassed = false;
+  private lastAttnPush = 0;
   private prevPeople = 1;
   private audioCtx?: AudioContext;
   private analyser?: AnalyserNode;
@@ -123,7 +133,7 @@ export class ProctoringEngine {
     if (this.cfg.windowMonitor) this.installWindowMonitor();
     if (this.cfg.input) this.installInputMonitor();
     if (this.cfg.audio) void this.startAudio();
-    if (this.cfg.vision) void this.startVision();
+    if (this.cfg.vision) { void this.startVision(); void this.startFaceMesh(); }
 
     this.flushTimer = setInterval(() => this.flush(), this.cfg.flushMs);
   }
@@ -132,10 +142,18 @@ export class ProctoringEngine {
     this.running = false;
     for (const c of this.cleanups) c();
     this.cleanups = [];
-    [this.flushTimer, this.visionTimer, this.audioTimer, this.idleTimer].forEach((t) => t && clearInterval(t));
+    [this.flushTimer, this.visionTimer, this.audioTimer, this.idleTimer, this.faceMeshTimer].forEach((t) => t && clearInterval(t));
     try { this.audioCtx?.close(); } catch { /* noop */ }
+    try { this.faceMesh.close(); } catch { /* noop */ }
     this.micStream?.getTracks().forEach((t) => t.stop());
     this.channel?.close();
+    // Final attention snapshot.
+    if (this.totFrames > 3) {
+      void roomApi.device(this.token, {
+        attentionScore: Math.round((this.attFrames / this.totFrames) * 100),
+        eyeContactPct: Math.round((this.eyeFrames / this.totFrames) * 100),
+      });
+    }
     await this.flush();
   }
 
@@ -377,6 +395,54 @@ export class ProctoringEngine {
       this.prevPeople = r.people;
       this.emit();
     }, this.cfg.visionIntervalMs);
+  }
+
+  /* ── §1 liveness + §4 gaze / attention (MediaPipe FaceLandmarker) ── */
+
+  async startFaceMesh() {
+    const ok = await this.faceMesh.load();
+    if (!ok) return; // model/CDN unavailable — COCO person detection still runs
+    this.faceMeshTimer = setInterval(() => {
+      const video = this.getVideo();
+      if (!video) return;
+      const r = this.faceMesh.detect(video);
+      if (!r.ok || !r.facePresent) return;
+
+      this.totFrames += 1;
+      if (r.attentive) this.attFrames += 1;
+      if (r.gaze === 'center') this.eyeFrames += 1;
+
+      // Passive liveness: the first genuine blink proves a live person.
+      if (r.blinked && !this.livenessPassed) {
+        this.livenessPassed = true;
+        void roomApi.device(this.token, { identity: { livenessPassed: true, method: 'blink' } });
+      }
+
+      // Gaze / head-pose events (throttled).
+      if (r.gaze !== 'center') {
+        if (Math.abs(r.yaw) > 0.24) {
+          if (!this.throttled('head_turn', 5000)) this.record('head_turn', 'low', { gaze: r.gaze });
+        } else if (!this.throttled('looking_away', 5000)) {
+          this.record('looking_away', 'low', { gaze: r.gaze });
+        }
+      }
+      if (r.eyesClosed) {
+        this.eyesClosedTicks += 1;
+        if (this.eyesClosedTicks === 5 && !this.throttled('eyes_closed', 8000)) this.record('eyes_closed', 'low');
+      } else {
+        this.eyesClosedTicks = 0;
+      }
+
+      // Periodically report attention + eye-contact (§4) to the server.
+      const now = Date.now();
+      if (now - this.lastAttnPush > 12000 && this.totFrames > 5) {
+        this.lastAttnPush = now;
+        void roomApi.device(this.token, {
+          attentionScore: Math.round((this.attFrames / this.totFrames) * 100),
+          eyeContactPct: Math.round((this.eyeFrames / this.totFrames) * 100),
+        });
+      }
+    }, 900);
   }
 }
 

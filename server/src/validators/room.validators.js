@@ -27,6 +27,15 @@ export const deviceSchema = z.object({
   network: z.record(z.any()).optional(),
   attentionScore: z.number().min(0).max(100).optional(),
   eyeContactPct: z.number().min(0).max(100).optional(),
+  // Phase 2 identity signals (liveness / face-match).
+  identity: z
+    .object({
+      verified: z.boolean().optional(),
+      livenessPassed: z.boolean().optional(),
+      faceMatch: z.number().min(0).max(100).optional(),
+      method: z.string().max(40).optional(),
+    })
+    .optional(),
 });
 
 /** Evidence screenshot payload (§13) — base64 image. */
