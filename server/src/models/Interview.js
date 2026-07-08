@@ -4,27 +4,18 @@ import { INTERVIEW_TYPES, INTERVIEW_STATUS } from '../constants/enums.js';
 
 const { Schema } = mongoose;
 
-/** A single proctoring/anti-cheat event captured during the interview. */
+/**
+ * A single proctoring/anti-cheat event captured during the interview.
+ * `type` is a free string validated against proctoring.service SCORE_WEIGHTS —
+ * kept open (no enum) so new detectors can be added without a schema migration.
+ */
 const proctoringEventSchema = new Schema(
   {
-    type: {
-      type: String,
-      enum: [
-        'tab_switch',
-        'window_blur',
-        'fullscreen_exit',
-        'copy',
-        'paste',
-        'right_click',
-        'face_missing',
-        'multiple_faces',
-        'no_audio',
-      ],
-      required: true,
-    },
+    type: { type: String, required: true },
     severity: { type: String, enum: ['low', 'medium', 'high'], default: 'low' },
     at: { type: Date, default: Date.now },
     detail: Schema.Types.Mixed,
+    screenshotUrl: { type: String }, // evidence captured at the moment of the event
   },
   { _id: false },
 );
@@ -95,7 +86,59 @@ const interviewSchema = new Schema(
 
     proctoring: {
       integrityScore: { type: Number, default: 100, min: 0, max: 100 },
+      fraudScore: { type: Number, default: 0, min: 0, max: 100 },
+      riskLevel: { type: String, enum: ['safe', 'low', 'medium', 'high', 'critical'], default: 'safe' },
+      attentionScore: { type: Number, default: 100, min: 0, max: 100 },
+      eyeContactPct: { type: Number, min: 0, max: 100 },
       events: [proctoringEventSchema],
+
+      // Identity verification (§1) — populated in Phase 2 (MediaPipe/face-match).
+      identity: {
+        verified: { type: Boolean, default: false },
+        faceMatch: { type: Number, min: 0, max: 100 }, // % match vs profile photo
+        livenessPassed: { type: Boolean },
+        method: { type: String }, // e.g. 'blink', 'smile', 'head'
+      },
+
+      // Device & browser fingerprint (§10).
+      device: {
+        browser: String,
+        browserVersion: String,
+        os: String,
+        deviceType: String, // desktop | mobile | tablet
+        screenResolution: String,
+        viewport: String,
+        cpuCores: Number,
+        ram: Number, // GB (navigator.deviceMemory, approximate)
+        userAgent: String,
+        language: String,
+        timezone: String,
+      },
+
+      // Network & approximate geo (§10) — geo only with the candidate's permission.
+      network: {
+        ip: String,
+        country: String,
+        region: String,
+        city: String,
+        lat: Number,
+        lng: Number,
+        networkType: String, // 4g, wifi, etc.
+        isp: String,
+        vpn: { type: Boolean, default: false },
+        downlinkMbps: Number,
+      },
+
+      // Screenshots / webcam snapshots captured on violations (§13).
+      evidence: [
+        {
+          _id: false,
+          type: { type: String }, // screenshot | webcam | id_card
+          reason: String, // the trigger (e.g. multiple_faces)
+          url: String,
+          at: { type: Date, default: Date.now },
+        },
+      ],
     },
 
     report: { type: Schema.Types.ObjectId, ref: 'Report' },

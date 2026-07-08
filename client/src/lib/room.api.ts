@@ -33,6 +33,15 @@ export const roomApi = {
   complete: (token: string) => http.post(`/${token}/complete`).then((r) => r.data.data),
   proctoring: (token: string, type: string, severity: 'low' | 'medium' | 'high' = 'low') =>
     http.post(`/${token}/proctoring`, { type, severity }).then((r) => r.data.data).catch(() => null),
+  /** Batch proctoring events (§ engine flushes here). */
+  proctoringBatch: (token: string, events: Array<{ type: string; severity?: string; detail?: unknown; at?: number }>) =>
+    http.post(`/${token}/proctoring`, { events }).then((r) => r.data.data).catch(() => null),
+  /** Device + network fingerprint (§10). */
+  device: (token: string, payload: { device?: unknown; network?: unknown; attentionScore?: number; eyeContactPct?: number }) =>
+    http.post(`/${token}/device`, payload).then((r) => r.data.data).catch(() => null),
+  /** Evidence screenshot / webcam snapshot (§13). */
+  evidence: (token: string, imageBase64: string, reason?: string, type = 'screenshot') =>
+    http.post(`/${token}/evidence`, { imageBase64, reason, type }).then((r) => r.data.data).catch(() => null),
   uploadRecording: (token: string, blob: Blob) => {
     const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
     const fd = new FormData();

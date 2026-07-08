@@ -2,17 +2,26 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Send, ShieldAlert, Clock, Loader2, SkipForward, Volume2, Maximize2 } from 'lucide-react';
+import { Mic, MicOff, Send, ShieldAlert, Clock, Loader2, SkipForward, Volume2, Maximize2, Users } from 'lucide-react';
 import { AiAvatar } from './AiAvatar';
 import { Waveform } from './Waveform';
 import { Button } from '@/components/ui/Button';
 import { roomApi, type RoomQuestion, type RoomProgress } from '@/lib/room.api';
-import { useAntiCheat, enterFullscreen } from '@/hooks/useAntiCheat';
+import { enterFullscreen } from '@/hooks/useAntiCheat';
+import { useProctoring } from '@/hooks/useProctoring';
 import { loadVoices, speak, playAudios, stopSpeaking, type Lang } from '@/lib/voice';
 import { cn } from '@/lib/utils';
 
 type Phase = 'starting' | 'active' | 'submitting' | 'finishing' | 'done';
 interface Turn { role: 'ai' | 'candidate'; text: string }
+
+const RISK_CLASS: Record<string, string> = {
+  safe: 'bg-accent/15 text-accent',
+  low: 'bg-sky-500/15 text-sky-400',
+  medium: 'bg-amber-500/15 text-amber-400',
+  high: 'bg-orange-500/15 text-orange-400',
+  critical: 'bg-destructive/15 text-destructive',
+};
 
 export function InterviewRoom({
   token, durationMinutes, stream, onDone,
@@ -49,10 +58,14 @@ export function InterviewRoom({
 
   const displayAnswer = (committed + (interim ? (committed ? ' ' : '') + interim : '')).trimStart();
 
-  const { violations } = useAntiCheat({
+  // Full AI proctoring engine: browser lock, tab/window, noise, input analytics,
+  // webcam person/face detection, device fingerprint, screenshots + live fraud score.
+  const proctor = useProctoring({
+    token,
     enabled: phase === 'active' || phase === 'submitting',
-    onEvent: (type, severity) => roomApi.proctoring(token, type, severity),
+    getVideo: () => selfVideoRef.current,
   });
+  const violations = proctor.violations;
 
   /* ── TTS: prefer Sarvam (natural Indian voice, EN/HI); fall back to browser ── */
   const speakText = useCallback(async (text: string, l: Lang) => {
@@ -268,7 +281,19 @@ export function InterviewRoom({
           </div>
 
           <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-1.5 text-sm tabular-nums"><Clock className="h-4 w-4 text-muted-foreground" /> {mm}:{ss}</div>
-          {violations > 0 && <div className="flex items-center gap-1.5 rounded-lg bg-destructive/15 px-3 py-1.5 text-sm text-destructive"><ShieldAlert className="h-4 w-4" /> {violations}</div>}
+
+          {/* Live proctoring HUD */}
+          {proctor.people !== 1 && (
+            <div className="flex items-center gap-1.5 rounded-lg bg-destructive/15 px-3 py-1.5 text-sm text-destructive" title="People detected in the camera frame">
+              <Users className="h-4 w-4" /> {proctor.people}
+            </div>
+          )}
+          <div
+            className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm capitalize', RISK_CLASS[proctor.riskLevel] || RISK_CLASS.safe)}
+            title={`Fraud score ${proctor.fraudScore}/100 · ${violations} event${violations === 1 ? '' : 's'}`}
+          >
+            <ShieldAlert className="h-4 w-4" /> {proctor.riskLevel} · {proctor.fraudScore}
+          </div>
         </div>
 
         {/* Avatar + question */}

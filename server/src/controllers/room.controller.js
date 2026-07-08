@@ -64,13 +64,28 @@ export const complete = asyncHandler(async (req, res) => {
   return ok(res, await room.complete(interview), 'Interview completed');
 });
 
-/** POST /interview-room/:token/proctoring — anti-cheat event. */
+/** POST /interview-room/:token/proctoring — anti-cheat event(s) (single or batched). */
 export const proctoring = asyncHandler(async (req, res) => {
   const interview = await room.loadByToken(req.params.token);
   if (interview.status !== 'in_progress' && interview.status !== 'flagged') {
     return ok(res, { ignored: true });
   }
   return ok(res, await room.recordProctoring(interview, req.body));
+});
+
+/** POST /interview-room/:token/device — device + network fingerprint (§10). */
+export const device = asyncHandler(async (req, res) => {
+  const interview = await room.loadByToken(req.params.token);
+  return ok(res, await room.recordDevice(interview, req.body), 'Device info recorded');
+});
+
+/** POST /interview-room/:token/evidence — screenshot / webcam snapshot (§13). */
+export const evidence = asyncHandler(async (req, res) => {
+  const interview = await room.loadByToken(req.params.token);
+  if (interview.status !== 'in_progress' && interview.status !== 'flagged') {
+    return ok(res, { ignored: true });
+  }
+  return ok(res, await room.recordEvidence(interview, req.body), 'Evidence saved');
 });
 
 /** POST /interview-room/:token/recording — upload captured media. */

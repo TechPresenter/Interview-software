@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as roomCtrl from '../controllers/room.controller.js';
 import { validate } from '../middleware/validate.js';
 import { uploadMedia } from '../middleware/upload.js';
-import { answerSchema, proctoringSchema, startSchema, languageSchema } from '../validators/room.validators.js';
+import { answerSchema, proctoringSchema, startSchema, languageSchema, deviceSchema, evidenceSchema } from '../validators/room.validators.js';
 
 /**
  * Public interview room. Authorization is by the unguessable accessToken in the
@@ -18,6 +18,8 @@ router.post('/:token/language', validate(languageSchema), roomCtrl.language);
 router.post('/:token/tts', roomCtrl.tts);
 router.post('/:token/complete', roomCtrl.complete);
 router.post('/:token/proctoring', validate(proctoringSchema), roomCtrl.proctoring);
+router.post('/:token/device', validate(deviceSchema), roomCtrl.device);
+router.post('/:token/evidence', validate(evidenceSchema), roomCtrl.evidence);
 router.post('/:token/recording', uploadMedia, roomCtrl.recording);
 
 export default router;

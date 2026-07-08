@@ -27,6 +27,7 @@ import * as branding from '../controllers/admin/branding.controller.js';
 import * as aiProviders from '../controllers/admin/aiProvider.controller.js';
 import * as leads from '../controllers/admin/leads.controller.js';
 import * as captcha from '../controllers/admin/captcha.controller.js';
+import * as proctoring from '../controllers/proctoring.controller.js';
 import { updateCandidateAdminSchema, createAiProviderSchema, updateAiProviderSchema } from '../validators/admin.validators.js';
 import { brandingSchema } from '../validators/branding.validators.js';
 import { leadUpdateSchema } from '../validators/lead.validators.js';
@@ -146,6 +147,12 @@ router.delete('/email/templates/:key', email.resetTemplate);
 /* ── Spam protection (CAPTCHA) ─────────────────────────── */
 router.get('/captcha', captcha.get);
 router.put('/captcha', captcha.update);
+
+/* ── Proctoring audit (platform-wide) ──────────────────── */
+router.get('/proctoring', proctoring.list);
+router.get('/proctoring/stats', proctoring.stats);
+router.get('/proctoring/export', proctoring.exportCsv);
+router.get('/proctoring/:id', proctoring.detail);
 
 /* ── System settings + audit + backup ──────────────────── */
 router.get('/audit-logs', system.auditLogs);

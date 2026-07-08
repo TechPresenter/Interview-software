@@ -29,6 +29,7 @@ import * as roleCtrl from '../controllers/company/role.controller.js';
 import * as emailCtrl from '../controllers/company/email.controller.js';
 import * as gmailCtrl from '../controllers/company/gmail.controller.js';
 import * as apiKeys from '../controllers/company/apiKey.controller.js';
+import * as proctoring from '../controllers/proctoring.controller.js';
 import { createApiKeySchema } from '../validators/apiKey.validators.js';
 
 export const router = Router();
@@ -110,6 +111,12 @@ router.post('/company/email/gmail/disconnect', rbac(ROLES.COMPANY_ADMIN), gmailC
 
 /* ── Pipeline ──────────────────────────────────────────── */
 router.get('/pipeline', pipeline.board);
+
+/* ── Proctoring audit (company-scoped) ─────────────────── */
+router.get('/proctoring', proctoring.list);
+router.get('/proctoring/stats', proctoring.stats);
+router.get('/proctoring/export', proctoring.exportCsv);
+router.get('/proctoring/:id', proctoring.detail);
 
 /* ── Reports (specific routes before :id) ──────────────── */
 router.get('/reports', reports.list);

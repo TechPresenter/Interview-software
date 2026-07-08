@@ -16,6 +16,9 @@ import { logActivity } from './audit.service.js';
 import { notify } from './notification.service.js';
 import { safeSendTemplated } from './email.service.js';
 import { emitToCompany, emitToInterview } from '../socket/emitters.js';
+import * as proctor from './proctoring.service.js';
+import { saveBuffer } from './file.service.js';
+import { getGroup } from './settings.service.js';
 
 /**
  * Interview Room orchestration. Drives the AI engine loop:
@@ -324,14 +327,50 @@ export async function complete(interview) {
 }
 
 /** Append a proctoring event and recompute the integrity score. */
-export async function recordProctoring(interview, { type, severity, detail }) {
-  interview.proctoring.events.push({ type, severity: severity || 'low', detail, at: new Date() });
-  const score = interview.recomputeIntegrity();
-  // Flag the interview if integrity collapses.
-  if (score < 40 && interview.status === 'in_progress') interview.status = 'flagged';
-  await interview.save();
-  emitToCompany(interview.company, 'interview:proctoring', { id: interview._id, type, integrityScore: score });
-  return { integrityScore: score, flagged: interview.status === 'flagged' };
+/** Read proctoring thresholds from admin settings (with sane defaults). */
+async function proctoringThresholds() {
+  try {
+    const rows = await getGroup('proctoring', { unmask: true });
+    const map = Object.fromEntries((rows || []).map((r) => [r.key.replace('proctoring.', ''), r.value]));
+    return {
+      flagAt: Number(map.flagScore) || 60,
+      terminateAt: Number(map.autoTerminateScore) || 100,
+    };
+  } catch {
+    return { flagAt: 60, terminateAt: 100 };
+  }
+}
+
+/**
+ * Record proctoring event(s). Accepts either a single legacy event
+ * ({ type, severity, detail }) or a batch ({ events: [...] }). Delegates scoring
+ * to proctoring.service (fraud score + risk level + flag/terminate thresholds).
+ */
+export async function recordProctoring(interview, body = {}) {
+  const events = Array.isArray(body.events) ? body.events : body.type ? [body] : [];
+  if (!events.length) return { fraudScore: interview.proctoring.fraudScore || 0 };
+  const thresholds = await proctoringThresholds();
+  return proctor.recordEvents(interview, events, thresholds);
+}
+
+/** Persist the device + network fingerprint (§10). */
+export async function recordDevice(interview, body = {}) {
+  return proctor.setDeviceNetwork(interview, body);
+}
+
+/**
+ * Save an evidence screenshot (base64 data-URL or raw base64) and attach it.
+ * When `attachToEvent` is set, the just-recorded event also references the URL.
+ */
+export async function recordEvidence(interview, { imageBase64, type = 'screenshot', reason } = {}) {
+  if (!imageBase64) throw ApiError.badRequest('imageBase64 required');
+  const b64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+  const buffer = Buffer.from(b64, 'base64');
+  if (buffer.length > 4 * 1024 * 1024) throw ApiError.badRequest('Evidence image too large');
+  const { url } = await saveBuffer(buffer, `evidence-${Date.now()}.jpg`);
+  await proctor.addEvidence(interview, { type, reason, url });
+  emitToCompany(interview.company, 'interview:evidence', { id: interview._id, url, reason });
+  return { url };
 }
 
 /* ── helpers ───────────────────────────────────────────── */
@@ -377,4 +416,4 @@ const FALLBACKS = [
 ];
 const fallbackQuestion = (interview) => FALLBACKS[interview.engineState.currentIndex % FALLBACKS.length];
 
-export default { loadByToken, roomView, start, answer, skip, setLanguage, complete, recordProctoring };
+export default { loadByToken, roomView, start, answer, skip, setLanguage, complete, recordProctoring, recordDevice, recordEvidence };

@@ -9,7 +9,7 @@ import { sendEmail, refreshSmtp } from '../../services/email.service.js';
 import * as ttsService from '../../services/tts.service.js';
 import { config } from '../../config/index.js';
 
-const ALLOWED_GROUPS = ['smtp', 'sms', 'payment', 'security', 'general', 'feature_flag', 'voice'];
+const ALLOWED_GROUPS = ['smtp', 'sms', 'payment', 'security', 'general', 'feature_flag', 'voice', 'proctoring', 'captcha'];
 
 /** GET /admin/system/:group — settings for a group (secrets masked). */
 export const getSettingsGroup = asyncHandler(async (req, res) => {

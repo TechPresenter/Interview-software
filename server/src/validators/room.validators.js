@@ -6,20 +6,34 @@ export const answerSchema = z.object({
   audioUrl: z.string().optional(),
 });
 
-export const proctoringSchema = z.object({
-  type: z.enum([
-    'tab_switch',
-    'window_blur',
-    'fullscreen_exit',
-    'copy',
-    'paste',
-    'right_click',
-    'face_missing',
-    'multiple_faces',
-    'no_audio',
-  ]),
+/** A single proctoring event. `type` is open (validated by weight table server-side). */
+const proctorEvent = z.object({
+  type: z.string().min(1).max(64),
   severity: z.enum(['low', 'medium', 'high']).optional(),
   detail: z.any().optional(),
+  screenshotUrl: z.string().max(500).optional(),
+  at: z.union([z.string(), z.number()]).optional(),
+});
+
+/** Accept a single event (legacy) or a batch: { events: [...] }. */
+export const proctoringSchema = z.union([
+  proctorEvent,
+  z.object({ events: z.array(proctorEvent).max(100) }),
+]);
+
+/** Device + network fingerprint payload (§10). */
+export const deviceSchema = z.object({
+  device: z.record(z.any()).optional(),
+  network: z.record(z.any()).optional(),
+  attentionScore: z.number().min(0).max(100).optional(),
+  eyeContactPct: z.number().min(0).max(100).optional(),
+});
+
+/** Evidence screenshot payload (§13) — base64 image. */
+export const evidenceSchema = z.object({
+  imageBase64: z.string().min(10),
+  type: z.string().max(32).optional(),
+  reason: z.string().max(64).optional(),
 });
 
 export const precheckSchema = z.object({
