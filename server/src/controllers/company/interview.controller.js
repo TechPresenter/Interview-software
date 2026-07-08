@@ -143,6 +143,7 @@ export const monitor = asyncHandler(async (req, res) => {
   const live = interview.status === 'in_progress' || interview.status === 'flagged';
   const connected = live && Date.now() - new Date(lastActivityAt).getTime() < STALE_MS;
 
+  const pr = interview.proctoring || {};
   return ok(res, {
     id: interview._id,
     status: interview.status,
@@ -150,12 +151,20 @@ export const monitor = asyncHandler(async (req, res) => {
     job: interview.job,
     startedAt: interview.startedAt,
     progress: { current, total, percent: Math.round((current / total) * 100) },
-    integrityScore: interview.proctoring?.integrityScore ?? 100,
+    integrityScore: pr.integrityScore ?? 100,
+    // Live AI fraud metrics (§15)
+    fraudScore: pr.fraudScore ?? 0,
+    riskLevel: pr.riskLevel ?? 'safe',
+    attentionScore: pr.attentionScore ?? null,
+    eyeContactPct: pr.eyeContactPct ?? null,
+    people: (() => { const last = [...events].reverse().find((e) => e.type === 'multiple_faces' || e.type === 'face_missing'); return last?.type === 'multiple_faces' ? (last.detail?.people ?? 2) : 1; })(),
     proctoring: {
       events: events.length,
       high: events.filter((e) => e.severity === 'high').length,
       last: events[events.length - 1] || null,
+      recent: events.slice(-8).reverse().map((e) => ({ type: e.type, severity: e.severity, at: e.at, detail: e.detail })),
     },
+    evidence: (pr.evidence || []).slice(-6).reverse().map((e) => ({ url: e.url, reason: e.reason, at: e.at })),
     recording: { video: Boolean(interview.recordings?.videoUrl), audio: Boolean(interview.recordings?.audioUrl) },
     connection: connected ? 'connected' : live ? 'reconnecting' : 'offline',
     lastActivityAt,

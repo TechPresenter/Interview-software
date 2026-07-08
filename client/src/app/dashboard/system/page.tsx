@@ -34,6 +34,7 @@ const GROUP_TEMPLATES: Record<string, string[]> = {
   sms: ['sms.provider', 'sms.apiKey', 'sms.sender'],
   payment: ['payment.stripeKey', 'payment.stripeWebhookSecret', 'payment.razorpayKeyId', 'payment.razorpayKeySecret', 'payment.cashfreeAppId', 'payment.cashfreeSecretKey', 'payment.cashfreeEnv'],
   security: ['security.maxLoginAttempts', 'security.sessionTimeoutMinutes', 'security.enforce2faForAdmins'],
+  proctoring: ['proctoring.flagScore', 'proctoring.autoTerminateScore', 'proctoring.maxTabSwitches', 'proctoring.screenshotFrequencyMs', 'proctoring.noiseSensitivity', 'proctoring.cameraRequired', 'proctoring.micRequired'],
 };
 const GROUPS = Object.keys(GROUP_TEMPLATES);
 

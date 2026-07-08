@@ -69,6 +69,7 @@ export const exportReport = asyncHandler(async (req, res) => {
   const report = await Report.findOne(scope(req, { _id: req.params.id }))
     .populate('candidate', 'name email')
     .populate('job', 'title')
+    .populate({ path: 'interview', select: 'proctoring.fraudScore proctoring.riskLevel proctoring.integrityScore proctoring.attentionScore proctoring.eyeContactPct' })
     .lean();
   if (!report) throw ApiError.notFound('Report not found');
 
@@ -78,6 +79,7 @@ export const exportReport = asyncHandler(async (req, res) => {
     candidate: report.candidate,
     job: report.job,
     branding: branding?.toObject?.() || branding,
+    proctoring: report.interview?.proctoring || null,
   });
   res.setHeader('Content-Type', contentType);
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

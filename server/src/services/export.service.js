@@ -7,7 +7,7 @@ import ExcelJS from 'exceljs';
  */
 
 /** Render a single AI interview report as a PDF buffer. */
-export async function reportToPdf({ report, candidate, job, branding }) {
+export async function reportToPdf({ report, candidate, job, branding, proctoring }) {
   const name = branding?.platformName || 'AIPL Hire';
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   const chunks = [];
@@ -46,9 +46,22 @@ export async function reportToPdf({ report, candidate, job, branding }) {
   if (report.detailedFeedback) {
     doc.fontSize(13).fillColor('#6366f1').text('Detailed feedback');
     doc.fontSize(10).fillColor('#111').text(report.detailedFeedback, { align: 'left' });
+    doc.moveDown();
   }
 
-  doc.moveDown(2);
+  // Proctoring & integrity summary (§16)
+  if (proctoring) {
+    doc.fontSize(13).fillColor('#6366f1').text('Proctoring & integrity');
+    doc.fontSize(10).fillColor('#111');
+    if (proctoring.fraudScore != null) doc.text(`• Fraud score: ${proctoring.fraudScore}/100 (${proctoring.riskLevel || 'safe'} risk)`);
+    if (proctoring.integrityScore != null) doc.text(`• Integrity score: ${proctoring.integrityScore}/100`);
+    if (proctoring.attentionScore != null) doc.text(`• Attention score: ${proctoring.attentionScore}/100`);
+    if (proctoring.eyeContactPct != null) doc.text(`• Eye contact: ${proctoring.eyeContactPct}%`);
+    if (Array.isArray(proctoring.events)) doc.text(`• Anti-cheat events logged: ${proctoring.events.length}`);
+    doc.moveDown();
+  }
+
+  doc.moveDown(1);
   doc.fontSize(8).fillColor('#999').text(`Generated ${new Date().toLocaleString()} · ${name} AI`, { align: 'center' });
 
   doc.end();
