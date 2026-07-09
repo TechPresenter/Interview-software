@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     siteName: SITE.name,
   },
   twitter: { card: 'summary_large_image', title: SITE.name, description: SITE.tagline },
+  verification: { google: 'lXGGi2Z1YmGMfT1lgvfhbCD5q8oVf4Cdi7ahddk5dgk' },
 };
 
 // Set the theme class before paint to avoid a flash of the wrong theme.
