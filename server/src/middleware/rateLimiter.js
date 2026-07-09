@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { redis } from '../config/redis.js';
@@ -14,6 +15,22 @@ const store = (prefix) =>
     sendCommand: (...args) => redis.call(...args),
   });
 
+/**
+ * Key the global limiter by the caller's SESSION (Bearer token) when present,
+ * falling back to IP for anonymous requests. Behind a reverse proxy, many users
+ * can share one IP (Nginx / NAT); keying authenticated traffic per-session means
+ * one busy user (or a whole office) can't exhaust a shared IP budget and lock
+ * everyone else out with "Too many requests" — the reported intermittent login
+ * failure. Anonymous requests (login itself, public forms) stay per-IP.
+ */
+const globalKey = (req) => {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith('Bearer ')) {
+    return `tok:${crypto.createHash('sha1').update(auth.slice(7)).digest('base64').slice(0, 24)}`;
+  }
+  return req.ip;
+};
+
 /** Global limiter applied to the whole API surface. */
 export const globalLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
@@ -22,6 +39,8 @@ export const globalLimiter = rateLimit({
   legacyHeaders: false,
   store: store('rl:global:'),
   skip: () => !config.isProd, // never throttle the whole API in local development
+  keyGenerator: globalKey,
+  validate: { trustProxy: false }, // we derive the key ourselves
   message: { success: false, message: 'Too many requests, please slow down.' },
 });
 

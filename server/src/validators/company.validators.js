@@ -110,6 +110,7 @@ export const addNoteSchema = z.object({ body: z.string().min(1).max(2000) });
 export const interviewConfigSchema = z
   .object({
     language: z.enum(['en', 'hi']).optional(),
+    allowLanguageChange: z.boolean().optional(),
     durationMinutes: z.number().int().positive().max(600).optional(),
     questionCount: z.number().int().positive().max(50).optional(),
     difficulty: z.enum(['easy', 'medium', 'hard']).optional(),

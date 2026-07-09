@@ -63,7 +63,7 @@ const schema = z.object({
   SENTRY_DSN: z.string().optional(),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
-  RATE_LIMIT_MAX: z.coerce.number().default(300),
+  RATE_LIMIT_MAX: z.coerce.number().default(1200), // per session (or IP for anon) / window
   BCRYPT_ROUNDS: z.coerce.number().default(12),
 });
 

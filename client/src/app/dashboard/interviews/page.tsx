@@ -19,14 +19,14 @@ const TYPES = ['hr', 'technical', 'behavioral', 'aptitude', 'coding'];
 const DURATIONS = [15, 30, 45, 60, 90];
 
 type Cfg = {
-  language: string; durationMinutes: number; questionCount: number; difficulty: string; experienceLevel: string;
+  language: string; allowLanguageChange: boolean; durationMinutes: number; questionCount: number; difficulty: string; experienceLevel: string;
   passingScore: number; timePerQuestionSeconds: number; maxRetries: number;
   adaptiveDifficulty: boolean; followUps: boolean; randomOrder: boolean; autoSubmit: boolean;
   voiceEnabled: boolean; videoEnabled: boolean; cameraRequired: boolean; micRequired: boolean;
   proctoring: boolean; resumeBased: boolean; jdBased: boolean;
 };
 const DEFAULT_CFG: Cfg = {
-  language: 'en', durationMinutes: 30, questionCount: 8, difficulty: 'medium', experienceLevel: '',
+  language: 'en', allowLanguageChange: false, durationMinutes: 30, questionCount: 8, difficulty: 'medium', experienceLevel: '',
   passingScore: 50, timePerQuestionSeconds: 0, maxRetries: 0,
   adaptiveDifficulty: true, followUps: true, randomOrder: false, autoSubmit: true,
   voiceEnabled: true, videoEnabled: true, cameraRequired: true, micRequired: true,
@@ -124,6 +124,10 @@ export default function InterviewsPage() {
               ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">Questions, conversation, voice, answers, scoring, feedback, and the report all use this language.</p>
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={cfg.allowLanguageChange} onChange={(e) => setC('allowLanguageChange', e.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+              Let the candidate switch language mid-interview <span className="text-xs text-muted-foreground">(off = locked; changes are logged)</span>
+            </label>
           </div>
 
           <div>

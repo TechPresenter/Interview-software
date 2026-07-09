@@ -26,13 +26,14 @@ const RISK_CLASS: Record<string, string> = {
 
 export function InterviewRoom({
   token, durationMinutes, stream, onDone,
-  initialLanguage = 'en', allowSkip = true, initialSkips = 0, interviewer,
+  initialLanguage = 'en', allowLanguageChange = false, allowSkip = true, initialSkips = 0, interviewer,
 }: {
   token: string;
   durationMinutes: number;
   stream: MediaStream | null;
   onDone: () => void;
   initialLanguage?: Lang;
+  allowLanguageChange?: boolean;
   allowSkip?: boolean;
   initialSkips?: number;
   interviewer?: { name?: string; avatarUrl?: string | null; voice?: 'female' | 'male' | 'auto'; intro?: string | null };
@@ -324,14 +325,23 @@ export function InterviewRoom({
             </div>
           </div>
 
-          {/* Language switch */}
-          <div className="inline-flex rounded-lg border border-border p-0.5 text-xs">
-            {(['en', 'hi'] as const).map((l) => (
-              <button key={l} onClick={() => changeLanguage(l)} className={cn('rounded-md px-2.5 py-1 font-medium transition', lang === l ? 'bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-white' : 'text-muted-foreground')}>
-                {l === 'en' ? 'EN' : 'हिं'}
-              </button>
-            ))}
-          </div>
+          {/* Language: switchable only if the company allowed it; otherwise locked to the scheduled language */}
+          {allowLanguageChange ? (
+            <div className="inline-flex rounded-lg border border-border p-0.5 text-xs">
+              {(['en', 'hi'] as const).map((l) => (
+                <button key={l} onClick={() => changeLanguage(l)} className={cn('rounded-md px-2.5 py-1 font-medium transition', lang === l ? 'bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-white' : 'text-muted-foreground')}>
+                  {l === 'en' ? 'EN' : 'हिं'}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground"
+              title={lang === 'hi' ? 'इस इंटरव्यू की भाषा तय है' : 'The language is fixed for this interview'}
+            >
+              {lang === 'en' ? 'EN' : 'हिं'}
+            </span>
+          )}
 
           <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-1.5 text-sm tabular-nums"><Clock className="h-4 w-4 text-muted-foreground" /> {mm}:{ss}</div>
 

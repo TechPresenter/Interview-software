@@ -240,12 +240,39 @@ export async function skip(interview) {
   };
 }
 
-/** Switch the interview language mid-session (affects subsequent questions). */
+/**
+ * Switch the interview language mid-session. Locked by default: the scheduled
+ * language is enforced end-to-end unless the company explicitly enabled
+ * `allowLanguageChange` at creation. When a change IS allowed, subsequent AI
+ * questions/prompts and evaluations automatically use the new language (the
+ * engine + scoring/report read interview.config.language), scoring stays
+ * competency-based (language-agnostic), and the switch is logged to the audit
+ * history + interview transcript.
+ */
 export async function setLanguage(interview, language) {
   if (language !== 'en' && language !== 'hi') throw ApiError.badRequest('Unsupported language');
+  const from = interview.config.language;
+  if (language === from) return { language, changed: false };
+
+  if (!interview.config.allowLanguageChange) {
+    throw ApiError.forbidden('The interview language is locked and cannot be changed during the session.', { code: 'LANGUAGE_LOCKED' });
+  }
+
   interview.config.language = language;
+  const label = (l) => (l === 'hi' ? 'Hindi' : 'English');
+  interview.transcript.push({ role: 'system', text: `Interview language changed: ${label(from)} → ${label(language)} (question ${interview.engineState.currentIndex + 1}).`, at: new Date() });
   await interview.save();
-  return { language };
+
+  await logActivity({
+    company: interview.company,
+    action: 'interview.language.changed',
+    entityType: 'Interview',
+    entityId: interview._id,
+    summary: `Language changed ${from} → ${language} at Q${interview.engineState.currentIndex + 1}`,
+    meta: { from, to: language, atQuestion: interview.engineState.currentIndex + 1 },
+  });
+
+  return { language, changed: true };
 }
 
 /** Finalize: status, integrity, and generate the AI report. */

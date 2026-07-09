@@ -36,6 +36,9 @@ const interviewSchema = new Schema(
 
     config: {
       language: { type: String, enum: ['en', 'hi'], default: 'en' },
+      // When false, the candidate CANNOT switch language mid-interview — the
+      // scheduled language is enforced end-to-end for full consistency.
+      allowLanguageChange: { type: Boolean, default: false },
       durationMinutes: { type: Number, default: 30 },
       questionCount: { type: Number, default: 8 },
       difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },

@@ -94,6 +94,7 @@ export default function InterviewPage() {
           stream={stream}
           onDone={() => router.push('/')}
           initialLanguage={room.config?.language === 'hi' ? 'hi' : 'en'}
+          allowLanguageChange={room.config?.allowLanguageChange ?? false}
           allowSkip={room.config?.allowSkip ?? true}
           initialSkips={room.skips?.remaining ?? room.config?.maxSkips ?? 0}
           interviewer={room.interviewer ? { ...room.interviewer, avatarUrl: room.interviewer.avatarUrl ? `${API_ORIGIN}${room.interviewer.avatarUrl}` : null } : undefined}

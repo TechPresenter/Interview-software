@@ -22,6 +22,7 @@ export async function scheduleInterview({ companyId, candidate, job, types, conf
   const pick = (key, def) => cfg[key] ?? bp[key] ?? def;
   const config = {
     language: pick('language', 'en'),
+    allowLanguageChange: pick('allowLanguageChange', false),
     durationMinutes: pick('durationMinutes', 30),
     questionCount: pick('questionCount', 8),
     difficulty: pick('difficulty', 'medium'),
