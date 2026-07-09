@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as roomCtrl from '../controllers/room.controller.js';
 import { validate } from '../middleware/validate.js';
-import { uploadMedia } from '../middleware/upload.js';
+import { uploadMedia, uploadRecordingChunk } from '../middleware/upload.js';
 import { answerSchema, proctoringSchema, startSchema, languageSchema, deviceSchema, evidenceSchema } from '../validators/room.validators.js';
 
 /**
@@ -21,5 +21,6 @@ router.post('/:token/proctoring', validate(proctoringSchema), roomCtrl.proctorin
 router.post('/:token/device', validate(deviceSchema), roomCtrl.device);
 router.post('/:token/evidence', validate(evidenceSchema), roomCtrl.evidence);
 router.post('/:token/recording', uploadMedia, roomCtrl.recording);
+router.post('/:token/recording-chunk', uploadRecordingChunk, roomCtrl.recordingChunk);
 
 export default router;

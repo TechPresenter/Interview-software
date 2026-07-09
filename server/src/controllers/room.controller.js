@@ -98,3 +98,15 @@ export const recording = asyncHandler(async (req, res) => {
   await interview.save();
   return ok(res, { url }, 'Recording saved');
 });
+
+/**
+ * POST /interview-room/:token/recording-chunk — append one MediaRecorder chunk to
+ * the interview's recording file (incremental, full-length 1080p capture).
+ * Query: ?first=1 on the first chunk (creates the file), ?ext=webm|mp4.
+ */
+export const recordingChunk = asyncHandler(async (req, res) => {
+  if (!req.file) throw ApiError.badRequest('Recording chunk required (field "chunk")');
+  const interview = await room.loadByToken(req.params.token);
+  const first = req.query.first === '1' || req.query.first === 'true';
+  return ok(res, await room.appendRecordingChunk(interview, req.file.buffer, { first, ext: req.query.ext || 'webm' }));
+});

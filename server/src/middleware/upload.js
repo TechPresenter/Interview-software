@@ -52,15 +52,29 @@ export const uploadEditorImage = multer({
   },
 }).single('upload');
 
-/** Interview recording (webm/mp4 audio or video) captured via MediaRecorder. */
+/** Full interview recording (webm/mp4) — fallback single upload. */
 export const uploadMedia = multer({
   storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
+  limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB (full 1080p interview)
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/')) return cb(null, true);
+    if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/') || file.mimetype === 'application/octet-stream') return cb(null, true);
     cb(ApiError.badRequest('Only audio or video recordings are allowed'));
   },
 }).single('recording');
+
+/**
+ * A single MediaRecorder chunk (streamed to the server during the interview and
+ * appended to the recording file). Small per chunk, so it never trips a size cap
+ * and the full-length 1080p recording is captured incrementally.
+ */
+export const uploadRecordingChunk = multer({
+  storage,
+  limits: { fileSize: 64 * 1024 * 1024 }, // 64 MB per chunk (generous)
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/') || file.mimetype === 'application/octet-stream') return cb(null, true);
+    cb(ApiError.badRequest('Only recording chunks are allowed'));
+  },
+}).single('chunk');
 
 /** Knowledge-base documents (multiple). PDF/DOCX/TXT/MD/CSV/XLSX/PPTX/ZIP. */
 const KB_EXTS = ['.pdf', '.docx', '.doc', '.txt', '.md', '.csv', '.xlsx', '.xls', '.pptx', '.ppt', '.zip'];

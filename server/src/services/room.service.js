@@ -16,9 +16,13 @@ import { logActivity } from './audit.service.js';
 import { notify } from './notification.service.js';
 import { safeSendTemplated } from './email.service.js';
 import { emitToCompany, emitToInterview } from '../socket/emitters.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import * as proctor from './proctoring.service.js';
 import { saveBuffer } from './file.service.js';
 import { getGroup } from './settings.service.js';
+
+const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 
 /**
  * Interview Room orchestration. Drives the AI engine loop:
@@ -388,6 +392,29 @@ export async function recordDevice(interview, body = {}) {
 }
 
 /**
+ * Append one MediaRecorder chunk to the interview's recording file. The client
+ * streams chunks throughout the interview (small, never rejected by a size cap),
+ * so the FULL 1080p recording is captured incrementally and survives disconnects.
+ * The first chunk (with the WebM header) creates the file + sets videoUrl; the
+ * rest are appended in order to reconstruct a single playable file.
+ */
+export async function appendRecordingChunk(interview, buffer, { first = false, ext = 'webm' } = {}) {
+  await fs.mkdir(UPLOAD_DIR, { recursive: true });
+  const existing = interview.recordings?.videoUrl;
+  let filename = existing ? existing.split('/').pop() : null;
+
+  if (first || !filename) {
+    filename = `rec-${interview._id}-${Date.now()}.${ext.replace(/[^a-z0-9]/gi, '') || 'webm'}`;
+    interview.recordings = { ...(interview.recordings?.toObject?.() || {}), videoUrl: `/uploads/${filename}` };
+    await interview.save();
+    await fs.writeFile(path.join(UPLOAD_DIR, filename), buffer); // (re)create on first chunk
+  } else {
+    await fs.appendFile(path.join(UPLOAD_DIR, filename), buffer);
+  }
+  return { url: interview.recordings.videoUrl };
+}
+
+/**
  * Save an evidence screenshot (base64 data-URL or raw base64) and attach it.
  * When `attachToEvent` is set, the just-recorded event also references the URL.
  */
@@ -445,4 +472,4 @@ const FALLBACKS = [
 ];
 const fallbackQuestion = (interview) => FALLBACKS[interview.engineState.currentIndex % FALLBACKS.length];
 
-export default { loadByToken, roomView, start, answer, skip, setLanguage, complete, recordProctoring, recordDevice, recordEvidence };
+export default { loadByToken, roomView, start, answer, skip, setLanguage, complete, recordProctoring, recordDevice, recordEvidence, appendRecordingChunk };

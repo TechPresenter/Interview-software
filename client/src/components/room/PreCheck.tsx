@@ -37,12 +37,22 @@ export function PreCheck({ jobTitle, onReady }: Props) {
       // Internet
       setInternet(navigator.onLine ? 'ok' : 'fail');
 
-      // Camera + mic — request HD so the recording is crisp, not blurry.
+      // Camera + mic — request Full HD (1080p) so the recording is crisp.
+      // Falls back automatically to the best the webcam supports (720p, etc.).
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }, facingMode: 'user' },
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 }, facingMode: 'user' },
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          });
+        } catch {
+          // Some webcams reject 1080p — retry with a softer HD request.
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          });
+        }
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
         setCamera(stream.getVideoTracks().length ? 'ok' : 'fail');

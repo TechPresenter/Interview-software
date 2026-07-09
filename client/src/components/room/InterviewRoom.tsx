@@ -52,8 +52,12 @@ export function InterviewRoom({
 
   const selfVideoRef = useRef<HTMLVideoElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
   const mimeRef = useRef<string>('video/webm');
+  // Incremental recording upload: queue chunks + a single-flight pump so the full
+  // 1080p recording streams to the server throughout the interview.
+  const uploadQueue = useRef<Blob[]>([]);
+  const uploadingRef = useRef(false);
+  const firstChunkRef = useRef(true);
   const recognitionRef = useRef<any>(null);
   const answerStart = useRef<number>(Date.now());
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -153,28 +157,52 @@ export function InterviewRoom({
     try { rec.start(); setListening(true); } catch { wantListenRef.current = false; }
   }, [listening, lang, startRecognition, stopListening]);
 
-  /* ── Recording ── */
+  /* ── Recording (incremental chunk upload, full-length 1080p) ── */
+  const pumpUploads = useCallback(async () => {
+    if (uploadingRef.current) return;
+    uploadingRef.current = true;
+    while (uploadQueue.current.length) {
+      const blob = uploadQueue.current.shift()!;
+      const first = firstChunkRef.current;
+      firstChunkRef.current = false;
+      // Sequential + ordered so the appended file reconstructs correctly.
+      // eslint-disable-next-line no-await-in-loop
+      const res = await roomApi.uploadRecordingChunk(token, blob, first);
+      if (res === null && first) firstChunkRef.current = true; // retry header chunk next time
+    }
+    uploadingRef.current = false;
+  }, [token]);
+
   const startRecording = useCallback(() => {
     if (!stream) return;
     try {
-      // Prefer modern codecs for clear video; fall back gracefully.
       const candidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
       const mime = candidates.find((t) => (window as any).MediaRecorder?.isTypeSupported?.(t)) || 'video/webm';
       mimeRef.current = mime;
-      const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2_500_000, audioBitsPerSecond: 128_000 });
-      mr.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data);
-      mr.start(2000);
+      firstChunkRef.current = true;
+      uploadQueue.current = [];
+      // ~4 Mbps for crisp 1080p; audio 128 kbps.
+      const mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 });
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) { uploadQueue.current.push(e.data); void pumpUploads(); } };
+      mr.start(5000); // emit a chunk every 5s → uploaded incrementally
       recorderRef.current = mr;
       if (selfVideoRef.current) selfVideoRef.current.srcObject = stream;
     } catch { /* unsupported */ }
-  }, [stream]);
+  }, [stream, pumpUploads]);
 
   const stopAndUpload = useCallback(async () => {
     const mr = recorderRef.current;
-    if (!mr || mr.state === 'inactive') return;
-    await new Promise<void>((resolve) => { mr.onstop = () => resolve(); mr.stop(); });
-    if (chunksRef.current.length) await roomApi.uploadRecording(token, new Blob(chunksRef.current, { type: mimeRef.current }));
-  }, [token]);
+    if (mr && mr.state !== 'inactive') {
+      await new Promise<void>((resolve) => { mr.onstop = () => resolve(); try { mr.requestData(); } catch { /* noop */ } mr.stop(); });
+    }
+    // Drain any remaining queued chunks before we leave the page.
+    await pumpUploads();
+    let guard = 0;
+    while ((uploadQueue.current.length > 0 || uploadingRef.current) && guard++ < 300) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }, [pumpUploads]);
 
   /* ── Start ── */
   useEffect(() => {

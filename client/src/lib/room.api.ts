@@ -50,6 +50,13 @@ export const roomApi = {
     fd.append('recording', blob, `interview.${ext}`);
     return http.post(`/${token}/recording`, fd).then((r) => r.data.data).catch(() => null);
   },
+  /** Append one MediaRecorder chunk during the interview (incremental full recording). */
+  uploadRecordingChunk: (token: string, blob: Blob, first: boolean) => {
+    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const fd = new FormData();
+    fd.append('chunk', blob, `chunk.${ext}`);
+    return http.post(`/${token}/recording-chunk`, fd, { params: { first: first ? 1 : 0, ext }, timeout: 60000 }).then((r) => r.data.data).catch(() => null);
+  },
 };
 
 export default roomApi;
