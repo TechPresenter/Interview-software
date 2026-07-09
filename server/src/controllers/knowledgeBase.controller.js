@@ -45,11 +45,16 @@ function present(kb) {
   return o;
 }
 
-/** GET /knowledge-bases */
+/** GET /knowledge-bases — optional taxonomy filters. */
 export const list = asyncHandler(async (req, res) => {
   const filter = scopeFilter(req);
   if (req.query.job) filter.job = req.query.job;
   if (req.query.status) filter.status = req.query.status;
+  for (const f of ['category', 'department', 'experienceLevel', 'difficulty', 'language']) {
+    if (req.query[f]) filter[f] = req.query[f];
+  }
+  if (req.query.skill) filter.skills = req.query.skill;
+  if (req.query.q) filter.name = { $regex: String(req.query.q), $options: 'i' };
   const items = await KnowledgeBase.find(filter).sort('-updatedAt').lean();
   return ok(res, items);
 });
@@ -76,6 +81,13 @@ export const create = asyncHandler(async (req, res) => {
     company,
     scope: req.body.scope || (req.body.job ? 'job' : 'company'),
     job: req.body.job || null,
+    jobRole: req.body.jobRole || undefined,
+    department: req.body.department || undefined,
+    skills: parseUrls(req.body.skills),
+    experienceLevel: req.body.experienceLevel || '',
+    difficulty: req.body.difficulty || '',
+    language: req.body.language || 'both',
+    category: req.body.category || '',
     createdBy: req.user._id,
   });
   const segments = await ingestSources({ files: req.files || [], urls: parseUrls(req.body.urls), text: req.body.text || '' });
@@ -86,9 +98,10 @@ export const create = asyncHandler(async (req, res) => {
 
 /** PATCH /knowledge-bases/:id — metadata only. */
 export const update = asyncHandler(async (req, res) => {
-  const fields = ['name', 'description', 'scope', 'job', 'status'];
+  const fields = ['name', 'description', 'scope', 'job', 'status', 'jobRole', 'department', 'experienceLevel', 'difficulty', 'language', 'category'];
   const patch = {};
   for (const f of fields) if (req.body[f] !== undefined) patch[f] = req.body[f];
+  if (req.body.skills !== undefined) patch.skills = parseUrls(req.body.skills);
   const kb = await KnowledgeBase.findOneAndUpdate({ _id: req.params.id, ...ownership(req) }, { $set: patch }, { new: true });
   if (!kb) throw ApiError.notFound('Knowledge base not found');
   await audit({ req, action: 'kb.update', entityType: 'KnowledgeBase', entityId: kb._id });

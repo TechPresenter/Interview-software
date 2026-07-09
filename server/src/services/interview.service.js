@@ -14,7 +14,7 @@ import { ApiError } from '../utils/ApiError.js';
  * Create an interview from a candidate + job, applying the job's interview
  * blueprint (overridable). Enforces the monthly interview plan limit.
  */
-export async function scheduleInterview({ companyId, candidate, job, types, config: cfg = {}, scheduledAt, expiresAt, invitedBy }) {
+export async function scheduleInterview({ companyId, candidate, job, types, config: cfg = {}, scheduledAt, expiresAt, invitedBy, knowledgeBase }) {
   await assertWithinLimit(companyId, 'interviews');
 
   const bp = job?.interviewConfig || {};
@@ -49,6 +49,8 @@ export async function scheduleInterview({ companyId, candidate, job, types, conf
     company: companyId,
     job: job?._id,
     candidate: candidate._id,
+    // Explicit KB selected at schedule time overrides the job's KB.
+    knowledgeBase: knowledgeBase || job?.knowledgeBase || undefined,
     types: types?.length ? types : bp.types?.length ? bp.types : ['hr'],
     config,
     scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,

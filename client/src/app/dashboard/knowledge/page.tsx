@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Plus, Trash2, Power, Eye, FilePlus, FileText } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Power, Eye, FilePlus, FileText, Lightbulb, Search, Upload, Sparkles, Target } from 'lucide-react';
 import { knowledgeApi } from '@/lib/knowledge.api';
 import { useAuth } from '@/store/auth.store';
 import { number, relativeTime } from '@/lib/format';
@@ -23,6 +23,24 @@ const SCOPES = [
   { label: 'Specific interview', value: 'interview' },
   { label: 'Global (platform)', value: 'global' },
 ];
+const CATEGORIES = [
+  { label: '— Category —', value: '' }, { label: 'Technical', value: 'technical' }, { label: 'HR', value: 'hr' },
+  { label: 'Aptitude', value: 'aptitude' }, { label: 'Coding', value: 'coding' }, { label: 'Behavioral', value: 'behavioral' },
+];
+const EXPERIENCE = [
+  { label: '— Experience —', value: '' }, { label: 'Fresher', value: 'fresher' }, { label: 'Junior', value: 'junior' },
+  { label: 'Mid', value: 'mid' }, { label: 'Senior', value: 'senior' }, { label: 'Lead', value: 'lead' },
+];
+const DIFFICULTY = [
+  { label: '— Difficulty —', value: '' }, { label: 'Easy', value: 'easy' }, { label: 'Medium', value: 'medium' }, { label: 'Hard', value: 'hard' },
+];
+const LANGUAGE = [{ label: 'English & Hindi', value: 'both' }, { label: 'English', value: 'en' }, { label: 'हिन्दी (Hindi)', value: 'hi' }];
+const LANG_LABEL: Record<string, string> = { both: 'EN · हिं', en: 'EN', hi: 'हिं' };
+
+const EMPTY_FORM = {
+  name: '', description: '', scope: 'company', text: '', urls: '',
+  category: '', department: '', jobRole: '', experienceLevel: '', difficulty: '', language: 'both', skills: '',
+};
 
 export default function KnowledgePage() {
   const role = useAuth((s) => s.user?.role);
@@ -33,27 +51,43 @@ export default function KnowledgePage() {
   const [open, setOpen] = useState(false);
   const [appendTo, setAppendTo] = useState<any>(null); // KB being appended to (else create)
   const [viewing, setViewing] = useState<any>(null);
-  const [form, setForm] = useState({ name: '', description: '', scope: 'company', text: '', urls: '' });
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [filter, setFilter] = useState({ q: '', category: '', experienceLevel: '', difficulty: '', language: '' });
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  const setF = (k: string, v: any) => setFilter((f) => ({ ...f, [k]: v }));
   const invalidate = () => qc.invalidateQueries({ queryKey: ['knowledge-bases'] });
+
+  const filtered = items.filter((kb) => {
+    if (filter.category && kb.category !== filter.category) return false;
+    if (filter.experienceLevel && kb.experienceLevel !== filter.experienceLevel) return false;
+    if (filter.difficulty && kb.difficulty !== filter.difficulty) return false;
+    if (filter.language && kb.language !== filter.language) return false;
+    if (filter.q && !`${kb.name} ${kb.description || ''} ${kb.department || ''} ${(kb.skills || []).join(' ')}`.toLowerCase().includes(filter.q.toLowerCase())) return false;
+    return true;
+  });
 
   function openCreate() {
     setAppendTo(null);
-    setForm({ name: '', description: '', scope: 'company', text: '', urls: '' });
+    setForm({ ...EMPTY_FORM });
     setOpen(true);
   }
   function openAppend(kb: any) {
     setAppendTo(kb);
-    setForm({ name: kb.name, description: kb.description || '', scope: kb.scope, text: '', urls: '' });
+    setForm({
+      ...EMPTY_FORM, name: kb.name, description: kb.description || '', scope: kb.scope,
+      category: kb.category || '', department: kb.department || '', jobRole: kb.jobRole || '',
+      experienceLevel: kb.experienceLevel || '', difficulty: kb.difficulty || '', language: kb.language || 'both',
+      skills: (kb.skills || []).join(', '),
+    });
     setOpen(true);
   }
 
   function buildFd() {
     const fd = new FormData();
-    fd.append('name', form.name);
-    fd.append('description', form.description);
-    fd.append('scope', form.scope);
+    for (const k of ['name', 'description', 'scope', 'category', 'department', 'jobRole', 'experienceLevel', 'difficulty', 'language', 'skills'] as const) {
+      if ((form as any)[k]) fd.append(k, (form as any)[k]);
+    }
     if (form.text.trim()) fd.append('text', form.text);
     if (form.urls.trim()) fd.append('urls', form.urls);
     const files = fileRef.current?.files;
@@ -78,9 +112,44 @@ export default function KnowledgePage() {
         action={<Button magnetic={false} onClick={openCreate}><Plus className="h-4 w-4" /> New knowledge base</Button>}
       />
 
+      {/* How to use the Knowledge Base */}
+      <GlassCard>
+        <div className="mb-4 flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary"><Lightbulb className="h-5 w-5" /></span>
+          <h2 className="text-lg font-semibold">How to use the Knowledge Base</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: Upload, title: '1. Build a Knowledge Base', body: 'Create a collection and add material — upload PDF/DOCX/TXT/CSV/PPTX/ZIP, paste text, or add URLs. Tag it with category, skills, experience, difficulty & language.' },
+            { icon: Target, title: '2. Organize & assign', body: 'Filter and organize by job role, department, skills, experience and category so the right questions reach the right candidates.' },
+            { icon: Sparkles, title: '3. Generate the interview', body: 'When scheduling an interview, questions are generated from the assigned Knowledge Base — set the number of questions and difficulty.' },
+            { icon: BookOpen, title: '4. Run the interview', body: 'The AI asks questions grounded in your content and adds dynamic follow-ups based on the candidate’s answers.' },
+          ].map((s) => (
+            <div key={s.title} className="rounded-xl border border-border bg-card/40 p-4">
+              <s.icon className="h-5 w-5 text-accent" />
+              <p className="mt-2 text-sm font-semibold">{s.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input value={filter.q} onChange={(e) => setF('q', e.target.value)} placeholder="Search name, skills, department…"
+            className="h-10 w-56 rounded-xl border border-input bg-card/60 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/40" />
+        </div>
+        <div className="w-40"><Select value={filter.category} onChange={(v) => setF('category', v)} options={CATEGORIES} /></div>
+        <div className="w-40"><Select value={filter.experienceLevel} onChange={(v) => setF('experienceLevel', v)} options={EXPERIENCE} /></div>
+        <div className="w-40"><Select value={filter.difficulty} onChange={(v) => setF('difficulty', v)} options={DIFFICULTY} /></div>
+        <div className="w-40"><Select value={filter.language} onChange={(v) => setF('language', v)} options={[{ label: '— Language —', value: '' }, ...LANGUAGE]} /></div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {isLoading && Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-44 rounded-2xl" />)}
-        {items.map((kb) => (
+        {filtered.map((kb) => (
           <GlassCard key={kb._id} className={cn(kb.status !== 'active' && 'opacity-60')}>
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary"><BookOpen className="h-5 w-5" /></span>
@@ -93,6 +162,20 @@ export default function KnowledgePage() {
               </div>
             </div>
             {kb.description && <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{kb.description}</p>}
+            {(kb.category || kb.department || kb.experienceLevel || kb.difficulty || kb.language) && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {kb.category && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium capitalize text-primary">{kb.category}</span>}
+                {kb.department && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{kb.department}</span>}
+                {kb.experienceLevel && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">{kb.experienceLevel}</span>}
+                {kb.difficulty && <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] capitalize text-amber-500">{kb.difficulty}</span>}
+                {kb.language && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{LANG_LABEL[kb.language] || kb.language}</span>}
+              </div>
+            )}
+            {(kb.skills?.length ?? 0) > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {kb.skills.slice(0, 6).map((s: string) => <span key={s} className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent">{s}</span>)}
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
               <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">{kb.sources?.length ?? 0} sources</span>
               <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">{number(kb.charCount || 0)} chars</span>
@@ -111,9 +194,9 @@ export default function KnowledgePage() {
             </div>
           </GlassCard>
         ))}
-        {!isLoading && items.length === 0 && (
+        {!isLoading && filtered.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-            No knowledge bases yet. Create one to ground interviews in your own material.
+            {items.length === 0 ? 'No knowledge bases yet. Create one to ground interviews in your own material.' : 'No knowledge bases match these filters.'}
           </div>
         )}
       </div>
@@ -133,7 +216,16 @@ export default function KnowledgePage() {
             <>
               <Field label="Name" value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Frontend Engineer — React" />
               <Field label="Description" value={form.description} onChange={(v) => set('description', v)} placeholder="Optional" />
-              <Select label="Scope" value={form.scope} onChange={(v) => set('scope', v)} options={SCOPES} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Select label="Scope" value={form.scope} onChange={(v) => set('scope', v)} options={SCOPES} />
+                <Select label="Category" value={form.category} onChange={(v) => set('category', v)} options={CATEGORIES} />
+                <Select label="Experience level" value={form.experienceLevel} onChange={(v) => set('experienceLevel', v)} options={EXPERIENCE} />
+                <Select label="Difficulty" value={form.difficulty} onChange={(v) => set('difficulty', v)} options={DIFFICULTY} />
+                <Select label="Language" value={form.language} onChange={(v) => set('language', v)} options={LANGUAGE} />
+                <Field label="Department" value={form.department} onChange={(v) => set('department', v)} placeholder="e.g. Engineering" />
+              </div>
+              <Field label="Job role" value={form.jobRole} onChange={(v) => set('jobRole', v)} placeholder="e.g. Frontend Engineer" />
+              <Field label="Skills (comma-separated)" value={form.skills} onChange={(v) => set('skills', v)} placeholder="React, Node.js, SQL" />
             </>
           )}
           <div>

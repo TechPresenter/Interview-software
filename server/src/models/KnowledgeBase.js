@@ -5,6 +5,12 @@ const { Schema } = mongoose;
 export const KB_SCOPES = ['company', 'job', 'interview', 'global'];
 export const KB_SOURCE_KINDS = ['file', 'url', 'text'];
 
+// Organization taxonomy.
+export const KB_CATEGORIES = ['technical', 'hr', 'aptitude', 'coding', 'behavioral'];
+export const KB_EXPERIENCE = ['fresher', 'junior', 'mid', 'senior', 'lead'];
+export const KB_DIFFICULTY = ['easy', 'medium', 'hard'];
+export const KB_LANGUAGES = ['en', 'hi', 'both'];
+
 /** A single ingested source within a knowledge base. */
 const sourceSchema = new Schema(
   {
@@ -31,6 +37,15 @@ const knowledgeBaseSchema = new Schema(
     company: { type: Schema.Types.ObjectId, ref: 'Company', default: null, index: true }, // null = global (super-admin)
     scope: { type: String, enum: KB_SCOPES, default: 'company' },
     job: { type: Schema.Types.ObjectId, ref: 'Job', default: null, index: true },
+
+    // Organization taxonomy (§ "Organize the Knowledge Base by …").
+    jobRole: { type: String, trim: true },
+    department: { type: String, trim: true, index: true },
+    skills: { type: [String], default: [] },
+    experienceLevel: { type: String, enum: ['', ...KB_EXPERIENCE], default: '' },
+    difficulty: { type: String, enum: ['', ...KB_DIFFICULTY], default: '' },
+    language: { type: String, enum: KB_LANGUAGES, default: 'both' },
+    category: { type: String, enum: ['', ...KB_CATEGORIES], default: '', index: true },
 
     sources: { type: [sourceSchema], default: [] },
     content: { type: String, default: '', select: false }, // full extracted text (large)

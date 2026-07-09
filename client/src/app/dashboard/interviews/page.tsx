@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Plus, Send, Link2, XCircle, Activity, Languages } from 'lucide-react';
 import { companyApi } from '@/lib/company.api';
+import { knowledgeApi } from '@/lib/knowledge.api';
+import { useAuth } from '@/store/auth.store';
 import { dateTime, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -35,12 +37,14 @@ const DEFAULT_CFG: Cfg = {
 
 export default function InterviewsPage() {
   const qc = useQueryClient();
+  const role = useAuth((s) => s.user?.role);
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [candidate, setCandidate] = useState('');
   const [types, setTypes] = useState<string[]>(['hr']);
   const [sendInvite, setSendInvite] = useState(true);
   const [cfg, setCfg] = useState<Cfg>({ ...DEFAULT_CFG });
+  const [knowledgeBase, setKnowledgeBase] = useState('');
   const [customDuration, setCustomDuration] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
@@ -48,12 +52,13 @@ export default function InterviewsPage() {
 
   const { data, isLoading } = useQuery({ queryKey: ['interviews', page], queryFn: () => companyApi.interviews({ page, limit: 10 }) });
   const { data: candidates } = useQuery({ queryKey: ['candidates-mini'], queryFn: () => companyApi.candidates({ limit: 100 }) });
+  const { data: kbs } = useQuery({ queryKey: ['kb-mini'], queryFn: () => knowledgeApi.list(role) });
 
-  const openModal = () => { setCfg({ ...DEFAULT_CFG }); setCandidate(''); setTypes(['hr']); setScheduledAt(''); setExpiresAt(''); setCustomDuration(false); setOpen(true); };
+  const openModal = () => { setCfg({ ...DEFAULT_CFG }); setCandidate(''); setTypes(['hr']); setKnowledgeBase(''); setScheduledAt(''); setExpiresAt(''); setCustomDuration(false); setOpen(true); };
 
   const schedule = useMutation({
     mutationFn: () => companyApi.schedule({
-      candidate, types, sendInvite, config: cfg,
+      candidate, types, sendInvite, config: cfg, knowledgeBase: knowledgeBase || undefined,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
     }),
@@ -139,6 +144,20 @@ export default function InterviewsPage() {
               ))}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">Select multiple for a mixed interview.</p>
+          </div>
+
+          <Section title="Knowledge Base" />
+          <div>
+            <Select
+              label="Generate questions from a Knowledge Base"
+              value={knowledgeBase}
+              onChange={setKnowledgeBase}
+              options={[
+                { label: 'None — AI generates from the role / JD', value: '' },
+                ...(kbs ?? []).filter((k: any) => k.status === 'active').map((k: any) => ({ label: k.category ? `${k.name} · ${titleCase(k.category)}` : k.name, value: k._id })),
+              ]}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">Questions are grounded in this collection; the AI still adds dynamic follow-ups based on the candidate’s answers.</p>
           </div>
 
           <Section title="Format" />
