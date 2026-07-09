@@ -14,24 +14,44 @@ import { ApiError } from '../utils/ApiError.js';
  * Create an interview from a candidate + job, applying the job's interview
  * blueprint (overridable). Enforces the monthly interview plan limit.
  */
-export async function scheduleInterview({ companyId, candidate, job, types, config: cfg, scheduledAt, invitedBy }) {
+export async function scheduleInterview({ companyId, candidate, job, types, config: cfg = {}, scheduledAt, expiresAt, invitedBy }) {
   await assertWithinLimit(companyId, 'interviews');
 
-  const blueprint = job?.interviewConfig || {};
+  const bp = job?.interviewConfig || {};
+  // Merge precedence: request config > job blueprint > sensible default.
+  const pick = (key, def) => cfg[key] ?? bp[key] ?? def;
+  const config = {
+    language: pick('language', 'en'),
+    durationMinutes: pick('durationMinutes', 30),
+    questionCount: pick('questionCount', 8),
+    difficulty: pick('difficulty', 'medium'),
+    experienceLevel: pick('experienceLevel', undefined),
+    adaptiveDifficulty: pick('adaptiveDifficulty', true),
+    followUps: pick('followUps', true),
+    randomOrder: pick('randomOrder', false),
+    passingScore: pick('passingScore', 50),
+    timePerQuestionSeconds: pick('timePerQuestionSeconds', 0),
+    autoSubmit: pick('autoSubmit', true),
+    maxRetries: pick('maxRetries', 0),
+    voiceEnabled: pick('voiceEnabled', true),
+    videoEnabled: pick('videoEnabled', true),
+    cameraRequired: pick('cameraRequired', true),
+    micRequired: pick('micRequired', true),
+    proctoring: pick('proctoring', true),
+    resumeBased: pick('resumeBased', false),
+    jdBased: pick('jdBased', true),
+    allowSkip: pick('allowSkip', true),
+    maxSkips: pick('maxSkips', 2),
+  };
+
   const interview = await Interview.create({
     company: companyId,
     job: job?._id,
     candidate: candidate._id,
-    types: types?.length ? types : blueprint.types?.length ? blueprint.types : ['hr'],
-    config: {
-      durationMinutes: cfg?.durationMinutes ?? blueprint.durationMinutes ?? 30,
-      questionCount: cfg?.questionCount ?? blueprint.questionCount ?? 8,
-      adaptiveDifficulty: cfg?.adaptiveDifficulty ?? blueprint.adaptiveDifficulty ?? true,
-      proctoring: cfg?.proctoring ?? true,
-      voiceEnabled: cfg?.voiceEnabled ?? true,
-    },
+    types: types?.length ? types : bp.types?.length ? bp.types : ['hr'],
+    config,
     scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
-    expiresAt: new Date(Date.now() + 14 * 864e5), // link valid 14 days
+    expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 14 * 864e5), // custom, else 14 days
     invitedBy,
   });
 

@@ -35,12 +35,30 @@ const interviewSchema = new Schema(
     status: { type: String, enum: INTERVIEW_STATUS, default: 'scheduled', index: true },
 
     config: {
+      language: { type: String, enum: ['en', 'hi'], default: 'en' },
       durationMinutes: { type: Number, default: 30 },
       questionCount: { type: Number, default: 8 },
+      difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
+      experienceLevel: { type: String }, // e.g. fresher | mid | senior
       adaptiveDifficulty: { type: Boolean, default: true },
-      proctoring: { type: Boolean, default: true },
+      followUps: { type: Boolean, default: true }, // AI follow-up questions
+      randomOrder: { type: Boolean, default: false },
+      passingScore: { type: Number, default: 50, min: 0, max: 100 },
+      timePerQuestionSeconds: { type: Number, default: 0 }, // 0 = no per-question limit
+      autoSubmit: { type: Boolean, default: true }, // auto-submit on time expiry
+      maxRetries: { type: Number, default: 0 },
+
+      // Media / device requirements.
       voiceEnabled: { type: Boolean, default: true },
-      language: { type: String, enum: ['en', 'hi'], default: 'en' },
+      videoEnabled: { type: Boolean, default: true },
+      cameraRequired: { type: Boolean, default: true },
+      micRequired: { type: Boolean, default: true },
+      proctoring: { type: Boolean, default: true }, // anti-cheating
+
+      // Question generation grounding.
+      resumeBased: { type: Boolean, default: false },
+      jdBased: { type: Boolean, default: true },
+
       allowSkip: { type: Boolean, default: true },
       maxSkips: { type: Number, default: 2 },
     },

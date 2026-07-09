@@ -10,7 +10,7 @@ import { COMPETENCIES } from '../../constants/enums.js';
  */
 
 /** Score one answer. Returns the evaluation object stored on the Answer doc. */
-export async function scoreAnswer({ job, question, expectedPoints, answer, competencies, company, interview }) {
+export async function scoreAnswer({ job, question, expectedPoints, answer, competencies, company, interview, language }) {
   const { data } = await completeJson({
     ...prompts.scoreAnswer({
       jobTitle: job?.title || 'the role',
@@ -18,6 +18,7 @@ export async function scoreAnswer({ job, question, expectedPoints, answer, compe
       expectedPoints,
       answer,
       competencies,
+      language,
     }),
     feature: 'scoring',
     company,

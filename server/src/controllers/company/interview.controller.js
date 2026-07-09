@@ -80,6 +80,7 @@ export const schedule = asyncHandler(async (req, res) => {
     types: req.body.types,
     config: req.body.config,
     scheduledAt: req.body.scheduledAt,
+    expiresAt: req.body.expiresAt,
     invitedBy: req.user._id,
   });
 

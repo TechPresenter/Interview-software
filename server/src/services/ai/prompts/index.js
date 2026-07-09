@@ -39,34 +39,34 @@ export const prompts = {
   }),
 
   /** Decide whether to dig deeper into the last answer. */
-  followUp: ({ question, answer, interviewType }) => ({
-    system: personaSystem(interviewType),
+  followUp: ({ question, answer, interviewType, language }) => ({
+    system: personaSystem(interviewType, language),
     messages: [
       {
         role: 'user',
-        content: `Question asked: "${question}"\nCandidate answer: "${answer}"\n\nIf the answer is vague, incomplete, or notably strong/weak and a follow-up would add signal, write a short follow-up question. Otherwise return null. Return JSON: {"followUp": string|null}`,
+        content: `Question asked: "${question}"\nCandidate answer: "${answer}"\n\nIf the answer is vague, incomplete, or notably strong/weak and a follow-up would add signal, write a short follow-up question. Otherwise return null.${language === 'hi' ? ' Write the follow-up question in Hindi (Devanagari).' : ''} Return JSON: {"followUp": string|null}`,
       },
     ],
   }),
 
   /** Score a single answer across competencies. */
-  scoreAnswer: ({ jobTitle, question, expectedPoints, answer, competencies }) => ({
-    system: `You are a rigorous, unbiased technical interviewer evaluating a candidate answer for the role of ${jobTitle}. Score fairly; reward correctness, depth, structure, and communication. Penalize fabrication.`,
+  scoreAnswer: ({ jobTitle, question, expectedPoints, answer, competencies, language }) => ({
+    system: `You are a rigorous, unbiased technical interviewer evaluating a candidate answer for the role of ${jobTitle}. Score fairly; reward correctness, depth, structure, and communication. Penalize fabrication. Judge the answer on its substance regardless of the language it is written in.`,
     messages: [
       {
         role: 'user',
-        content: `Question: "${question}"\nExpected points (guidance, may be empty): ${(expectedPoints || []).join('; ') || 'use your judgment'}\nCompetencies to assess: ${(competencies || ['technical', 'communication']).join(', ')}\nCandidate answer: "${answer || '(no answer)'}"\n\nReturn JSON:\n{"score": number 0-100, "competencyScores": { "<competency>": number 0-100 }, "keywordsHit": string[], "keywordsMissed": string[], "reasoning": string, "followUpSuggested": string|null }`,
+        content: `Question: "${question}"\nExpected points (guidance, may be empty): ${(expectedPoints || []).join('; ') || 'use your judgment'}\nCompetencies to assess: ${(competencies || ['technical', 'communication']).join(', ')}\nCandidate answer: "${answer || '(no answer)'}"\n\nReturn JSON:\n{"score": number 0-100, "competencyScores": { "<competency>": number 0-100 }, "keywordsHit": string[], "keywordsMissed": string[], "reasoning": string, "followUpSuggested": string|null }${language === 'hi' ? '\nWrite "reasoning" and "followUpSuggested" in Hindi (Devanagari). Keep JSON keys, competency names, and numbers as-is.' : ''}`,
       },
     ],
   }),
 
   /** Generate the final structured report. */
-  finalReport: ({ jobTitle, transcript, perAnswer, weightage }) => ({
+  finalReport: ({ jobTitle, transcript, perAnswer, weightage, language }) => ({
     system: `You are an expert hiring assessor. Produce a fair, evidence-based final evaluation for the role of ${jobTitle}. Base every claim on the transcript. Be specific and actionable.`,
     messages: [
       {
         role: 'user',
-        content: `Scoring weightage: ${JSON.stringify(weightage)}\nPer-answer evaluations: ${JSON.stringify(perAnswer)}\nFull transcript: ${transcript}\n\nReturn JSON:\n{"scores": {"technical": n, "communication": n, "confidence": n, "behavioral": n, "leadership": n, "problemSolving": n, "culturalFit": n}, "overallScore": n, "strengths": string[], "weaknesses": string[], "improvementAreas": string[], "detailedFeedback": string, "recommendation": "strong_hire"|"hire"|"consider"|"reject"} (all scores 0-100)`,
+        content: `Scoring weightage: ${JSON.stringify(weightage)}\nPer-answer evaluations: ${JSON.stringify(perAnswer)}\nFull transcript: ${transcript}\n\nReturn JSON:\n{"scores": {"technical": n, "communication": n, "confidence": n, "behavioral": n, "leadership": n, "problemSolving": n, "culturalFit": n}, "overallScore": n, "strengths": string[], "weaknesses": string[], "improvementAreas": string[], "detailedFeedback": string, "recommendation": "strong_hire"|"hire"|"consider"|"reject"} (all scores 0-100)${language === 'hi' ? '\nWrite ALL narrative text — strengths, weaknesses, improvementAreas, and detailedFeedback — in Hindi (Devanagari). Keep the JSON keys, the numeric scores, and the "recommendation" enum value in English.' : ''}`,
       },
     ],
   }),

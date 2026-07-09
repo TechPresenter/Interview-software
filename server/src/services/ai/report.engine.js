@@ -20,7 +20,7 @@ import { RECOMMENDATIONS } from '../../constants/enums.js';
  * @param {string} args.company
  * @param {string} args.interview
  */
-export async function generateReport({ job, transcript, evaluations, integrityScore, weightage, company, interview }) {
+export async function generateReport({ job, transcript, evaluations, integrityScore, weightage, company, interview, language }) {
   const weights = weightage || defaultWeightage();
   // Deterministic numeric baseline.
   const agg = aggregate(evaluations, weights);
@@ -36,6 +36,7 @@ export async function generateReport({ job, transcript, evaluations, integritySc
         reasoning: e.reasoning,
       })),
       weightage: weights,
+      language,
     }),
     feature: 'report',
     company,

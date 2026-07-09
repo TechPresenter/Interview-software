@@ -146,6 +146,7 @@ export async function answer(interview, payload) {
         answer: payload.answer,
         company: interview.company,
         interview: interview._id,
+        language: interview.config.language, // feedback/reasoning in the interview language
       });
     } catch (err) {
       logger.warn({ err: err.message }, 'scoring fallback');
@@ -279,6 +280,7 @@ export async function complete(interview) {
         weightage,
         company: interview.company,
         interview: interview._id,
+        language: interview.config.language, // report narrative in the interview language
       });
       report = await Report.create({
         company: interview.company,

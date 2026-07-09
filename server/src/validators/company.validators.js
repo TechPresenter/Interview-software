@@ -107,21 +107,40 @@ export const stageSchema = z.object({ stage: z.enum(PIPELINE_STAGES) });
 export const addNoteSchema = z.object({ body: z.string().min(1).max(2000) });
 
 /* ── Interviews ────────────────────────────────────────── */
+export const interviewConfigSchema = z
+  .object({
+    language: z.enum(['en', 'hi']).optional(),
+    durationMinutes: z.number().int().positive().max(600).optional(),
+    questionCount: z.number().int().positive().max(50).optional(),
+    difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+    experienceLevel: z.string().max(40).optional(),
+    adaptiveDifficulty: z.boolean().optional(),
+    followUps: z.boolean().optional(),
+    randomOrder: z.boolean().optional(),
+    passingScore: z.number().min(0).max(100).optional(),
+    timePerQuestionSeconds: z.number().int().min(0).max(3600).optional(),
+    autoSubmit: z.boolean().optional(),
+    maxRetries: z.number().int().min(0).max(10).optional(),
+    voiceEnabled: z.boolean().optional(),
+    videoEnabled: z.boolean().optional(),
+    cameraRequired: z.boolean().optional(),
+    micRequired: z.boolean().optional(),
+    proctoring: z.boolean().optional(),
+    resumeBased: z.boolean().optional(),
+    jdBased: z.boolean().optional(),
+    allowSkip: z.boolean().optional(),
+    maxSkips: z.number().int().min(0).max(10).optional(),
+  })
+  .optional();
+
 export const scheduleInterviewSchema = z.object({
   candidate: objectId,
   job: objectId.optional(),
   knowledgeBase: objectId.optional().nullable(),
   types: z.array(z.enum(INTERVIEW_TYPES)).optional(),
   scheduledAt: z.coerce.date().optional(),
-  config: z
-    .object({
-      durationMinutes: z.number().int().positive().optional(),
-      questionCount: z.number().int().positive().optional(),
-      adaptiveDifficulty: z.boolean().optional(),
-      proctoring: z.boolean().optional(),
-      voiceEnabled: z.boolean().optional(),
-    })
-    .optional(),
+  expiresAt: z.coerce.date().optional(),
+  config: interviewConfigSchema,
   sendInvite: z.boolean().optional(),
 });
 
