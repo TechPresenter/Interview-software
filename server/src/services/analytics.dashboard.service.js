@@ -1,4 +1,5 @@
 import { PageView } from '../models/PageView.js';
+import { AnalyticsEvent } from '../models/AnalyticsEvent.js';
 import { User } from '../models/User.js';
 import { Subscription } from '../models/Subscription.js';
 import { Payment } from '../models/Payment.js';
@@ -94,6 +95,40 @@ export async function ingestPageView(req) {
     await redis.expire(ACTIVE_KEY, 900);
   } catch {
     /* analytics must never break a page load */
+  }
+}
+
+/** Record a generic analytics event (CTA click, feature use, custom, …). Never throws. */
+export async function ingestEvent(req) {
+  try {
+    const b = req.body || {};
+    if (!b.name || !b.visitorId) return;
+    const referrer = typeof b.referrer === 'string' ? b.referrer : '';
+    const { source, medium } = deriveSource(b, referrer);
+    const geo = await geoFromRequest(req);
+    const props = b.props && typeof b.props === 'object' ? b.props : {};
+
+    await AnalyticsEvent.create({
+      name: String(b.name).slice(0, 80),
+      category: String(b.category || 'event').slice(0, 40),
+      visitorId: String(b.visitorId).slice(0, 64),
+      sessionId: String(b.sessionId || b.visitorId).slice(0, 64),
+      user: req.user?._id, // set only when the beacon happens to be authenticated
+      path: String(b.path || '').slice(0, 300),
+      referrer: referrer.slice(0, 300),
+      source, medium,
+      device: ['desktop', 'mobile', 'tablet'].includes(b.device) ? b.device : 'other',
+      os: String(b.os || '').slice(0, 40),
+      browser: String(b.browser || '').slice(0, 40),
+      country: geo.country || '', region: geo.region || '', city: geo.city || '',
+      props,
+      value: typeof b.value === 'number' ? b.value : undefined,
+    });
+
+    await redis.zadd(ACTIVE_KEY, Date.now(), String(b.visitorId));
+    await redis.expire(ACTIVE_KEY, 900);
+  } catch {
+    /* analytics must never break the app */
   }
 }
 
@@ -250,21 +285,102 @@ export async function businessMetrics(since, until) {
   };
 }
 
-/** Simple acquisition→activation→revenue funnel for the given window. */
+/** Acquisition → activation → revenue funnel (6 steps) for the given window. */
 export async function conversionFunnel(since, until) {
   const range = { createdAt: { $gte: since, $lte: until } };
-  const [visitors, signups, interviews, paid] = await Promise.all([
+  const subRange = { createdAt: { $gte: since, $lte: until } };
+  const [visitors, signups, verified, loggedIn, trials, paid] = await Promise.all([
     PageView.distinct('visitorId', range).then((v) => v.length),
     User.countDocuments(range),
-    Interview.countDocuments(range),
-    Subscription.countDocuments({ status: 'active', amount: { $gt: 0 }, createdAt: { $gte: since, $lte: until } }),
+    User.countDocuments({ ...range, isEmailVerified: true }),
+    User.countDocuments({ ...range, lastLoginAt: { $ne: null } }),
+    Subscription.countDocuments({ status: { $in: ['trialing', 'active'] }, ...subRange }),
+    Subscription.countDocuments({ status: 'active', amount: { $gt: 0 }, ...subRange }),
   ]);
   return [
     { label: 'Visitors', value: visitors },
     { label: 'Sign-ups', value: signups },
-    { label: 'Interviews', value: interviews },
-    { label: 'Paid', value: paid },
+    { label: 'Email verified', value: verified },
+    { label: 'Logged in', value: loggedIn },
+    { label: 'Free trial', value: trials },
+    { label: 'Paid plan', value: paid },
   ];
+}
+
+/* ── Event / CTA aggregations ──────────────────────────── */
+
+const eventGroupTop = (match, field, limit = 8) =>
+  AnalyticsEvent.aggregate([
+    { $match: { ...match, [field]: { $nin: [null, ''] } } },
+    { $group: { _id: `$${field}`, value: { $sum: 1 } } },
+    { $sort: { value: -1 } },
+    { $limit: limit },
+  ]).then((r) => r.map((x) => ({ label: x._id, value: x.value })));
+
+/** CTA click analytics: per-CTA clicks + unique clickers + CTR + breakdowns + trend. */
+export async function ctaAnalytics(since, until) {
+  const match = { category: 'cta', createdAt: { $gte: since, $lte: until } };
+  const [byCta, totals, uniqueVisitors, devices, sources, countries, trend] = await Promise.all([
+    AnalyticsEvent.aggregate([
+      { $match: match },
+      { $group: { _id: '$name', clicks: { $sum: 1 }, visitors: { $addToSet: '$visitorId' } } },
+      { $project: { clicks: 1, unique: { $size: '$visitors' } } },
+      { $sort: { clicks: -1 } },
+      { $limit: 20 },
+    ]),
+    AnalyticsEvent.countDocuments(match),
+    PageView.distinct('visitorId', { createdAt: { $gte: since, $lte: until } }).then((v) => v.length),
+    eventGroupTop(match, 'device', 4),
+    eventGroupTop(match, 'source', 6),
+    eventGroupTop(match, 'country', 8),
+    AnalyticsEvent.aggregate([
+      { $match: match },
+      { $group: { _id: dayFmt, value: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+  ]);
+  return {
+    byCta: byCta.map((c) => ({
+      name: c._id,
+      clicks: c.clicks,
+      unique: c.unique,
+      ctr: uniqueVisitors ? Math.round((c.unique / uniqueVisitors) * 1000) / 10 : 0,
+    })),
+    totals: { clicks: totals, uniqueVisitors },
+    devices, sources, countries,
+    trend: trend.map((d) => ({ label: d._id, value: d.value })),
+  };
+}
+
+/** Generic event analytics: totals by category + top events + recent stream + trend. */
+export async function eventAnalytics(since, until) {
+  const match = { createdAt: { $gte: since, $lte: until } };
+  const [byCategory, topEvents, recent, trend] = await Promise.all([
+    AnalyticsEvent.aggregate([
+      { $match: match },
+      { $group: { _id: '$category', value: { $sum: 1 } } },
+      { $sort: { value: -1 } },
+    ]),
+    AnalyticsEvent.aggregate([
+      { $match: match },
+      { $group: { _id: { name: '$name', category: '$category' }, value: { $sum: 1 } } },
+      { $sort: { value: -1 } },
+      { $limit: 12 },
+    ]),
+    AnalyticsEvent.find(match).sort('-createdAt').limit(12).select('name category path device country createdAt').lean(),
+    AnalyticsEvent.aggregate([
+      { $match: match },
+      { $group: { _id: dayFmt, value: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+  ]);
+  return {
+    total: byCategory.reduce((s, c) => s + c.value, 0),
+    byCategory: byCategory.map((c) => ({ label: c._id, value: c.value })),
+    topEvents: topEvents.map((e) => ({ name: e._id.name, category: e._id.category, value: e.value })),
+    recent,
+    trend: trend.map((d) => ({ label: d._id, value: d.value })),
+  };
 }
 
 export const ROLE_LABELS = ROLES;

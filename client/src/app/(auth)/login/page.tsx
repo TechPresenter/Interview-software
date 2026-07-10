@@ -83,7 +83,7 @@ export default function LoginPage() {
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <Button type="submit" loading={loading} className="w-full" magnetic={false}>
+            <Button type="submit" loading={loading} className="w-full" magnetic={false} data-cta="login_submit">
               Sign in
             </Button>
           </form>

@@ -28,13 +28,13 @@ export function CTASection({
         {subtitle && <p className="mx-auto mt-4 max-w-lg text-muted-foreground">{subtitle}</p>}
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link href={primary.href}>
-            <Button size="lg">
+            <Button size="lg" data-cta="cta_primary">
               {primary.label} <ArrowRight className="h-5 w-5" />
             </Button>
           </Link>
           {secondary && (
             <Link href={secondary.href}>
-              <Button size="lg" variant="glass" magnetic={false}>
+              <Button size="lg" variant="glass" magnetic={false} data-cta="cta_secondary">
                 {secondary.label}
               </Button>
             </Link>

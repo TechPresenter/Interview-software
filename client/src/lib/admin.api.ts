@@ -165,6 +165,7 @@ export const adminApi = {
   /* ── Analytics dashboard ── */
   analyticsSummary: (from?: string, to?: string) => apiGet<any>('/admin/analytics/summary', { from, to }),
   analyticsTraffic: (from?: string, to?: string) => apiGet<any>('/admin/analytics/traffic', { from, to }),
+  analyticsEngagement: (from?: string, to?: string) => apiGet<any>('/admin/analytics/engagement', { from, to }),
   analyticsRealtime: () => apiGet<any>('/admin/analytics/realtime'),
   exportAnalytics: (params: { from?: string; to?: string; format: 'csv' | 'xlsx' | 'pdf' }) =>
     download('/admin/analytics/export', params, `analytics.${params.format}`),

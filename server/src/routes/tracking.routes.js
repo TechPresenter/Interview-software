@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { EmailLog } from '../models/EmailLog.js';
 import { config } from '../config/index.js';
-import { ingestPageView } from '../services/analytics.dashboard.service.js';
+import { ingestPageView, ingestEvent } from '../services/analytics.dashboard.service.js';
 
 /**
  * Public email tracking endpoints (no auth). Mounted at /track.
@@ -32,6 +32,12 @@ router.get('/open/:id', async (req, res) => {
 /** POST /track/collect — first-party page-view beacon (no auth). */
 router.post('/collect', async (req, res) => {
   await ingestPageView(req);
+  res.status(204).end();
+});
+
+/** POST /track/event — first-party generic event beacon (CTA, feature, custom; no auth). */
+router.post('/event', async (req, res) => {
+  await ingestEvent(req);
   res.status(204).end();
 });
 

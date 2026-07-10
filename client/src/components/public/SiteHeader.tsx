@@ -92,10 +92,10 @@ export function SiteHeader() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Link href="/login" className="hidden sm:block">
-            <Button variant="ghost" size="sm" magnetic={false}>Sign in</Button>
+            <Button variant="ghost" size="sm" magnetic={false} data-cta="login">Sign in</Button>
           </Link>
           <Link href="/register" className="hidden sm:block">
-            <Button size="sm">Get started</Button>
+            <Button size="sm" data-cta="get_started">Get started</Button>
           </Link>
           <button
             className="grid h-9 w-9 place-items-center rounded-xl border border-border md:hidden"
@@ -134,8 +134,8 @@ export function SiteHeader() {
                 );
               })}
               <div className="mt-2 flex gap-2">
-                <Link href="/login" className="flex-1"><Button variant="outline" className="w-full" magnetic={false}>Sign in</Button></Link>
-                <Link href="/register" className="flex-1"><Button className="w-full" magnetic={false}>Get started</Button></Link>
+                <Link href="/login" className="flex-1"><Button variant="outline" className="w-full" magnetic={false} data-cta="login">Sign in</Button></Link>
+                <Link href="/register" className="flex-1"><Button className="w-full" magnetic={false} data-cta="get_started">Get started</Button></Link>
               </div>
             </div>
           </motion.div>

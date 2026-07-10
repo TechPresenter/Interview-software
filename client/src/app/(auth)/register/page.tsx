@@ -90,7 +90,7 @@ export default function RegisterPage() {
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <Button type="submit" loading={loading} className="w-full" magnetic={false}>
+            <Button type="submit" loading={loading} className="w-full" magnetic={false} data-cta="signup_submit">
               Create account
             </Button>
           </form>

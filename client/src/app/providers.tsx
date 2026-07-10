@@ -10,6 +10,7 @@ import { useBranding } from '@/store/branding.store';
 import { AnnouncementBar } from '@/components/AnnouncementBar';
 import { TrackingScripts } from '@/components/TrackingScripts';
 import { PageTracker } from '@/components/PageTracker';
+import { EventTracker } from '@/components/EventTracker';
 import { Toaster } from '@/components/ui/toast';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -38,6 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <Toaster />
       <TrackingScripts />
       <PageTracker />
+      <EventTracker />
     </QueryClientProvider>
   );
 }

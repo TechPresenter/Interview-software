@@ -63,7 +63,7 @@ export function BookDemoButton({ label = 'Book a demo', className }: { label?: s
 
   return (
     <>
-      <Button size="lg" variant="glass" magnetic={false} className={className} onClick={openModal}>
+      <Button size="lg" variant="glass" magnetic={false} className={className} onClick={openModal} data-cta="book_demo">
         <PlayCircle className="h-5 w-5" /> {label}
       </Button>
 

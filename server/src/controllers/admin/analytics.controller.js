@@ -36,6 +36,17 @@ export const traffic = asyncHandler(async (req, res) => {
   return ok(res, { range: { from: since, to: until }, overview, ...breakdowns });
 });
 
+/** GET /admin/analytics/engagement?from&to — CTA clicks, events, and the conversion funnel. */
+export const engagement = asyncHandler(async (req, res) => {
+  const { since, until } = parseRange(req.query);
+  const [cta, events, funnel] = await Promise.all([
+    dash.ctaAnalytics(since, until),
+    dash.eventAnalytics(since, until),
+    dash.conversionFunnel(since, until),
+  ]);
+  return ok(res, { range: { from: since, to: until }, cta, events, funnel });
+});
+
 /** GET /admin/analytics/realtime — active visitors + recent page views. */
 export const realtime = asyncHandler(async (_req, res) => ok(res, await dash.realtime()));
 

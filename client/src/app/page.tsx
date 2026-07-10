@@ -101,7 +101,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
-            <Link href="/register"><Button size="lg">Start hiring free <ArrowRight className="h-5 w-5" /></Button></Link>
+            <Link href="/register"><Button size="lg" data-cta="start_free_trial">Start hiring free <ArrowRight className="h-5 w-5" /></Button></Link>
             <BookDemoButton />
           </motion.div>
 
@@ -209,7 +209,7 @@ export default function LandingPage() {
                   {p.features.map((f) => <li key={f} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" /> {f}</li>)}
                 </ul>
                 <Link href="/register" className="mt-6 block pt-2">
-                  <Button className="w-full" variant={p.popular ? 'primary' : 'glass'} magnetic={false}>{price === null ? 'Contact sales' : 'Get started'}</Button>
+                  <Button className="w-full" variant={p.popular ? 'primary' : 'glass'} magnetic={false} data-cta={price === null ? 'contact_sales' : 'subscribe'} data-plan={p.name}>{price === null ? 'Contact sales' : 'Get started'}</Button>
                 </Link>
               </GlassCard>
             );
@@ -230,8 +230,8 @@ export default function LandingPage() {
             <h2 className="mx-auto max-w-2xl text-4xl font-bold tracking-tight md:text-6xl">Ready to <span className="text-gradient-animate">transform</span> your hiring?</h2>
             <p className="mx-auto mt-5 max-w-lg text-muted-foreground">Join modern teams interviewing smarter with AI. Free to start.</p>
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/register"><Button size="lg">Get started for free <ArrowRight className="h-5 w-5" /></Button></Link>
-              <Link href="/pricing"><Button size="lg" variant="glass" magnetic={false}>View pricing</Button></Link>
+              <Link href="/register"><Button size="lg" data-cta="get_started">Get started for free <ArrowRight className="h-5 w-5" /></Button></Link>
+              <Link href="/pricing"><Button size="lg" variant="glass" magnetic={false} data-cta="view_pricing">View pricing</Button></Link>
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-accent" /> Setup in minutes</span>

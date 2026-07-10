@@ -7,9 +7,10 @@ import {
   Users, UserPlus, Activity, Eye, MousePointerClick, Timer, TrendingDown, Globe2,
   DollarSign, CreditCard, Repeat, Coins, Mail, Bell, Inbox, CalendarClock, Newspaper,
   Download, FileSpreadsheet, FileText, Radio, Wifi, Sparkles, Layers, MonitorSmartphone,
+  Target, Zap, ListTree,
 } from 'lucide-react';
 import { adminApi } from '@/lib/admin.api';
-import { number } from '@/lib/format';
+import { number, relativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -23,7 +24,7 @@ const DAY = 864e5;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const ago = (n: number) => iso(new Date(Date.now() - n * DAY));
 const PRESETS: [string, number][] = [['7D', 7], ['30D', 30], ['90D', 90]];
-const TABS = ['Overview', 'Traffic', 'Audience', 'Business'] as const;
+const TABS = ['Overview', 'Engagement', 'Traffic', 'Audience', 'Business'] as const;
 type Tab = (typeof TABS)[number];
 
 const DEVICE_COLORS: Record<string, string> = {
@@ -48,6 +49,7 @@ export default function AnalyticsPage() {
 
   const summary = useQuery({ queryKey: ['analytics-summary', from, to], queryFn: () => adminApi.analyticsSummary(from, to) });
   const traffic = useQuery({ queryKey: ['analytics-traffic', from, to], queryFn: () => adminApi.analyticsTraffic(from, to) });
+  const engagement = useQuery({ queryKey: ['analytics-engagement', from, to], queryFn: () => adminApi.analyticsEngagement(from, to) });
 
   const b = summary.data?.business;
   const t = summary.data?.traffic;
@@ -121,6 +123,7 @@ export default function AnalyticsPage() {
       </div>
 
       {tab === 'Overview' && <OverviewTab b={b} t={t} funnel={funnel} loading={summary.isLoading} />}
+      {tab === 'Engagement' && <EngagementTab data={engagement.data} loading={engagement.isLoading} />}
       {tab === 'Traffic' && <TrafficTab data={traffic.data} loading={traffic.isLoading} />}
       {tab === 'Audience' && <AudienceTab data={traffic.data} loading={traffic.isLoading} />}
       {tab === 'Business' && <BusinessTab b={b} loading={summary.isLoading} />}
@@ -292,6 +295,93 @@ function BusinessTab({ b, loading }: any) {
       <ChartCard title="Revenue trend" icon={DollarSign} hint="paid, per day">
         <BarChart data={(b?.revenue?.series ?? []).map((r: any) => ({ label: r.label, value: r.value }))} height={200} />
       </ChartCard>
+    </div>
+  );
+}
+
+/* ── Engagement (CTA + events + funnel) ── */
+function EngagementTab({ data, loading }: any) {
+  if (loading) return <LoadingGrid />;
+  const cta = data?.cta ?? {};
+  const events = data?.events ?? {};
+  const funnel = data?.funnel ?? [];
+  const byCta = cta.byCta ?? [];
+  const ctaDevices = (cta.devices ?? []).map((d: any) => ({ label: d.label, value: d.value, color: DEVICE_COLORS[d.label] || 'hsl(var(--muted-foreground))' }));
+  const ctaTrend = (cta.trend ?? []).map((d: any) => ({ label: d.label, value: d.value }));
+  const maxClicks = Math.max(1, ...byCta.map((c: any) => c.clicks));
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile label="CTA Clicks" value={cta.totals?.clicks ?? 0} icon={MousePointerClick} color="violet" compact delay={0} />
+        <StatTile label="Unique Clickers" value={cta.totals?.uniqueVisitors ?? 0} icon={Target} color="cyan" compact delay={0.05} />
+        <StatTile label="Total Events" value={events.total ?? 0} icon={Zap} color="pink" compact delay={0.1} />
+        <StatTile label="Top CTA" value={byCta[0]?.clicks ?? 0} icon={Sparkles} color="green" sub={byCta[0]?.name || '—'} delay={0.15} />
+      </div>
+
+      <ChartCard title="Conversion funnel" icon={TrendingDown} hint="visitor → paid (6 steps)">
+        <Funnel steps={funnel} />
+      </ChartCard>
+
+      <ChartCard title="CTA performance" icon={MousePointerClick} hint="clicks · unique · CTR">
+        {byCta.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No CTA clicks in this range yet — tracked as visitors click buttons tagged with <code className="text-accent">data-cta</code>.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
+                  <th className="py-2 pr-3 font-medium">CTA</th>
+                  <th className="py-2 pr-3 text-right font-medium">Clicks</th>
+                  <th className="py-2 pr-3 text-right font-medium">Unique</th>
+                  <th className="py-2 text-right font-medium">CTR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byCta.map((c: any) => (
+                  <tr key={c.name} className="border-b border-border/40 last:border-0">
+                    <td className="py-2 pr-3">
+                      <span className="font-medium">{c.name}</span>
+                      <div className="mt-1 h-1.5 w-full max-w-[200px] overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-[linear-gradient(90deg,hsl(var(--primary)),hsl(var(--accent)))]" style={{ width: `${(c.clicks / maxClicks) * 100}%` }} />
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{number(c.clicks)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{number(c.unique)}</td>
+                    <td className="py-2 text-right tabular-nums">{c.ctr}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ChartCard>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChartCard title="CTA clicks trend" icon={Activity} hint="per day"><AreaChart data={ctaTrend} /></ChartCard>
+        <ChartCard title="CTA by device" icon={MonitorSmartphone}>{ctaDevices.length ? <Donut segments={ctaDevices} /> : <p className="text-sm text-muted-foreground">No data yet</p>}</ChartCard>
+        <ChartCard title="CTA by source" icon={Globe2}><BarList data={topList(cta.sources)} /></ChartCard>
+        <ChartCard title="CTA by country" icon={Globe2}><BarList data={topList(cta.countries)} /></ChartCard>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <ChartCard title="Events by category" icon={Layers}><BarList data={topList(events.byCategory)} /></ChartCard>
+        <ChartCard title="Top events" icon={Zap}>
+          <BarList data={(events.topEvents ?? []).map((e: any) => ({ label: e.name, value: e.value, hint: number(e.value) }))} />
+        </ChartCard>
+        <ChartCard title="Live event stream" icon={ListTree}>
+          <div className="space-y-1.5 text-xs">
+            {(events.recent ?? []).length === 0 && <p className="text-muted-foreground">No events yet.</p>}
+            {(events.recent ?? []).map((e: any, i: number) => (
+              <div key={i} className="flex items-center gap-2 rounded-lg border border-border/60 px-2.5 py-1.5">
+                <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium capitalize text-primary">{e.category}</span>
+                <span className="truncate font-medium">{e.name}</span>
+                <span className="ml-auto shrink-0 text-muted-foreground">{relativeTime(e.createdAt)}</span>
+              </div>
+            ))}
+          </div>
+        </ChartCard>
+      </div>
     </div>
   );
 }
