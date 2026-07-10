@@ -47,6 +47,14 @@ export const engagement = asyncHandler(async (req, res) => {
   return ok(res, { range: { from: since, to: until }, cta, events, funnel });
 });
 
+/** GET /admin/analytics/geo?from&to&country&region — geo distribution with drill-down. */
+export const geo = asyncHandler(async (req, res) => {
+  const { since, until } = parseRange(req.query);
+  const country = req.query.country ? String(req.query.country).slice(0, 80) : undefined;
+  const region = req.query.region ? String(req.query.region).slice(0, 80) : undefined;
+  return ok(res, await dash.geoAnalytics(since, until, { country, region }));
+});
+
 /** GET /admin/analytics/realtime — active visitors + recent page views. */
 export const realtime = asyncHandler(async (_req, res) => ok(res, await dash.realtime()));
 

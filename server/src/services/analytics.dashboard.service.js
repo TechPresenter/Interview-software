@@ -383,4 +383,46 @@ export async function eventAnalytics(since, until) {
   };
 }
 
+/**
+ * Geographic analytics with Country → State/region → City drill-down.
+ * No filter → group by country (world map). `country` → group by region (state
+ * map). `country` + `region` → group by city. Each row carries visitors,
+ * sessions, page views and new visitors.
+ */
+export async function geoAnalytics(since, until, { country, region } = {}) {
+  const match = { createdAt: { $gte: since, $lte: until } };
+  let field = 'country';
+  if (country) { match.country = country; field = 'region'; }
+  if (country && region) { match.region = region; field = 'city'; }
+
+  const rows = await PageView.aggregate([
+    { $match: { ...match, [field]: { $nin: [null, ''] } } },
+    {
+      $group: {
+        _id: `$${field}`,
+        pageviews: { $sum: 1 },
+        sessions: { $addToSet: '$sessionId' },
+        visitors: { $addToSet: '$visitorId' },
+        newVisitors: { $sum: { $cond: ['$isNewVisitor', 1, 0] } },
+      },
+    },
+    { $project: { pageviews: 1, newVisitors: 1, sessions: { $size: '$sessions' }, visitors: { $size: '$visitors' } } },
+    { $sort: { visitors: -1 } },
+    { $limit: 400 },
+  ]);
+
+  return {
+    level: field === 'country' ? 'country' : field === 'region' ? 'region' : 'city',
+    filter: { country: country || null, region: region || null },
+    rows: rows.map((r) => ({
+      name: r._id,
+      visitors: r.visitors,
+      sessions: r.sessions,
+      pageviews: r.pageviews,
+      newVisitors: r.newVisitors,
+      returningVisitors: Math.max(0, r.visitors - r.newVisitors),
+    })),
+  };
+}
+
 export const ROLE_LABELS = ROLES;

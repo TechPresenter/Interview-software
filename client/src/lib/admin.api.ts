@@ -166,6 +166,8 @@ export const adminApi = {
   analyticsSummary: (from?: string, to?: string) => apiGet<any>('/admin/analytics/summary', { from, to }),
   analyticsTraffic: (from?: string, to?: string) => apiGet<any>('/admin/analytics/traffic', { from, to }),
   analyticsEngagement: (from?: string, to?: string) => apiGet<any>('/admin/analytics/engagement', { from, to }),
+  analyticsGeo: (from?: string, to?: string, country?: string, region?: string) =>
+    apiGet<any>('/admin/analytics/geo', { from, to, country, region }),
   analyticsRealtime: () => apiGet<any>('/admin/analytics/realtime'),
   exportAnalytics: (params: { from?: string; to?: string; format: 'csv' | 'xlsx' | 'pdf' }) =>
     download('/admin/analytics/export', params, `analytics.${params.format}`),

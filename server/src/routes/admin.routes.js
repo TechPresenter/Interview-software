@@ -161,6 +161,7 @@ router.post('/integrations/:key/test', integrations.test);
 router.get('/analytics/summary', analytics.summary);
 router.get('/analytics/traffic', analytics.traffic);
 router.get('/analytics/engagement', analytics.engagement);
+router.get('/analytics/geo', analytics.geo);
 router.get('/analytics/realtime', analytics.realtime);
 router.get('/analytics/export', analytics.exportReport);
 

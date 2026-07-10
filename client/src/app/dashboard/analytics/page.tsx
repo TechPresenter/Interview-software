@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Users, UserPlus, Activity, Eye, MousePointerClick, Timer, TrendingDown, Globe2,
   DollarSign, CreditCard, Repeat, Coins, Mail, Bell, Inbox, CalendarClock, Newspaper,
   Download, FileSpreadsheet, FileText, Radio, Wifi, Sparkles, Layers, MonitorSmartphone,
-  Target, Zap, ListTree,
+  Target, Zap, ListTree, MapPin,
 } from 'lucide-react';
 import { adminApi } from '@/lib/admin.api';
 import { number, relativeTime } from '@/lib/format';
@@ -20,11 +21,16 @@ import { Badge } from '@/components/ui/Badge';
 import { AreaChart, BarChart, BarList, Donut, Funnel, Heatmap } from '@/components/ui/Charts';
 import { Reveal } from '@/components/ui/motion';
 
+const GeoMap = dynamic(() => import('@/components/analytics/GeoMap').then((m) => m.GeoMap), {
+  ssr: false,
+  loading: () => <div className="skeleton h-[380px] rounded-2xl" />,
+});
+
 const DAY = 864e5;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const ago = (n: number) => iso(new Date(Date.now() - n * DAY));
 const PRESETS: [string, number][] = [['7D', 7], ['30D', 30], ['90D', 90]];
-const TABS = ['Overview', 'Engagement', 'Traffic', 'Audience', 'Business'] as const;
+const TABS = ['Overview', 'Engagement', 'Traffic', 'Audience', 'Geography', 'Business'] as const;
 type Tab = (typeof TABS)[number];
 
 const DEVICE_COLORS: Record<string, string> = {
@@ -126,6 +132,7 @@ export default function AnalyticsPage() {
       {tab === 'Engagement' && <EngagementTab data={engagement.data} loading={engagement.isLoading} />}
       {tab === 'Traffic' && <TrafficTab data={traffic.data} loading={traffic.isLoading} />}
       {tab === 'Audience' && <AudienceTab data={traffic.data} loading={traffic.isLoading} />}
+      {tab === 'Geography' && <GeographyTab from={from} to={to} />}
       {tab === 'Business' && <BusinessTab b={b} loading={summary.isLoading} />}
     </div>
   );
@@ -382,6 +389,104 @@ function EngagementTab({ data, loading }: any) {
           </div>
         </ChartCard>
       </div>
+    </div>
+  );
+}
+
+/* ── Geography (choropleth + drill-down) ── */
+function GeographyTab({ from, to }: { from: string; to: string }) {
+  const [country, setCountry] = useState<string | null>(null);
+  const [region, setRegion] = useState<string | null>(null);
+  const [metric, setMetric] = useState<'visitors' | 'sessions' | 'pageviews'>('visitors');
+  const [q, setQ] = useState('');
+
+  const geo = useQuery({
+    queryKey: ['analytics-geo', from, to, country, region],
+    queryFn: () => adminApi.analyticsGeo(from, to, country || undefined, region || undefined),
+  });
+  const rows: any[] = geo.data?.rows ?? [];
+  const level: string = geo.data?.level ?? 'country';
+  const values = Object.fromEntries(rows.map((r) => [r.name, r[metric]]));
+  // World map at country level; India state map when drilled into India; table-only at city level.
+  const mapMode: 'world' | 'india' | null = region ? null : country === null ? 'world' : country === 'India' ? 'india' : null;
+  const filtered = rows.filter((r) => String(r.name).toLowerCase().includes(q.toLowerCase()));
+
+  const drill = (name: string) => {
+    if (level === 'country') { setCountry(name); setRegion(null); }
+    else if (level === 'region') { setRegion(name); }
+  };
+
+  const exportCsv = () => {
+    const header = ['Name', 'Visitors', 'Sessions', 'PageViews', 'New', 'Returning'];
+    const lines = [header.join(','), ...rows.map((r) => [`"${r.name}"`, r.visitors, r.sessions, r.pageviews, r.newVisitors, r.returningVisitors].join(','))];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `geo-${level}.csv`; a.click(); URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1 text-sm">
+          <button onClick={() => { setCountry(null); setRegion(null); }} className={cn('rounded-lg px-2 py-1 transition', !country ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground')}>World</button>
+          {country && <><span className="text-muted-foreground">/</span><button onClick={() => setRegion(null)} className={cn('rounded-lg px-2 py-1 transition', country && !region ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground')}>{country}</button></>}
+          {region && <><span className="text-muted-foreground">/</span><span className="rounded-lg px-2 py-1 font-semibold">{region}</span></>}
+        </div>
+        <div className="ml-auto inline-flex rounded-xl border border-border p-1">
+          {(['visitors', 'sessions', 'pageviews'] as const).map((m) => (
+            <button key={m} onClick={() => setMetric(m)} className={cn('rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition', metric === m ? 'bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-white' : 'text-muted-foreground hover:text-foreground')}>{m}</button>
+          ))}
+        </div>
+      </div>
+
+      {mapMode && (
+        <ChartCard title={mapMode === 'world' ? `World — ${metric} by country` : `${country} — ${metric} by state`} icon={Globe2} hint="click a region to drill down">
+          <GeoMap mode={mapMode} values={values} onSelect={drill} metricLabel={metric} />
+        </ChartCard>
+      )}
+
+      <ChartCard title={`${level.charAt(0).toUpperCase() + level.slice(1)} breakdown`} icon={MapPin} hint={`${rows.length} ${level}${rows.length === 1 ? '' : 's'}`}>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${level}…`} className="w-full max-w-xs rounded-lg border border-input bg-background/60 px-3 py-1.5 text-sm outline-none transition focus:border-primary" />
+          <Button size="sm" variant="glass" magnetic={false} onClick={exportCsv}><Download className="h-4 w-4" /> Export</Button>
+        </div>
+        {geo.isLoading ? (
+          <div className="skeleton h-40 rounded-xl" />
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No geographic data in this range yet — populates as visitors browse (geo resolves from IP; localhost is skipped).</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
+                  <th className="py-2 pr-3 font-medium capitalize">{level}</th>
+                  <th className="py-2 pr-3 text-right font-medium">Visitors</th>
+                  <th className="py-2 pr-3 text-right font-medium">Sessions</th>
+                  <th className="py-2 pr-3 text-right font-medium">Views</th>
+                  <th className="py-2 pr-3 text-right font-medium">New</th>
+                  <th className="py-2 text-right font-medium">Returning</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r) => {
+                  const drillable = level !== 'city';
+                  return (
+                    <tr key={r.name} className={cn('border-b border-border/40 last:border-0', drillable && 'cursor-pointer hover:bg-muted/40')} onClick={() => drillable && drill(r.name)}>
+                      <td className="py-2 pr-3 font-medium">{r.name}{drillable && <span className="ml-1 text-muted-foreground">›</span>}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{number(r.visitors)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{number(r.sessions)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{number(r.pageviews)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{number(r.newVisitors)}</td>
+                      <td className="py-2 text-right tabular-nums">{number(r.returningVisitors)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ChartCard>
     </div>
   );
 }
