@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Breadcrumbs, type Crumb } from './Breadcrumbs';
+import { Reveal } from '@/components/ui/motion';
 
 interface MarketingPageProps {
   /** Small uppercase label above the title. */
@@ -30,16 +31,18 @@ export function MarketingPage({ eyebrow, title, lead, breadcrumb, actions, child
 
         <header className="mt-8 max-w-3xl">
           {eyebrow && (
-            <span className="inline-flex items-center gap-2 rounded-full glass px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-              {eyebrow}
-            </span>
+            <Reveal>
+              <span className="inline-flex items-center gap-2 rounded-full glass px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+                {eyebrow}
+              </span>
+            </Reveal>
           )}
-          <h1 className="mt-5 text-balance text-4xl font-extrabold leading-[1.05] tracking-tight md:text-6xl">
+          <Reveal delay={0.06} as="h1" className="mt-5 text-balance text-4xl font-extrabold leading-[1.05] tracking-tight md:text-6xl">
             {title}
-          </h1>
-          {lead && <p className="mt-5 text-lg text-muted-foreground">{lead}</p>}
-          {actions && <div className="mt-8 flex flex-wrap gap-3">{actions}</div>}
+          </Reveal>
+          {lead && <Reveal delay={0.12} as="p" className="mt-5 text-lg text-muted-foreground">{lead}</Reveal>}
+          {actions && <Reveal delay={0.18} className="mt-8 flex flex-wrap gap-3">{actions}</Reveal>}
         </header>
 
         <div className="mt-14">{children}</div>

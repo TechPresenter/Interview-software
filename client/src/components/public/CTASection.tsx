@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Reveal } from '@/components/ui/motion';
 
 interface CTASectionProps {
   title: ReactNode;
@@ -18,7 +19,7 @@ export function CTASection({
   secondary = { label: 'View pricing', href: '/pricing' },
 }: CTASectionProps) {
   return (
-    <section className="mt-24">
+    <Reveal as="section" className="mt-24">
       <div className="gradient-border relative overflow-hidden rounded-3xl border border-border p-10 text-center md:p-16">
         <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-80" />
         <div className="pointer-events-none absolute left-1/2 top-[-30%] -z-10 h-[380px] w-[760px] -translate-x-1/2 aurora opacity-70" />
@@ -45,7 +46,7 @@ export function CTASection({
           <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-accent" /> Cancel anytime</span>
         </div>
       </div>
-    </section>
+    </Reveal>
   );
 }
 

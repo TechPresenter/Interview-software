@@ -105,6 +105,8 @@ interface StaggerProps extends Omit<HTMLMotionProps<'div'>, 'ref'> {
   /** Delay before the first child (s). */
   delayChildren?: number;
   once?: boolean;
+  /** Render as a different element (e.g. 'ul', 'section'). Default 'div'. */
+  as?: keyof typeof motion;
 }
 
 /** Container that reveals its <Item> children one after another on scroll. */
@@ -112,16 +114,19 @@ export function Stagger({
   stagger = 0.08,
   delayChildren = 0,
   once = true,
+  as = 'div',
   className,
   children,
   ...props
 }: StaggerProps) {
   const reduce = useReducedMotion();
+  const Comp = motion[as] as typeof motion.div;
+
   if (reduce) {
     return (
-      <div className={className} {...(props as React.HTMLAttributes<HTMLDivElement>)}>
-        {children as React.ReactNode}
-      </div>
+      <Comp className={className} {...props}>
+        {children}
+      </Comp>
     );
   }
   const container: Variants = {
@@ -129,7 +134,7 @@ export function Stagger({
     show: { transition: { staggerChildren: stagger, delayChildren } },
   };
   return (
-    <motion.div
+    <Comp
       variants={container}
       initial="hidden"
       whileInView="show"
@@ -138,7 +143,7 @@ export function Stagger({
       {...props}
     >
       {children}
-    </motion.div>
+    </Comp>
   );
 }
 

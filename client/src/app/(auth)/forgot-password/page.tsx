@@ -3,14 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Sparkles, ArrowLeft, MailCheck } from 'lucide-react';
+import { ArrowLeft, MailCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Field } from '@/components/ui/Field';
-import { AuthCredit } from '@/components/auth/AuthCredit';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { AuthShell } from '@/components/auth/AuthShell';
 
 type Step = 'request' | 'reset';
 
@@ -63,19 +61,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="relative grid min-h-screen place-items-center overflow-hidden p-6">
-      <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-50" />
-      <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[520px] w-[720px] -translate-x-1/2 -translate-y-1/2 aurora opacity-55" />
-      <div className="absolute right-6 top-6"><ThemeToggle /></div>
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-        <Link href="/" className="mb-8 flex items-center justify-center gap-2 text-xl font-bold">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-brand shadow-glow">
-            <Sparkles className="h-5 w-5 text-white" />
-          </span>
-          <span className="text-gradient">AIPL Hire</span>
-        </Link>
-
+    <AuthShell>
         <GlassCard className="p-8">
           <h1 className="text-2xl font-bold">{step === 'request' ? 'Reset your password' : 'Enter your reset code'}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -119,9 +105,6 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         </GlassCard>
-
-        <AuthCredit />
-      </motion.div>
-    </main>
+    </AuthShell>
   );
 }
