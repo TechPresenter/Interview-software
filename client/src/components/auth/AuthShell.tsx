@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sparkles, ShieldCheck, Bot, BarChart3, Check } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { AuthCredit } from '@/components/auth/AuthCredit';
 import { useBranding } from '@/store/branding.store';
 import { SITE } from '@/lib/site';
 
@@ -24,15 +23,24 @@ const BARS = [
 ];
 
 /**
- * Premium split-screen auth chrome shared by login / register / forgot-password.
- * Left = branded showcase (hidden on mobile); right = the form card (children).
+ * Premium, fully-responsive split-screen chrome shared by login / register /
+ * forgot-password.
+ *
+ * Layout rules that keep it bulletproof across devices:
+ *  - Mobile / tablet (<lg): single centered column. The form column uses
+ *    `flex … justify-center` with vertical padding so it *centers when short*
+ *    but *grows & lets the page scroll when tall* (register form on a small
+ *    phone). Decorative blobs live in their own `overflow-hidden` layer so they
+ *    never clip the form or cause horizontal scroll.
+ *  - Desktop (lg+): 2-column grid — branded showcase on the left, form on the
+ *    right.
  */
 export function AuthShell({ children }: { children: ReactNode }) {
   const branding = useBranding((s) => s.branding);
   const name = branding?.platformName || SITE.name;
 
   const Brand = ({ className = '' }: { className?: string }) => (
-    <Link href="/" className={`flex items-center gap-2 text-xl font-bold ${className}`} aria-label={`${name} home`}>
+    <Link href="/" className={`inline-flex items-center gap-2 text-xl font-bold ${className}`} aria-label={`${name} home`}>
       {branding?.logoUrl ? (
         <img src={`${API_ORIGIN}${branding.logoUrl}`} alt={name} className="h-9 w-9 rounded-xl object-contain" />
       ) : (
@@ -45,14 +53,16 @@ export function AuthShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <main className="relative min-h-screen lg:grid lg:grid-cols-[1.05fr_1fr]">
-      {/* ── Left: branded showcase ── */}
+    <main className="relative min-h-screen w-full overflow-x-clip lg:grid lg:grid-cols-[1.05fr_1fr]">
+      {/* ── Left: branded showcase (desktop only) ── */}
       <aside className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
-        <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-80" />
-        <div className="pointer-events-none absolute inset-0 -z-10 grid-bg opacity-60" />
-        <div className="pointer-events-none absolute -left-24 top-1/4 -z-10 h-96 w-96 rounded-full bg-primary/25 blur-[130px] animate-pulse-glow" />
-        <div className="pointer-events-none absolute -right-16 bottom-10 -z-10 h-80 w-80 rounded-full bg-accent/20 blur-[120px] animate-float-slow" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-px bg-gradient-to-b from-transparent via-border to-transparent" />
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute inset-0 mesh-bg opacity-80" />
+          <div className="absolute inset-0 grid-bg opacity-60" />
+          <div className="absolute -left-24 top-1/4 h-96 w-96 rounded-full bg-primary/25 blur-[130px] animate-pulse-glow" />
+          <div className="absolute -right-16 bottom-10 h-80 w-80 rounded-full bg-accent/20 blur-[120px] animate-float-slow" />
+          <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-border to-transparent" />
+        </div>
 
         <Brand />
 
@@ -66,13 +76,19 @@ export function AuthShell({ children }: { children: ReactNode }) {
             Hire the right people, <span className="text-gradient-3">10× faster</span>.
           </h2>
           <ul className="mt-8 space-y-4">
-            {HIGHLIGHTS.map((h) => (
-              <li key={h.text} className="flex items-start gap-3">
+            {HIGHLIGHTS.map((h, i) => (
+              <motion.li
+                key={h.text}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.25 + i * 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="flex items-start gap-3"
+              >
                 <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg glass">
                   <h.icon className="h-4 w-4 text-primary" />
                 </span>
                 <span className="text-sm text-muted-foreground">{h.text}</span>
-              </li>
+              </motion.li>
             ))}
           </ul>
 
@@ -91,7 +107,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
                       className="h-full rounded-full bg-[linear-gradient(90deg,hsl(var(--primary)),hsl(var(--accent)))]"
                       initial={{ width: 0 }}
                       animate={{ width: `${b.v}%` }}
-                      transition={{ duration: 1, delay: 0.4 + i * 0.15, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 1, delay: 0.5 + i * 0.15, ease: [0.22, 1, 0.36, 1] }}
                     />
                   </div>
                 </div>
@@ -108,21 +124,26 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </p>
       </aside>
 
-      {/* ── Right: form column ── */}
-      <div className="relative grid min-h-screen place-items-center overflow-hidden p-6">
-        <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-40 lg:hidden" />
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[520px] w-[720px] -translate-x-1/2 -translate-y-1/2 aurora opacity-40 lg:hidden" />
-        <div className="absolute right-6 top-6"><ThemeToggle /></div>
+      {/* ── Right: form column (scroll-safe centering) ── */}
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 py-12 sm:px-6">
+        {/* Decorative backdrop — isolated & clipped so it never affects the form or causes scroll */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute inset-0 mesh-bg opacity-40 lg:opacity-0" />
+          <div className="absolute left-1/2 top-1/2 h-[560px] w-[560px] max-w-[130vw] -translate-x-1/2 -translate-y-1/2 aurora opacity-40 lg:opacity-25" />
+        </div>
+
+        <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+          <ThemeToggle />
+        </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-md"
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="relative z-10 w-full max-w-md"
         >
-          <Brand className="mb-8 justify-center lg:hidden" />
+          <Brand className="mb-8 flex w-full justify-center lg:hidden" />
           {children}
-          <AuthCredit />
         </motion.div>
       </div>
     </main>

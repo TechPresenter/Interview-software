@@ -40,7 +40,7 @@ export function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={cn(
-            'w-full rounded-xl border border-input bg-background/60 px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/40',
+            'w-full rounded-xl border border-input bg-background/60 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-muted-foreground/60 hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/40 focus:shadow-[0_6px_26px_-10px_hsl(var(--primary)/0.45)]',
             isPassword && 'pr-11',
           )}
           {...rest}
