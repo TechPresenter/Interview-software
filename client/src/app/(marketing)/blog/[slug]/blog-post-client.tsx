@@ -25,7 +25,9 @@ export default function BlogPostClient() {
           {isError && <p className="text-center text-muted-foreground">Post not found.</p>}
           {data && (
             <>
-              <p className="text-sm text-muted-foreground">{date(data.publishedAt || data.createdAt)} · {data.views} views</p>
+              <p className="text-sm text-muted-foreground">
+                {data.author?.name ? `By ${data.author.name} · ` : ''}{date(data.publishedAt || data.createdAt)} · {data.views} views
+              </p>
               <h1 className="mt-2 text-4xl font-extrabold leading-tight">{data.title}</h1>
               {data.coverImage && <img src={data.coverImage} alt="" className="mt-8 w-full rounded-2xl object-cover" />}
               {/^\s*</.test(data.content || '') || /<[a-z][\s\S]*>/i.test(data.content || '') ? (

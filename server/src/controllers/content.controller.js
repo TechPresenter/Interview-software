@@ -27,7 +27,7 @@ export const page = asyncHandler(async (req, res) => {
 export const blogList = asyncHandler(async (req, res) => {
   const opts = parseListQuery(req.query, { searchFields: ['title', 'excerpt', 'tags'], defaultSort: '-publishedAt' });
   const filter = { ...opts.filter, status: 'published' };
-  const { items, meta } = await paginateQuery(BlogPost, filter, opts);
+  const { items, meta } = await paginateQuery(BlogPost, filter, opts, [{ path: 'author', select: 'name avatar' }]);
   return ok(res, items, 'OK', meta);
 });
 
@@ -37,7 +37,9 @@ export const blogPost = asyncHandler(async (req, res) => {
     { slug: req.params.slug, status: 'published' },
     { $inc: { views: 1 } },
     { new: true },
-  ).lean();
+  )
+    .populate('author', 'name avatar')
+    .lean();
   if (!doc) throw ApiError.notFound('Post not found');
   return ok(res, doc);
 });

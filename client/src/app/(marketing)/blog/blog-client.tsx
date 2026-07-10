@@ -8,14 +8,21 @@ import { contentApi } from '@/lib/content.api';
 import { date } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Button } from '@/components/ui/Button';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Breadcrumbs } from '@/components/public/Breadcrumbs';
 import { NewsletterForm } from '@/components/public/NewsletterForm';
 
 export default function BlogClient() {
-  const { data, isLoading } = useQuery({ queryKey: ['public-blog'], queryFn: () => contentApi.blog({ limit: 48 }) });
+  const [limit, setLimit] = useState(12);
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['public-blog', limit],
+    queryFn: () => contentApi.blog({ limit }),
+    placeholderData: (prev) => prev,
+  });
   const posts = useMemo(() => data?.items ?? [], [data]);
+  const total = data?.meta?.total ?? posts.length;
 
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
@@ -101,9 +108,10 @@ export default function BlogClient() {
                 <Link key={p._id} href={`/blog/${p.slug}`}>
                   <GlassCard interactive className="flex h-full flex-col">
                     {p.coverImage && <img src={p.coverImage} alt="" className="mb-4 aspect-video w-full rounded-xl object-cover" />}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       {p.category && <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">{p.category}</span>}
                       <span>{date(p.publishedAt || p.createdAt)}</span>
+                      {p.author?.name && <span>· {p.author.name}</span>}
                     </div>
                     <h2 className="mt-2 text-lg font-semibold">{p.title}</h2>
                     <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.excerpt}</p>
@@ -117,6 +125,14 @@ export default function BlogClient() {
                   </GlassCard>
                 </Link>
               ))}
+            </div>
+          )}
+
+          {!isLoading && posts.length < total && (
+            <div className="mt-12 flex justify-center">
+              <Button variant="glass" magnetic={false} loading={isFetching} onClick={() => setLimit((l) => l + 12)}>
+                Load more articles
+              </Button>
             </div>
           )}
         </div>
