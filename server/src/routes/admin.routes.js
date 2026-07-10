@@ -28,6 +28,7 @@ import * as aiProviders from '../controllers/admin/aiProvider.controller.js';
 import * as leads from '../controllers/admin/leads.controller.js';
 import * as captcha from '../controllers/admin/captcha.controller.js';
 import * as integrations from '../controllers/admin/integrations.controller.js';
+import * as analytics from '../controllers/admin/analytics.controller.js';
 import * as proctoring from '../controllers/proctoring.controller.js';
 import * as demo from '../controllers/admin/demoBooking.controller.js';
 import { demoUpdateSchema } from '../validators/demo.validators.js';
@@ -155,6 +156,12 @@ router.put('/captcha', captcha.update);
 router.get('/integrations', integrations.list);
 router.put('/integrations/:key', integrations.save);
 router.post('/integrations/:key/test', integrations.test);
+
+/* ── Analytics dashboard ───────────────────────────────── */
+router.get('/analytics/summary', analytics.summary);
+router.get('/analytics/traffic', analytics.traffic);
+router.get('/analytics/realtime', analytics.realtime);
+router.get('/analytics/export', analytics.exportReport);
 
 /* ── Proctoring audit (platform-wide) ──────────────────── */
 router.get('/proctoring', proctoring.list);

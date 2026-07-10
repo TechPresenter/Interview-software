@@ -100,6 +100,84 @@ export function BarList({ data, className }: { data: { label: string; value: num
   );
 }
 
+/** Conversion funnel — decreasing bars with step-to-step drop-off. */
+export function Funnel({ steps, className }: { steps: { label: string; value: number }[]; className?: string }) {
+  const top = Math.max(1, steps[0]?.value ?? 1);
+  if (!steps.length) return <p className="text-sm text-muted-foreground">No data yet</p>;
+  return (
+    <div className={cn('space-y-3', className)}>
+      {steps.map((s, i) => {
+        const pctTop = Math.round((s.value / top) * 100);
+        const prev = steps[i - 1]?.value;
+        const conv = prev != null ? Math.round((s.value / Math.max(1, prev)) * 100) : 100;
+        return (
+          <div key={s.label}>
+            <div className="mb-1 flex items-center justify-between text-xs">
+              <span className="font-medium">{s.label}</span>
+              <span className="tabular-nums text-muted-foreground">{s.value.toLocaleString()} · {pctTop}%</span>
+            </div>
+            <div className="h-9 overflow-hidden rounded-lg bg-muted">
+              <motion.div
+                className="h-full rounded-lg bg-[linear-gradient(90deg,hsl(var(--primary)),hsl(var(--accent)))]"
+                initial={{ width: 0 }}
+                whileInView={{ width: `${Math.max(pctTop, 3)}%` }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: i * 0.1, ease: 'easeOut' }}
+              />
+            </div>
+            {i > 0 && (
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                <span className={cn(conv >= 40 ? 'text-accent' : conv >= 15 ? 'text-amber-500' : 'text-destructive')}>{conv}%</span> from previous step
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** Day-of-week × hour activity heatmap. cells: { dow (1=Sun … 7=Sat), hour (0–23), value }. */
+export function Heatmap({ cells, className }: { cells: { dow: number; hour: number; value: number }[]; className?: string }) {
+  const map = new Map<string, number>();
+  let max = 1;
+  for (const c of cells) {
+    map.set(`${c.dow}-${c.hour}`, c.value);
+    max = Math.max(max, c.value);
+  }
+  if (!cells.length) return <p className="text-sm text-muted-foreground">No data yet</p>;
+  return (
+    <div className={cn('overflow-x-auto', className)}>
+      <div className="min-w-[560px]">
+        <div className="flex gap-1 pl-10">
+          {Array.from({ length: 24 }).map((_, h) => (
+            <div key={h} className="flex-1 text-center text-[9px] text-muted-foreground">{h % 3 === 0 ? h : ''}</div>
+          ))}
+        </div>
+        {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+          <div key={d} className="mt-1 flex items-center gap-1">
+            <div className="w-9 shrink-0 text-[10px] text-muted-foreground">{DOW[d - 1]}</div>
+            {Array.from({ length: 24 }).map((_, h) => {
+              const v = map.get(`${d}-${h}`) || 0;
+              const intensity = v / max;
+              return (
+                <div
+                  key={h}
+                  className="aspect-square flex-1 rounded-[3px] transition-colors"
+                  style={{ background: v ? `hsl(var(--primary) / ${(0.14 + intensity * 0.86).toFixed(2)})` : 'hsl(var(--muted))' }}
+                  title={`${DOW[d - 1]} ${h}:00 — ${v} views`}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Animated donut for proportional data. */
 export function Donut({ segments, size = 150, className }: { segments: { label: string; value: number; color: string }[]; size?: number; className?: string }) {
   const total = Math.max(1, segments.reduce((s, x) => s + x.value, 0));

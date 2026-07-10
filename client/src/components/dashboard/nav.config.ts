@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  LineChart,
   Building2,
   CreditCard,
   Database,
@@ -37,6 +38,7 @@ export interface NavItem {
 export const navByRole: Record<Role, NavItem[]> = {
   super_admin: [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'Analytics', href: '/dashboard/analytics', icon: LineChart },
     { label: 'Companies', href: '/dashboard/companies', icon: Building2 },
     { label: 'Candidates', href: '/dashboard/candidates', icon: Users },
     { label: 'Subscriptions', href: '/dashboard/subscriptions', icon: CreditCard },

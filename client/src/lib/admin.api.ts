@@ -161,6 +161,13 @@ export const adminApi = {
   deleteLead: (id: string) => api.delete(`/admin/leads/${id}`).then((r) => r.data),
   exportLeads: (params?: { type?: string; status?: string; format?: 'csv' | 'xlsx' }) =>
     download('/admin/leads/export', params || {}, `leads.${params?.format || 'csv'}`),
+
+  /* ── Analytics dashboard ── */
+  analyticsSummary: (from?: string, to?: string) => apiGet<any>('/admin/analytics/summary', { from, to }),
+  analyticsTraffic: (from?: string, to?: string) => apiGet<any>('/admin/analytics/traffic', { from, to }),
+  analyticsRealtime: () => apiGet<any>('/admin/analytics/realtime'),
+  exportAnalytics: (params: { from?: string; to?: string; format: 'csv' | 'xlsx' | 'pdf' }) =>
+    download('/admin/analytics/export', params, `analytics.${params.format}`),
 };
 
 export default adminApi;

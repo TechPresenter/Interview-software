@@ -155,6 +155,72 @@ export async function invoiceToPdf({ payment, company, branding }) {
   return { buffer, filename: `invoice-${payment.invoiceNumber || payment._id}.pdf`, contentType: 'application/pdf' };
 }
 
+/** Build an analytics report as CSV / Excel / PDF. */
+export async function buildAnalyticsExport(format, { business: b, traffic: t, funnel, range }) {
+  const stamp = new Date().toISOString().slice(0, 10);
+  const rows = [
+    ['Metric', 'Value'],
+    ['Date range', `${range.since.toISOString().slice(0, 10)} to ${range.until.toISOString().slice(0, 10)}`],
+    ['Total users', b.users.total],
+    ['New users', b.users.new],
+    ['Active users (DAU)', b.users.dau],
+    ['Active users (WAU)', b.users.wau],
+    ['Active users (MAU)', b.users.mau],
+    ['Paid subscribers', b.subscriptions.paid],
+    ['Trials', b.subscriptions.trialing],
+    ['MRR', b.revenue.mrr],
+    ['ARR', b.revenue.arr],
+    ['Churn rate %', b.revenue.churnRate],
+    ['AI tokens', b.ai.tokens],
+    ['AI cost (USD)', Number(b.ai.cost || 0).toFixed(2)],
+    ['Emails sent', b.email.sent],
+    ['Email open rate %', b.email.openRate],
+    ['Notifications', b.notifications],
+    ['Contact enquiries', b.enquiries],
+    ['Newsletter signups', b.newsletter],
+    ['Demo bookings', b.demos],
+    ['Blog views', b.blog.views],
+    ['Page views', t.pageviews],
+    ['Sessions', t.sessions],
+    ['Unique visitors', t.visitors],
+    ['Bounce rate %', t.bounceRate],
+    ['Avg session (s)', t.avgSessionSeconds],
+    ...(funnel || []).map((f) => [`Funnel: ${f.label}`, f.value]),
+  ];
+
+  if (format === 'csv') {
+    const csv = '\uFEFF' + rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    return { buffer: Buffer.from(csv, 'utf8'), filename: `analytics-${stamp}.csv`, contentType: 'text/csv; charset=utf-8' };
+  }
+
+  if (format === 'xlsx') {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'HireSense';
+    const ws = wb.addWorksheet('Analytics');
+    ws.columns = [{ header: 'Metric', key: 'm', width: 30 }, { header: 'Value', key: 'v', width: 26 }];
+    ws.getRow(1).font = { bold: true };
+    rows.slice(1).forEach((r) => ws.addRow({ m: r[0], v: r[1] }));
+    const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+    return { buffer, filename: `analytics-${stamp}.xlsx`, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+  }
+
+  // PDF
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  const chunks = [];
+  doc.on('data', (c) => chunks.push(c));
+  const done = new Promise((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
+  doc.fontSize(20).fillColor('#6366f1').text('Analytics Report');
+  doc.fontSize(10).fillColor('#666').text(`${range.since.toDateString()} — ${range.until.toDateString()}`);
+  doc.moveDown();
+  doc.fillColor('#111').fontSize(11);
+  rows.slice(2).forEach((r) => doc.text(`${r[0]}: ${r[1]}`));
+  doc.moveDown(2);
+  doc.fontSize(8).fillColor('#999').text(`Generated ${new Date().toLocaleString()}`, { align: 'center' });
+  doc.end();
+  const buffer = await done;
+  return { buffer, filename: `analytics-${stamp}.pdf`, contentType: 'application/pdf' };
+}
+
 /* ── helpers ───────────────────────────────────────────── */
 function section(doc, title, items) {
   if (!items?.length) return;

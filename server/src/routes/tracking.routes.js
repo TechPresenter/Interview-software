@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { EmailLog } from '../models/EmailLog.js';
 import { config } from '../config/index.js';
+import { ingestPageView } from '../services/analytics.dashboard.service.js';
 
 /**
  * Public email tracking endpoints (no auth). Mounted at /track.
@@ -26,6 +27,12 @@ router.get('/open/:id', async (req, res) => {
   res.set('Content-Type', 'image/gif');
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.send(PIXEL);
+});
+
+/** POST /track/collect — first-party page-view beacon (no auth). */
+router.post('/collect', async (req, res) => {
+  await ingestPageView(req);
+  res.status(204).end();
 });
 
 router.get('/click/:id', async (req, res) => {
