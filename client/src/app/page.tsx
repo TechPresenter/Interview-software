@@ -17,6 +17,7 @@ import { AiDemo, Eyebrow } from '@/components/landing/AiDemo';
 import { Testimonials } from '@/components/landing/Testimonials';
 import { Faq } from '@/components/landing/Faq';
 import { HeroVisual } from '@/components/landing/HeroVisual';
+import { Reveal, Parallax } from '@/components/ui/motion';
 import { cn } from '@/lib/utils';
 
 const features = [
@@ -58,18 +59,22 @@ export default function LandingPage() {
 
       {/* ── Hero ───────────────────────────────────────── */}
       <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pb-16 pt-32 text-center">
-        <div className="pointer-events-none absolute inset-0 -z-10 mesh-bg opacity-70" />
+        {/* Parallax ambient backdrop */}
+        <Parallax offset={80} className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute inset-0 mesh-bg opacity-70" />
+          <div className="absolute left-1/2 top-[-8%] h-[620px] w-[1100px] -translate-x-1/2 aurora opacity-80" />
+          <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/20 blur-[140px]" />
+          <div className="absolute right-[8%] top-[30%] h-72 w-72 rounded-full bg-accent/25 blur-[120px] animate-pulse-glow" />
+          <div className="absolute left-[6%] top-[52%] h-64 w-64 rounded-full bg-[hsl(var(--sunset))]/20 blur-[120px] animate-float-slow" />
+        </Parallax>
         <div className="pointer-events-none absolute inset-0 -z-10 grid-bg" />
-        <div className="pointer-events-none absolute left-1/2 top-[-8%] -z-10 h-[620px] w-[1100px] -translate-x-1/2 aurora opacity-80" />
-        <div className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/20 blur-[140px]" />
-        <div className="pointer-events-none absolute right-[8%] top-[30%] -z-10 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
 
         <div className="mx-auto w-full max-w-5xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             className="group mx-auto mb-7 inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-medium"
           >
-            <span className="inline-flex items-center gap-1 rounded-full bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+            <span className="inline-flex items-center gap-1 rounded-full bg-conic-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
               <Zap className="h-3 w-3" /> New
             </span>
             Powered by advanced AI — adaptive, fair &amp; explainable
@@ -116,16 +121,17 @@ export default function LandingPage() {
       <AiDemo />
 
       {/* ── Features ───────────────────────────────────── */}
-      <section id="features" className="container py-24">
-        <div className="mx-auto max-w-2xl text-center">
+      <section id="features" className="container relative py-24">
+        <div className="pointer-events-none absolute left-1/2 top-1/3 -z-10 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-primary/5 blur-[120px]" />
+        <Reveal className="mx-auto max-w-2xl text-center">
           <Eyebrow>Platform</Eyebrow>
-          <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">Everything you need to hire with AI</h2>
+          <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">Everything you need to hire <span className="text-gradient-3">with AI</span></h2>
           <p className="mt-4 text-muted-foreground">From first resume to final offer — one premium platform for recruiters, HR, and candidates.</p>
-        </div>
+        </Reveal>
         <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {features.map((f, i) => (
             <GlassCard key={f.title} tilt delay={i * 0.05} className="group">
-              <span className="mb-4 inline-grid h-12 w-12 place-items-center rounded-xl bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] glow transition-transform duration-300 group-hover:scale-110">
+              <span className="mb-4 inline-grid h-12 w-12 place-items-center rounded-xl bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] glow transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
                 <f.icon className="h-6 w-6 text-white" />
               </span>
               <h3 className="text-lg font-semibold">{f.title}</h3>
@@ -137,21 +143,21 @@ export default function LandingPage() {
 
       {/* ── How it works ───────────────────────────────── */}
       <section id="how" className="container py-24">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <Eyebrow>How it works</Eyebrow>
           <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">Live in minutes, not months</h2>
-        </div>
+        </Reveal>
         <div className="relative mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          <div className="pointer-events-none absolute left-0 right-0 top-7 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent lg:block" />
+          <div className="pointer-events-none absolute left-0 right-0 top-7 hidden h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent lg:block" />
           {steps.map((s, i) => (
             <motion.div
               key={s.title}
-              initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-              className="relative text-center"
+              initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="group relative text-center"
             >
-              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl glass">
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl glass transition-transform duration-300 group-hover:-translate-y-1">
                 <s.icon className="h-6 w-6 text-primary" />
-                <span className="absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-xs font-bold text-white">{i + 1}</span>
+                <span className="absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full bg-conic-brand text-xs font-bold text-white">{i + 1}</span>
               </div>
               <h3 className="mt-5 font-semibold">{s.title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{s.desc}</p>
@@ -177,23 +183,23 @@ export default function LandingPage() {
 
       {/* ── Pricing ────────────────────────────────────── */}
       <section id="pricing" className="container py-24">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <Eyebrow>Pricing</Eyebrow>
           <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">Simple, scalable pricing</h2>
           <div className="mx-auto mt-8 inline-flex rounded-xl border border-border p-1">
             {([['Monthly', false], ['Yearly', true]] as const).map(([label, val]) => (
-              <button key={label} onClick={() => setYearly(val)} className={cn('rounded-lg px-5 py-2 text-sm font-medium transition', yearly === val ? 'bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-white' : 'text-muted-foreground')}>
+              <button key={label} onClick={() => setYearly(val)} className={cn('rounded-lg px-5 py-2 text-sm font-medium transition', yearly === val ? 'bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-white shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.6)]' : 'text-muted-foreground hover:text-foreground')}>
                 {label}{val && <span className="ml-1 text-xs text-accent">−17%</span>}
               </button>
             ))}
           </div>
-        </div>
+        </Reveal>
         <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((p, i) => {
             const price = yearly ? p.yearly : p.monthly;
             return (
-              <GlassCard key={p.name} delay={i * 0.05} className={cn(p.popular && 'gradient-border ring-1 ring-primary/40')}>
-                {p.popular && <span className="mb-3 inline-block rounded-full bg-primary/15 px-3 py-0.5 text-xs font-medium text-primary">Most popular</span>}
+              <GlassCard key={p.name} delay={i * 0.05} className={cn('flex flex-col', p.popular && 'gradient-border-spin ring-1 ring-primary/40 lg:-mt-3 lg:mb-3')}>
+                {p.popular && <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full bg-primary/15 px-3 py-0.5 text-xs font-medium text-primary"><Sparkles className="h-3 w-3" /> Most popular</span>}
                 <h3 className="text-lg font-semibold">{p.name}</h3>
                 <p className="mt-3 text-4xl font-bold text-gradient">
                   {price === null ? 'Custom' : price === 0 ? 'Free' : `₹${price.toLocaleString('en-IN')}`}
@@ -202,7 +208,7 @@ export default function LandingPage() {
                 <ul className="mt-5 space-y-2.5 text-sm text-muted-foreground">
                   {p.features.map((f) => <li key={f} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" /> {f}</li>)}
                 </ul>
-                <Link href="/register" className="mt-6 block">
+                <Link href="/register" className="mt-6 block pt-2">
                   <Button className="w-full" variant={p.popular ? 'primary' : 'glass'} magnetic={false}>{price === null ? 'Contact sales' : 'Get started'}</Button>
                 </Link>
               </GlassCard>
@@ -216,22 +222,24 @@ export default function LandingPage() {
 
       {/* ── CTA ────────────────────────────────────────── */}
       <section className="container py-24">
-        <div className="gradient-border relative overflow-hidden rounded-3xl border border-border p-12 text-center md:p-20">
-          <div className="absolute inset-0 -z-10 mesh-bg opacity-80" />
-          <div className="pointer-events-none absolute left-1/2 top-[-30%] -z-10 h-[420px] w-[820px] -translate-x-1/2 aurora opacity-70" />
-          <div className="absolute inset-0 -z-10 bg-background/40" />
-          <h2 className="mx-auto max-w-2xl text-4xl font-bold tracking-tight md:text-6xl">Ready to <span className="text-gradient-animate">transform</span> your hiring?</h2>
-          <p className="mx-auto mt-5 max-w-lg text-muted-foreground">Join modern teams interviewing smarter with AI. Free to start.</p>
-          <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/register"><Button size="lg">Get started for free <ArrowRight className="h-5 w-5" /></Button></Link>
-            <Link href="/pricing"><Button size="lg" variant="glass" magnetic={false}>View pricing</Button></Link>
+        <Reveal>
+          <div className="gradient-border relative overflow-hidden rounded-3xl border border-border p-12 text-center md:p-20">
+            <div className="absolute inset-0 -z-10 mesh-bg opacity-80" />
+            <div className="pointer-events-none absolute left-1/2 top-[-30%] -z-10 h-[420px] w-[820px] -translate-x-1/2 aurora opacity-70" />
+            <div className="absolute inset-0 -z-10 bg-background/40" />
+            <h2 className="mx-auto max-w-2xl text-4xl font-bold tracking-tight md:text-6xl">Ready to <span className="text-gradient-animate">transform</span> your hiring?</h2>
+            <p className="mx-auto mt-5 max-w-lg text-muted-foreground">Join modern teams interviewing smarter with AI. Free to start.</p>
+            <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link href="/register"><Button size="lg">Get started for free <ArrowRight className="h-5 w-5" /></Button></Link>
+              <Link href="/pricing"><Button size="lg" variant="glass" magnetic={false}>View pricing</Button></Link>
+            </div>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-accent" /> Setup in minutes</span>
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-accent" /> Enterprise-grade security</span>
+              <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-accent" /> Cancel anytime</span>
+            </div>
           </div>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-accent" /> Setup in minutes</span>
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-accent" /> Enterprise-grade security</span>
-            <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-accent" /> Cancel anytime</span>
-          </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ── Footer ─────────────────────────────────────── */}
