@@ -8,6 +8,7 @@ import { useAuth } from '@/store/auth.store';
 import { useTheme } from '@/store/theme.store';
 import { useBranding } from '@/store/branding.store';
 import { AnnouncementBar } from '@/components/AnnouncementBar';
+import { TrackingScripts } from '@/components/TrackingScripts';
 import { Toaster } from '@/components/ui/toast';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -34,6 +35,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AnnouncementBar />
       {children}
       <Toaster />
+      <TrackingScripts />
     </QueryClientProvider>
   );
 }

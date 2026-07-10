@@ -5,6 +5,7 @@ import {
   Database,
   Bot,
   Plug,
+  Cable,
   Settings,
   Newspaper,
   Palette,
@@ -50,6 +51,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'CMS', href: '/dashboard/cms', icon: Newspaper },
     { label: 'Enquiries', href: '/dashboard/enquiries', icon: Inbox },
     { label: 'Demo Bookings', href: '/dashboard/demo-bookings', icon: CalendarClock },
+    { label: 'Integrations', href: '/dashboard/integrations', icon: Cable },
     { label: 'System', href: '/dashboard/system', icon: Settings },
   ],
   company_admin: [

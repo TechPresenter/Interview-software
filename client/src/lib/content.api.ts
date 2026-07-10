@@ -14,6 +14,8 @@ export const contentApi = {
   blog: (params?: object) => http.get('/blog', { params }).then((r) => ({ items: r.data.data, meta: r.data.meta })),
   blogPost: (slug: string) => http.get(`/blog/${slug}`).then((r) => r.data.data),
   page: (slug: string) => http.get(`/pages/${slug}`).then((r) => r.data.data),
+  tracking: (): Promise<{ head: { key: string; html: string }[]; footer: { key: string; html: string }[]; js: { key: string; code: string }[] }> =>
+    http.get('/tracking').then((r) => r.data.data),
 };
 
 export default contentApi;

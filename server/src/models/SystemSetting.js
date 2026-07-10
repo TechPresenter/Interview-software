@@ -13,7 +13,7 @@ const systemSettingSchema = new Schema(
     key: { type: String, required: true, unique: true, index: true },
     group: {
       type: String,
-      enum: ['smtp', 'sms', 'payment', 'ai', 'security', 'general', 'feature_flag'],
+      enum: ['smtp', 'sms', 'payment', 'ai', 'security', 'general', 'feature_flag', 'integrations'],
       default: 'general',
       index: true,
     },

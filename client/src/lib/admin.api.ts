@@ -149,6 +149,11 @@ export const adminApi = {
   captchaConfig: () => apiGet<any>('/admin/captcha'),
   updateCaptcha: (body: object) => api.put('/admin/captcha', body).then((r) => r.data.data),
 
+  // Tracking & marketing integrations
+  integrations: () => apiGet<any>('/admin/integrations'),
+  saveIntegration: (key: string, body: object) => api.put(`/admin/integrations/${key}`, body).then((r) => r.data.data),
+  testIntegration: (key: string) => apiPost<any>(`/admin/integrations/${key}/test`),
+
   // Website leads (contact enquiries + newsletter subscribers)
   leads: (params?: object) => getPaged<any>('/admin/leads', params),
   leadStats: () => apiGet<any>('/admin/leads/stats'),
