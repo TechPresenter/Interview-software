@@ -117,6 +117,14 @@ export const config = {
     from: env.MAIL_FROM,
     enabled: Boolean(env.SMTP_HOST),
   },
+  billing: {
+    // Display currency for the billing layer (all amounts stored in minor units).
+    currency: process.env.BILLING_CURRENCY || 'INR',
+    // GST is shown on invoices only when a GSTIN is configured. Prices are treated
+    // as GST-inclusive, so enabling this does NOT change the amount charged.
+    gstPercent: Number(process.env.GST_PERCENT || 18),
+    gstin: process.env.GST_NUMBER || '',
+  },
   payments: {
     stripe: {
       secretKey: env.STRIPE_SECRET_KEY,

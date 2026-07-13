@@ -1,7 +1,7 @@
 /** Display formatters shared across admin/company dashboards. */
 
-/** Money stored in minor units (cents) → localized currency string. */
-export function money(minor: number, currency = 'USD') {
+/** Money stored in minor units (paise/cents) → localized currency string. */
+export function money(minor: number, currency = 'INR') {
   return new Intl.NumberFormat('en', { style: 'currency', currency, maximumFractionDigits: 0 }).format(
     (minor || 0) / 100,
   );

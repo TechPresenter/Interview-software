@@ -175,7 +175,7 @@ function RealtimeStrip() {
 /* ── Overview ── */
 function OverviewTab({ b, t, funnel, loading }: any) {
   const regs = (b?.registrations ?? []).map((r: any) => ({ label: r.label, value: r.value }));
-  const rev = (b?.revenue?.series ?? []).map((r: any) => ({ label: r.label, value: r.value }));
+  const rev = (b?.revenue?.series ?? []).map((r: any) => ({ label: r.label, value: r.value / 100 }));
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -186,7 +186,7 @@ function OverviewTab({ b, t, funnel, loading }: any) {
         <StatTile label="Sessions" value={t?.sessions ?? 0} icon={Layers} color="pink" compact loading={loading} delay={0.2} />
         <StatTile label="Unique Visitors" value={t?.visitors ?? 0} icon={Users} color="orange" compact loading={loading} delay={0.25} />
         <StatTile label="Bounce Rate" value={t?.bounceRate ?? 0} icon={TrendingDown} color="orange" suffix="%" loading={loading} delay={0.3} />
-        <StatTile label="MRR" value={b?.revenue?.mrr ?? 0} icon={DollarSign} color="green" prefix="₹" compact loading={loading} delay={0.35} />
+        <StatTile label="MRR" value={(b?.revenue?.mrr ?? 0) / 100} icon={DollarSign} color="green" prefix="₹" compact loading={loading} delay={0.35} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -264,8 +264,8 @@ function BusinessTab({ b, loading }: any) {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="Paid Subscribers" value={subs.paid ?? 0} icon={CreditCard} color="green" loading={loading} delay={0} />
         <StatTile label="Free Trials" value={subs.trialing ?? 0} icon={Sparkles} color="violet" loading={loading} delay={0.05} />
-        <StatTile label="MRR" value={b?.revenue?.mrr ?? 0} icon={DollarSign} color="green" prefix="₹" compact loading={loading} delay={0.1} />
-        <StatTile label="ARR" value={b?.revenue?.arr ?? 0} icon={Repeat} color="blue" prefix="₹" compact loading={loading} delay={0.15} />
+        <StatTile label="MRR" value={(b?.revenue?.mrr ?? 0) / 100} icon={DollarSign} color="green" prefix="₹" compact loading={loading} delay={0.1} />
+        <StatTile label="ARR" value={(b?.revenue?.arr ?? 0) / 100} icon={Repeat} color="blue" prefix="₹" compact loading={loading} delay={0.15} />
         <StatTile label="Churn Rate" value={b?.revenue?.churnRate ?? 0} icon={TrendingDown} color="orange" suffix="%" loading={loading} delay={0.2} />
         <StatTile label="AI Tokens" value={b?.ai?.tokens ?? 0} icon={Coins} color="pink" compact loading={loading} delay={0.25} />
         <StatTile label="Emails Sent" value={b?.email?.sent ?? 0} icon={Mail} color="cyan" compact loading={loading} delay={0.3} />

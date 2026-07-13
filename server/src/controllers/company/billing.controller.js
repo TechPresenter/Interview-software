@@ -69,9 +69,14 @@ export const checkout = asyncHandler(async (req, res) => {
  * activate the plan (Razorpay's success flow is client-driven + signature-verified).
  */
 export const verifyRazorpay = asyncHandler(async (req, res) => {
-  const { orderId, paymentId, signature, plan, billingCycle = 'monthly', amount, currency } = req.body;
+  const { orderId, paymentId, signature, plan, billingCycle = 'monthly', coupon } = req.body;
   const provider = getProvider('razorpay');
   provider.verifyCallback({ orderId, paymentId, signature });
+
+  // Recompute the charged amount server-side — never trust a client-supplied amount.
+  const planDoc = await Plan.findOne({ key: plan, isActive: true });
+  if (!planDoc) throw ApiError.notFound('Plan not found');
+  const { amount, currency } = await payments.priceFor(planDoc, billingCycle, coupon);
 
   const result = await applyPaidPlan({
     companyId: req.companyId,

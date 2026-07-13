@@ -60,7 +60,7 @@ export const PIPELINE_STAGES = [
 export const RECOMMENDATIONS = ['strong_hire', 'hire', 'consider', 'reject'];
 
 export const PAYMENT_STATUS = ['created', 'pending', 'paid', 'failed', 'refunded'];
-export const PAYMENT_PROVIDERS = ['stripe', 'razorpay'];
+export const PAYMENT_PROVIDERS = ['stripe', 'razorpay', 'cashfree', 'manual'];
 
 export const NOTIFICATION_TYPES = [
   'interview_scheduled',

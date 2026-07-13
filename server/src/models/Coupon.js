@@ -9,8 +9,8 @@ const couponSchema = new Schema(
     description: String,
 
     type: { type: String, enum: ['percent', 'amount'], required: true },
-    value: { type: Number, required: true }, // percent (0-100) or minor units
-    currency: { type: String, default: 'USD' },
+    value: { type: Number, required: true }, // percent (0-100) or minor units (paise)
+    currency: { type: String, default: 'INR' },
 
     // Restrictions
     appliesToPlans: [String], // empty => all plans

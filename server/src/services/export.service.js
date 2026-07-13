@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
+import { config } from '../config/index.js';
 
 /**
  * Report exporters. Each returns a Buffer + suggested filename + content type so
@@ -123,8 +124,13 @@ export async function invoiceToPdf({ payment, company, branding }) {
   const done = new Promise((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
 
   const name = branding?.platformName || 'HireSense';
-  const amount = ((payment.amount || 0) / 100).toFixed(2);
-  const cur = payment.currency || 'USD';
+  const total = (payment.amount || 0) / 100;
+  const cur = payment.currency || config.billing.currency;
+  // GST is shown only when a GSTIN is configured; prices are GST-inclusive, so the
+  // total charged is unchanged — we just split out the tax component for the invoice.
+  const gstPercent = config.billing.gstin ? config.billing.gstPercent : 0;
+  const base = gstPercent > 0 ? total / (1 + gstPercent / 100) : total;
+  const gst = total - base;
 
   doc.fontSize(22).fillColor('#6366f1').text(name);
   doc.fontSize(10).fillColor('#666').text('Invoice / Payment Receipt');
@@ -145,7 +151,12 @@ export async function invoiceToPdf({ payment, company, branding }) {
   doc.fontSize(12).fillColor('#6366f1').text('Description');
   doc.fontSize(10).fillColor('#111').text(`${payment.description || 'Subscription'}`);
   doc.moveDown(0.5);
-  doc.fontSize(14).fillColor('#111').text(`Total: ${cur} ${amount}`, { align: 'right' });
+  if (gstPercent > 0) {
+    doc.fontSize(10).fillColor('#111').text(`Subtotal (excl. GST): ${cur} ${base.toFixed(2)}`, { align: 'right' });
+    doc.text(`GST @ ${gstPercent}%: ${cur} ${gst.toFixed(2)}`, { align: 'right' });
+    doc.fontSize(8).fillColor('#666').text(`GSTIN: ${config.billing.gstin}`, { align: 'right' });
+  }
+  doc.fontSize(14).fillColor('#111').text(`Total: ${cur} ${total.toFixed(2)}${gstPercent > 0 ? ' (incl. GST)' : ''}`, { align: 'right' });
 
   doc.moveDown(2);
   doc.fontSize(8).fillColor('#999').text(`${name} · Generated ${new Date().toLocaleString()}`, { align: 'center' });
@@ -168,8 +179,8 @@ export async function buildAnalyticsExport(format, { business: b, traffic: t, fu
     ['Active users (MAU)', b.users.mau],
     ['Paid subscribers', b.subscriptions.paid],
     ['Trials', b.subscriptions.trialing],
-    ['MRR', b.revenue.mrr],
-    ['ARR', b.revenue.arr],
+    ['MRR', Math.round((b.revenue.mrr || 0) / 100)],
+    ['ARR', Math.round((b.revenue.arr || 0) / 100)],
     ['Churn rate %', b.revenue.churnRate],
     ['AI tokens', b.ai.tokens],
     ['AI cost (USD)', Number(b.ai.cost || 0).toFixed(2)],

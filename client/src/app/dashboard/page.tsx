@@ -288,7 +288,7 @@ function SuperAdminOverview({ name }: { name: string }) {
     { label: 'Total Companies', value: data?.totalCompanies ?? 0, icon: Building2, href: '/dashboard/companies' },
     { label: 'Total Candidates', value: data?.totalCandidates ?? 0, icon: Users, compact: true, href: '/dashboard/candidates' },
     { label: 'Total Interviews', value: data?.totalInterviews ?? 0, icon: CalendarClock, compact: true, href: '/dashboard/recordings' },
-    { label: 'MRR', value: Math.round((data?.mrr ?? 0) / 100), icon: TrendingUp, prefix: '$', compact: true, href: '/dashboard/subscriptions' },
+    { label: 'MRR', value: Math.round((data?.mrr ?? 0) / 100), icon: TrendingUp, prefix: '₹', compact: true, href: '/dashboard/subscriptions' },
   ];
   const interviewSeries = (series?.interviews ?? []).map((d: any) => ({ label: d._id, value: d.count }));
   const revenueSeries = (series?.revenue ?? []).map((d: any) => ({ label: d._id, value: Math.round((d.total ?? 0) / 100) }));

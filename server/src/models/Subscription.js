@@ -16,12 +16,12 @@ const subscriptionSchema = new Schema(
     },
     billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
 
-    provider: { type: String, enum: ['stripe', 'razorpay', 'manual'], default: 'manual' },
+    provider: { type: String, enum: ['stripe', 'razorpay', 'cashfree', 'manual'], default: 'manual' },
     providerCustomerId: String,
     providerSubscriptionId: String,
 
-    amount: { type: Number, default: 0 }, // in minor units (cents/paise)
-    currency: { type: String, default: 'USD' },
+    amount: { type: Number, default: 0 }, // in minor units (paise)
+    currency: { type: String, default: 'INR' },
 
     currentPeriodStart: Date,
     currentPeriodEnd: Date,

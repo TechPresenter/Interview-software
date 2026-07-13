@@ -264,11 +264,13 @@ export async function safeSendTemplated(key, opts = {}) {
 }
 
 /** Format a money amount for emails (major units, e.g. 9999 → ₹9,999). */
-export function formatMoney(amount, currency = 'USD') {
+export function formatMoney(amount, currency = 'INR') {
+  // `amount` is stored in minor units (paise/cents) — convert to major units to display.
+  const major = (Number(amount) || 0) / 100;
   try {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Number(amount) || 0);
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(major);
   } catch {
-    return `${currency} ${amount}`;
+    return `${currency} ${major.toFixed(2)}`;
   }
 }
 

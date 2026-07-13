@@ -17,7 +17,7 @@ const planSchema = new Schema(
     pricing: {
       monthly: { type: Number, default: 0 },
       yearly: { type: Number, default: 0 },
-      currency: { type: String, default: 'USD' },
+      currency: { type: String, default: 'INR' },
     },
 
     limits: {

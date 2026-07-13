@@ -9,7 +9,6 @@ import { Notification } from '../models/Notification.js';
 import { Lead } from '../models/Lead.js';
 import { DemoBooking } from '../models/DemoBooking.js';
 import { BlogPost } from '../models/BlogPost.js';
-import { Interview } from '../models/Interview.js';
 import { redis } from '../config/redis.js';
 import { ROLES } from '../constants/enums.js';
 
@@ -264,7 +263,7 @@ export async function businessMetrics(since, until) {
   const statusMap = Object.fromEntries(subsByStatus.map((s) => [s._id, s.n]));
   const paid = statusMap.active || 0;
   const trialing = statusMap.trialing || 0;
-  const mrr = Math.round((mrrAgg[0]?.mrr || 0) / 100); // minor units → major
+  const mrr = Math.round(mrrAgg[0]?.mrr || 0); // paise (minor units); client divides by 100 at display
   const churnBase = paid + churned;
   const email = emailAgg[0] || { sent: 0, opened: 0, clicked: 0 };
 
@@ -275,7 +274,7 @@ export async function businessMetrics(since, until) {
     revenue: {
       mrr, arr: mrr * 12,
       churnRate: churnBase ? Math.round((churned / churnBase) * 100) : 0,
-      series: revenueSeries.map((r) => ({ label: r._id, value: Math.round(r.value / 100) })),
+      series: revenueSeries.map((r) => ({ label: r._id, value: r.value })), // paise
     },
     ai: aiTotals[0] || { tokens: 0, cost: 0, calls: 0 },
     email: { ...email, openRate: email.sent ? Math.round((email.opened / email.sent) * 100) : 0 },

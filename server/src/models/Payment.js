@@ -12,8 +12,8 @@ const paymentSchema = new Schema(
     providerPaymentId: { type: String, index: true },
     providerOrderId: String,
 
-    amount: { type: Number, required: true }, // minor units
-    currency: { type: String, default: 'USD' },
+    amount: { type: Number, required: true }, // minor units (paise)
+    currency: { type: String, default: 'INR' },
     status: { type: String, enum: PAYMENT_STATUS, default: 'created', index: true },
 
     invoiceNumber: { type: String, unique: true, sparse: true },

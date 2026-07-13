@@ -45,7 +45,7 @@ export function defaultProvider() {
 /** Compute the price for a plan/cycle, applying an optional coupon. */
 export async function priceFor(plan, billingCycle, couponCode) {
   let amount = billingCycle === 'yearly' ? plan.pricing.yearly : plan.pricing.monthly;
-  const currency = plan.pricing.currency || 'USD';
+  const currency = plan.pricing.currency || 'INR';
   let coupon = null;
 
   if (couponCode) {
@@ -54,7 +54,14 @@ export async function priceFor(plan, billingCycle, couponCode) {
     if (coupon.appliesToPlans?.length && !coupon.appliesToPlans.includes(plan.key)) {
       throw ApiError.badRequest('Coupon does not apply to this plan');
     }
-    amount = coupon.type === 'percent' ? Math.round(amount * (1 - coupon.value / 100)) : Math.max(0, amount - coupon.value);
+    // A fixed-amount coupon must be in the same currency as the plan.
+    if (coupon.type === 'amount' && coupon.currency && coupon.currency !== currency) {
+      throw ApiError.badRequest('Coupon currency does not match this plan');
+    }
+    amount =
+      coupon.type === 'percent'
+        ? Math.round(amount * (1 - Math.min(100, Math.max(0, coupon.value)) / 100))
+        : Math.max(0, amount - coupon.value);
   }
   return { amount, currency, coupon };
 }
