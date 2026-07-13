@@ -45,19 +45,19 @@ export function Modal({ open, onClose, title, description, children, footer, siz
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-            className={`glass relative z-10 w-full ${SIZE_CLASS[size]} rounded-2xl p-6`}
+            className={`glass relative z-10 flex max-h-[90dvh] w-full ${SIZE_CLASS[size]} flex-col rounded-2xl p-5 sm:p-6`}
           >
             <button
               onClick={onClose}
-              className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted/40 hover:text-foreground"
+              className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted/40 hover:text-foreground sm:right-4 sm:top-4"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
-            {title && <h2 className="text-xl font-bold">{title}</h2>}
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-            <div className="mt-5 max-h-[60vh] overflow-y-auto pr-1">{children}</div>
-            {footer && <div className="mt-6 flex justify-end gap-3">{footer}</div>}
+            {title && <h2 className="pr-10 text-lg font-bold sm:text-xl">{title}</h2>}
+            {description && <p className="mt-1 pr-10 text-sm text-muted-foreground">{description}</p>}
+            <div className="mt-5 flex-1 overflow-y-auto pr-1">{children}</div>
+            {footer && <div className="mt-6 flex flex-wrap justify-end gap-3">{footer}</div>}
           </motion.div>
         </motion.div>
       )}

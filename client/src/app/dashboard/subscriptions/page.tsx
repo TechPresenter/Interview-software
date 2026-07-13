@@ -154,7 +154,7 @@ function Plans() {
       >
         <div className="space-y-4">
           <Field label="Plan name" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Monthly price" type="number" value={String(form.monthly)} onChange={(v) => setForm((f) => ({ ...f, monthly: Number(v) }))} />
             <Field label="Yearly price" type="number" value={String(form.yearly)} onChange={(v) => setForm((f) => ({ ...f, yearly: Number(v) }))} />
             <Select label="Currency" value={form.currency} onChange={(v) => setForm((f) => ({ ...f, currency: v }))} options={CURRENCIES.map((c) => ({ label: c, value: c }))} />

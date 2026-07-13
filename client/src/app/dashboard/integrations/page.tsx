@@ -18,15 +18,64 @@ import { Badge } from '@/components/ui/Badge';
 import { toast } from '@/components/ui/toast';
 
 const CAT_META: Record<string, { icon: LucideIcon; color: string }> = {
-  analytics: { icon: BarChart3, color: 'text-violet-400' },
-  product: { icon: Activity, color: 'text-cyan-400' },
-  ads: { icon: Target, color: 'text-orange-400' },
-  support: { icon: MessagesSquare, color: 'text-emerald-400' },
-  crm: { icon: Users, color: 'text-pink-400' },
-  monitoring: { icon: Bug, color: 'text-sky-400' },
-  automation: { icon: Webhook, color: 'text-violet-400' },
-  custom: { icon: Code2, color: 'text-muted-foreground' },
+  analytics: { icon: BarChart3, color: 'text-violet-500' },
+  product: { icon: Activity, color: 'text-cyan-500' },
+  ads: { icon: Target, color: 'text-orange-500' },
+  support: { icon: MessagesSquare, color: 'text-emerald-500' },
+  crm: { icon: Users, color: 'text-pink-500' },
+  monitoring: { icon: Bug, color: 'text-sky-500' },
+  automation: { icon: Webhook, color: 'text-violet-500' },
+  custom: { icon: Code2, color: 'text-slate-500' },
 };
+
+/**
+ * Official brand logos on a uniform white chip. Resolution order:
+ *   1. Simple Icons SVG (crisp, brand-coloured) — only slugs that actually exist.
+ *   2. The brand's own high-res favicon (Google S2) — covers logos Simple Icons removed.
+ *   3. The category icon — for non-brand entries (webhooks / custom scripts).
+ */
+const BRAND: Record<string, string> = {
+  ga4: 'googleanalytics', gtm: 'googletagmanager', gsc: 'google', google_ads: 'googleads', google_merchant: 'google',
+  plausible: 'plausibleanalytics', matomo: 'matomo', cloudflare: 'cloudflare',
+  posthog: 'posthog', mixpanel: 'mixpanel', hotjar: 'hotjar',
+  meta_pixel: 'meta', meta_capi: 'meta', tiktok: 'tiktok', snapchat: 'snapchat',
+  pinterest: 'pinterest', twitter: 'x', reddit: 'reddit', quora: 'quora',
+  intercom: 'intercom', zendesk: 'zendesk', hubspot: 'hubspot', mailchimp: 'mailchimp', brevo: 'brevo',
+  sentry: 'sentry', discord: 'discord', zapier: 'zapier', make: 'make',
+};
+const DOMAIN: Record<string, string> = {
+  ga4: 'analytics.google.com', gtm: 'tagmanager.google.com', gsc: 'search.google.com', clarity: 'clarity.microsoft.com',
+  plausible: 'plausible.io', matomo: 'matomo.org', cloudflare: 'cloudflare.com',
+  posthog: 'posthog.com', mixpanel: 'mixpanel.com', amplitude: 'amplitude.com', segment: 'segment.com', hotjar: 'hotjar.com',
+  meta_pixel: 'facebook.com', meta_capi: 'facebook.com', google_ads: 'ads.google.com', google_merchant: 'merchants.google.com',
+  linkedin: 'linkedin.com', ms_ads: 'ads.microsoft.com', tiktok: 'tiktok.com', snapchat: 'snapchat.com',
+  pinterest: 'pinterest.com', twitter: 'x.com', reddit: 'reddit.com', quora: 'quora.com',
+  crisp: 'crisp.chat', intercom: 'intercom.com', zendesk: 'zendesk.com',
+  hubspot: 'hubspot.com', mailchimp: 'mailchimp.com', brevo: 'brevo.com',
+  sentry: 'sentry.io', logrocket: 'logrocket.com',
+  slack: 'slack.com', discord: 'discord.com', zapier: 'zapier.com', make: 'make.com',
+};
+
+function BrandLogo({ intKey, fallback: Fallback, color }: { intKey: string; fallback: LucideIcon; color?: string }) {
+  const sources = useMemo(() => {
+    const s: string[] = [];
+    if (BRAND[intKey]) s.push(`https://cdn.simpleicons.org/${BRAND[intKey]}`);
+    if (DOMAIN[intKey]) s.push(`https://www.google.com/s2/favicons?domain=${DOMAIN[intKey]}&sz=128`);
+    return s;
+  }, [intKey]);
+  const [idx, setIdx] = useState(0);
+  const src = sources[idx];
+  return (
+    <span className={cn('grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl ring-1 ring-black/5', src ? 'bg-white' : 'bg-muted/60')}>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="h-6 w-6 object-contain" loading="lazy" onError={() => setIdx((n) => n + 1)} />
+      ) : (
+        <Fallback className={cn('h-5 w-5', color)} />
+      )}
+    </span>
+  );
+}
 
 function Switch({ checked, onChange, disabled, label }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; label?: string }) {
   return (
@@ -154,9 +203,7 @@ export default function IntegrationsPage() {
           return (
             <motion.div layout key={it.key} className={cn('flex flex-col rounded-2xl border bg-card/40 transition-colors', on && configured ? 'border-primary/40' : 'border-border')}>
               <div className="flex items-start gap-3 p-5">
-                <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted/60', CAT_META[it.category]?.color)}>
-                  <CatIcon className="h-5 w-5" />
-                </span>
+                <BrandLogo intKey={it.key} fallback={CatIcon} color={CAT_META[it.category]?.color} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate font-semibold">{it.name}</p>
