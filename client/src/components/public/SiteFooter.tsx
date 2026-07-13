@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Sparkles, Mail, Phone, MapPin, Linkedin, Twitter, Youtube, ShieldCheck, Lock, BadgeCheck } from 'lucide-react';
 import { useBranding } from '@/store/branding.store';
 import { FOOTER_NAV, SITE } from '@/lib/site';
+import { COMPANY } from '@/lib/company';
 import { CreditFooter } from '@/components/ui/CreditFooter';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +45,9 @@ export function SiteFooter() {
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               AI-powered hiring, end to end.<br />Screen, Interview, Score &amp; Hire Faster.
+            </p>
+            <p className="mt-3 max-w-xs text-xs text-muted-foreground/90">
+              {name} is a product of <span className="font-medium text-foreground/80">{COMPANY.legalName}</span>.
             </p>
             <div className="mt-4 space-y-2 text-sm text-muted-foreground">
               <a href={`mailto:${email}`} className="flex items-center gap-2 transition hover:text-primary">
@@ -89,7 +93,8 @@ export function SiteFooter() {
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col gap-6 border-t border-border pt-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col items-center gap-2 lg:items-start">
-            <p className="text-sm text-muted-foreground">© {year} {name}. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">© {year} {COMPANY.legalName}. All Rights Reserved.</p>
+            <p className="max-w-xl text-center text-xs text-muted-foreground/80 lg:text-left">{COMPANY.complianceLine}</p>
             <CreditFooter className="lg:justify-start" />
           </div>
 

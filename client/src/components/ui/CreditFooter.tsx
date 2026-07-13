@@ -17,7 +17,7 @@ export function CreditFooter({ className }: { className?: string }) {
       </span>
       <span className="text-border">|</span>
       <span>
-        Developed by{' '}
+        Designed &amp; Developed by{' '}
         <a
           href="https://appsgain.in"
           target="_blank"

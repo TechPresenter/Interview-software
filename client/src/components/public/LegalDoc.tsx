@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { MarketingPage } from './MarketingPage';
 import { Prose } from './Prose';
 import type { Crumb } from './Breadcrumbs';
+import { COMPANY } from '@/lib/company';
 
 export type LegalSection = { id: string; heading: string; body: ReactNode };
 
@@ -47,6 +48,14 @@ export function LegalDoc({ title, updated, summary, sections, breadcrumb }: Lega
           <p className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
             Last updated: <span className="font-medium text-foreground">{updated}</span>
           </p>
+
+          <div className="mt-3 rounded-xl border border-border bg-card/40 px-4 py-3 text-sm">
+            <p className="font-medium text-foreground">Operated by {COMPANY.legalName}</p>
+            <p className="mt-1 text-muted-foreground">
+              {COMPANY.product} is a product of {COMPANY.legalName} · CIN {COMPANY.cin} · Reg. No. {COMPANY.regNo} ·{' '}
+              {COMPANY.iso} · {COMPANY.mca} · {COMPANY.nsdc}
+            </p>
+          </div>
 
           {sections.map((s, i) => (
             <section key={s.id} id={s.id} className="mt-10 scroll-mt-28 first:mt-8">

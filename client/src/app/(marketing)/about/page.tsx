@@ -1,141 +1,244 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Scale, Eye, Zap, HeartHandshake, Users, Sparkles, Telescope } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Telescope, Sparkles, Bot, Users, FileText, ClipboardList, Video, BarChart3, Workflow, LayoutDashboard,
+  UserRound, Briefcase, CalendarClock, Mail, ClipboardCheck, Database, Building2, Cloud, Zap, ShieldCheck,
+  Lock, Rocket, Activity, Smartphone, UsersRound, KeyRound, Layers, LifeBuoy, Cpu, HeartPulse, GraduationCap,
+  Factory, ShoppingBag, Landmark, Truck, Hotel, Building, Mic, MonitorPlay, CircleUserRound, FileSignature,
+  Bell, Plug, DatabaseBackup, ScrollText, Fingerprint, Server,
+} from 'lucide-react';
 import { pageMetadata } from '@/lib/seo';
 import { MarketingPage } from '@/components/public/MarketingPage';
-import { FeatureGrid, StatStrip, SectionHeading, type Feature } from '@/components/public/blocks';
+import { FeatureGrid, SectionHeading, CheckList, type Feature } from '@/components/public/blocks';
 import { CTASection } from '@/components/public/CTASection';
+import { TrustBadges, CompanyIdentityCard, ComplianceCards } from '@/components/public/CompanyIdentity';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
+import { COMPANY } from '@/lib/company';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = pageMetadata({
   title: 'About Us',
   description:
-    'AIPL Hire is on a mission to make hiring faster and fairer with explainable AI. Learn about our story, mission, vision, leadership, values, and milestones.',
+    'AIPL Hire is an AI-powered recruitment and applicant tracking platform developed and owned by Ayansh Institute Private Limited (CIN U85499BR2025PTC080635) — an MCA-registered, ISO 9001:2015 certified, NSDC partner company.',
   path: '/about',
-  keywords: ['about AIPL Hire', 'AI hiring company', 'fair hiring', 'leadership', 'company mission'],
+  keywords: [
+    'Ayansh Institute Private Limited', 'AIPL Hire', 'AI recruitment platform', 'MCA registered',
+    'ISO 9001:2015', 'NSDC partner', 'applicant tracking system', 'AI interview software',
+  ],
 });
 
-const values: Feature[] = [
-  { icon: Scale, title: 'Fairness first', desc: 'Every candidate deserves a consistent, bias-aware evaluation. Fairness is a feature, not an afterthought.' },
-  { icon: Eye, title: 'Explainable by default', desc: 'No black boxes. Every score comes with the evidence and reasoning behind it.' },
-  { icon: Zap, title: 'Speed with rigor', desc: 'We remove busywork so teams move faster — without cutting corners on quality.' },
-  { icon: HeartHandshake, title: 'Candidate respect', desc: 'A great hiring experience is a great candidate experience. We build for both sides.' },
+type Tile = { icon: LucideIcon; label: string };
+
+const benefits: Tile[] = [
+  { icon: Bot, label: 'AI Interview Platform' },
+  { icon: Users, label: 'Smart Candidate Matching' },
+  { icon: FileText, label: 'Resume Parsing' },
+  { icon: ClipboardList, label: 'Applicant Tracking System' },
+  { icon: Video, label: 'Live Video Interviews' },
+  { icon: BarChart3, label: 'AI Interview Analytics' },
+  { icon: Workflow, label: 'Recruitment Automation' },
+  { icon: LayoutDashboard, label: 'Company Dashboard' },
+  { icon: CircleUserRound, label: 'Candidate Dashboard' },
+  { icon: Briefcase, label: 'Job Portal' },
+  { icon: CalendarClock, label: 'Interview Scheduling' },
+  { icon: Mail, label: 'Email Notifications' },
+  { icon: ClipboardCheck, label: 'Assessment Management' },
+  { icon: Database, label: 'Resume Database' },
+  { icon: Building2, label: 'Multi-company Support' },
+  { icon: Cloud, label: 'Secure Cloud Platform' },
 ];
 
-const stats = [
-  { value: '120k+', label: 'Interviews run' },
-  { value: '30+', label: 'Countries' },
-  { value: '7', label: 'Competencies scored' },
-  { value: '98%', label: 'Recruiter satisfaction' },
+const whyChoose: Feature[] = [
+  { icon: Bot, title: 'AI-powered recruitment', desc: 'Adaptive AI interviews and evidence-based scoring evaluate every candidate consistently.' },
+  { icon: Zap, title: 'Faster hiring', desc: 'Automate screening and scheduling to cut time-to-shortlist from weeks to days.' },
+  { icon: ShieldCheck, title: 'Secure platform', desc: 'Encryption in transit and at rest with least-privilege access controls.' },
+  { icon: Lock, title: 'Enterprise security', desc: 'Role-based access, audit logs, and privacy-first data handling.' },
+  { icon: Rocket, title: 'Easy onboarding', desc: 'Go live in an afternoon — guided setup with no complex configuration.' },
+  { icon: Sparkles, title: 'Modern UI', desc: 'A clean, premium interface your team actually enjoys using.' },
+  { icon: Activity, title: 'Real-time analytics', desc: 'Live dashboards for pipeline, interviews, and hiring performance.' },
+  { icon: Workflow, title: 'Automated workflows', desc: 'Trigger invites, reminders, and follow-ups automatically.' },
+  { icon: Smartphone, title: 'Responsive design', desc: 'Fully usable on desktop, tablet, and mobile for recruiters and candidates.' },
+  { icon: Cloud, title: 'Cloud-based platform', desc: 'Reliable, always-on cloud infrastructure with nothing to install.' },
+  { icon: UsersRound, title: 'Multi-user roles', desc: 'Recruiters, hiring managers, and admins collaborate in one workspace.' },
+  { icon: KeyRound, title: 'Role-based permissions', desc: 'Grant precise access to features and data by role.' },
+  { icon: Layers, title: 'Scalable architecture', desc: 'Built to grow from a single team to a multi-company enterprise.' },
+  { icon: LifeBuoy, title: 'Reliable support', desc: 'Responsive help whenever you need it, from setup to scale.' },
 ];
 
-const timeline = [
-  { year: '2023', title: 'Founded', desc: 'AIPL Hire starts with a simple belief: hiring should be fair, fast, and explainable.' },
-  { year: '2024', title: 'First AI interviews', desc: 'We launch the adaptive AI interviewer and evidence-based competency scoring.' },
-  { year: '2025', title: 'Scaling globally', desc: 'Proctoring, multilingual interviews, and enterprise controls ship to teams in 30+ countries.' },
-  { year: '2026', title: 'AI-native platform', desc: 'Custom AI interviewers, white-label branding, and deeper analytics make AIPL Hire a full hiring OS.' },
+const industries: Tile[] = [
+  { icon: Cpu, label: 'IT' },
+  { icon: HeartPulse, label: 'Healthcare' },
+  { icon: GraduationCap, label: 'Education' },
+  { icon: Factory, label: 'Manufacturing' },
+  { icon: ShoppingBag, label: 'Retail' },
+  { icon: Landmark, label: 'BFSI' },
+  { icon: Truck, label: 'Logistics' },
+  { icon: Hotel, label: 'Hospitality' },
+  { icon: Building, label: 'Government' },
+  { icon: Rocket, label: 'Startups' },
+  { icon: Building2, label: 'Enterprises' },
 ];
 
-const leaders = [
-  { name: 'A. Sharma', title: 'Co-founder & CEO', bio: 'Former talent leader obsessed with fair, structured hiring at scale.' },
-  { name: 'R. Iyer', title: 'Co-founder & CTO', bio: 'Builds reliable AI systems; ex-platform engineer for high-scale products.' },
-  { name: 'M. Verma', title: 'VP, Product', bio: 'Turns complex AI into simple, delightful hiring workflows.' },
-  { name: 'S. Nair', title: 'Head of AI', bio: 'Leads scoring, fairness, and evaluation research for the interviewer.' },
+const platformFeatures: Tile[] = [
+  { icon: FileText, label: 'AI Resume Screening' },
+  { icon: Bot, label: 'AI Interview Assistant' },
+  { icon: MonitorPlay, label: 'Live Interview Room' },
+  { icon: Mic, label: 'Interview Recording' },
+  { icon: Database, label: 'Question Bank' },
+  { icon: Users, label: 'Candidate Tracking' },
+  { icon: FileSignature, label: 'Offer Letter Management' },
+  { icon: ClipboardCheck, label: 'Assessment Engine' },
+  { icon: BarChart3, label: 'Analytics Dashboard' },
+  { icon: Building2, label: 'Company Portal' },
+  { icon: CircleUserRound, label: 'Candidate Portal' },
+  { icon: UsersRound, label: 'Staff Management' },
+  { icon: Mail, label: 'Email Automation' },
+  { icon: Bell, label: 'Notification Center' },
+  { icon: BarChart3, label: 'Reports' },
+  { icon: Plug, label: 'API Integrations' },
 ];
+
+const security: { icon: LucideIcon; label: string }[] = [
+  { icon: Fingerprint, label: 'Secure authentication' },
+  { icon: Lock, label: 'Encrypted data (in transit & at rest)' },
+  { icon: ShieldCheck, label: 'GDPR-friendly practices' },
+  { icon: Fingerprint, label: 'Privacy-first approach' },
+  { icon: Server, label: 'Secure cloud infrastructure' },
+  { icon: KeyRound, label: 'Role-based access' },
+  { icon: ScrollText, label: 'Audit logs' },
+  { icon: DatabaseBackup, label: 'Backup & recovery' },
+];
+
+/** Compact icon-tile grid for capability lists. */
+function TileGrid({ items, className }: { items: Tile[]; className?: string }) {
+  return (
+    <div className={cn('grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4', className)}>
+      {items.map((it) => (
+        <div key={it.label} className="flex items-center gap-3 rounded-xl border border-border bg-card/40 p-3.5 transition-colors hover:border-primary/30 hover:bg-card/60">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <it.icon className="h-5 w-5" />
+          </span>
+          <span className="text-sm font-medium">{it.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function AboutPage() {
   return (
     <MarketingPage
-      eyebrow="Company"
-      title={<>Making hiring <span className="text-gradient">faster and fairer</span></>}
-      lead="We started AIPL Hire because hiring is too important to be slow, inconsistent, or biased. Our AI gives every candidate a fair shot and every team the evidence to decide with confidence."
+      eyebrow={COMPANY.legalName}
+      title={<>AIPL Hire — <span className="text-gradient">AI-powered hiring</span> for modern teams</>}
+      lead={COMPANY.ownership}
       breadcrumb={[{ label: 'About Us' }]}
       actions={
         <>
-          <Link href="/careers"><Button size="lg">Join the team</Button></Link>
-          <Link href="/contact"><Button size="lg" variant="glass" magnetic={false}>Talk to us</Button></Link>
+          <Link href="/register"><Button size="lg">Get Started</Button></Link>
+          <Link href="/contact"><Button size="lg" variant="glass" magnetic={false}>Contact Us</Button></Link>
         </>
       }
     >
-      {/* Mission / Vision / Story */}
-      <section className="mb-20 grid gap-6 lg:grid-cols-3">
-        <GlassCard>
-          <Sparkles className="h-6 w-6 text-primary" />
-          <h2 className="mt-4 text-xl font-bold">Mission</h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Give every organization access to structured, explainable interviews at scale — so the best person for the
-            role is found on merit, not on who had time to screen them.
-          </p>
-        </GlassCard>
+      {/* Hero trust badges */}
+      <TrustBadges className="-mt-6 mb-14" />
+
+      {/* Company identity (prominent, for compliance) */}
+      <section className="mb-20">
+        <CompanyIdentityCard />
+      </section>
+
+      {/* About AIPL Hire */}
+      <section className="mb-20">
+        <SectionHeading
+          eyebrow="About AIPL Hire"
+          title="An AI-powered recruitment platform"
+          lead={
+            <>
+              AIPL Hire is developed by {COMPANY.legalName} to modernize hiring through intelligent automation — from
+              resume parsing and smart candidate matching to adaptive AI interviews, analytics, and end-to-end applicant
+              tracking, all in one secure cloud platform.
+            </>
+          }
+        />
+        <TileGrid items={benefits} />
+      </section>
+
+      {/* Why choose us */}
+      <section className="mb-20">
+        <SectionHeading eyebrow="Why choose us" title="Built for confident, efficient hiring" />
+        <FeatureGrid items={whyChoose} columns={4} />
+      </section>
+
+      {/* Certifications & compliance */}
+      <section className="mb-20">
+        <SectionHeading
+          eyebrow="Certifications & compliance"
+          title="A registered, certified company"
+          lead="AIPL Hire is operated by a legally registered, quality-certified organization you can trust."
+        />
+        <ComplianceCards />
+      </section>
+
+      {/* Vision & Mission */}
+      <section className="mb-20 grid gap-6 lg:grid-cols-2">
         <GlassCard>
           <Telescope className="h-6 w-6 text-accent" />
-          <h2 className="mt-4 text-xl font-bold">Vision</h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            A world where hiring is fair by default — where AI widens opportunity instead of narrowing it, and every
-            decision can be explained and trusted.
+          <h2 className="mt-4 text-xl font-bold">Our Vision</h2>
+          <p className="mt-3 leading-7 text-muted-foreground">
+            To become India&apos;s trusted AI recruitment ecosystem — connecting employers, institutions, and job seekers
+            through intelligent technology that makes opportunity more accessible and hiring more transparent.
           </p>
         </GlassCard>
         <GlassCard>
-          <Users className="h-6 w-6 text-primary" />
-          <h2 className="mt-4 text-xl font-bold">Our story</h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Built by engineers and talent leaders tired of resumes lost in inboxes and interviews that varied from one
-            panelist to the next, we pair a state-of-the-art AI interviewer with rigorous, evidence-based scoring.
+          <Sparkles className="h-6 w-6 text-primary" />
+          <h2 className="mt-4 text-xl font-bold">Our Mission</h2>
+          <p className="mt-3 leading-7 text-muted-foreground">
+            To simplify hiring using AI while ensuring transparency, quality, efficiency, and accessibility — so every
+            organization can find the right talent on merit, quickly and fairly.
           </p>
         </GlassCard>
       </section>
 
-      {/* Values */}
+      {/* Industries */}
       <section className="mb-20">
-        <SectionHeading eyebrow="What we value" title="Principles that guide every decision" />
-        <FeatureGrid items={values} columns={4} />
-      </section>
-
-      {/* Timeline */}
-      <section className="mb-20">
-        <SectionHeading eyebrow="Our journey" title="Milestones so far" />
-        <ol className="relative mx-auto max-w-3xl border-l border-border">
-          {timeline.map((t) => (
-            <li key={t.year} className="mb-10 ml-6 last:mb-0">
-              <span className="absolute -left-[9px] mt-1.5 h-4 w-4 rounded-full border-2 border-background bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))]" />
-              <div className="flex flex-wrap items-baseline gap-3">
-                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-semibold text-primary">{t.year}</span>
-                <h3 className="text-lg font-semibold">{t.title}</h3>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{t.desc}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* Leadership */}
-      <section className="mb-4">
-        <SectionHeading eyebrow="Leadership" title="The people behind AIPL Hire" />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {leaders.map((l) => (
-            <GlassCard key={l.name} interactive className="text-center">
-              <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[linear-gradient(120deg,hsl(var(--primary)),hsl(var(--accent)))] text-lg font-bold text-white glow">
-                {l.name.split(/[\s.]+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2)}
-              </span>
-              <h3 className="mt-4 font-semibold">{l.name}</h3>
-              <p className="text-sm text-primary">{l.title}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{l.bio}</p>
-            </GlassCard>
+        <SectionHeading eyebrow="Industries we serve" title="Trusted across sectors" />
+        <div className="flex flex-wrap justify-center gap-3">
+          {industries.map((i) => (
+            <span key={i.label} className="inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-4 py-2 text-sm font-medium transition-colors hover:border-primary/30 hover:text-primary">
+              <i.icon className="h-4 w-4 text-primary" /> {i.label}
+            </span>
           ))}
         </div>
       </section>
 
-      <section className="mt-20">
-        <SectionHeading eyebrow="By the numbers" title="Trusted by modern hiring teams" />
-        <StatStrip stats={stats} />
+      {/* Platform features */}
+      <section className="mb-20">
+        <SectionHeading eyebrow="Platform features" title="Everything you need to hire, in one place" />
+        <TileGrid items={platformFeatures} />
+      </section>
+
+      {/* Trust & security */}
+      <section className="mb-4">
+        <SectionHeading eyebrow="Trust & security" title="Security and privacy by design" />
+        <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2">
+          {security.map((s) => (
+            <div key={s.label} className="flex items-center gap-3 rounded-xl border border-border bg-card/40 p-4">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent/10 text-accent">
+                <s.icon className="h-5 w-5" />
+              </span>
+              <span className="text-sm font-medium">{s.label}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       <CTASection
-        title={<>Build the future of hiring <span className="text-gradient">with us</span></>}
-        subtitle="Whether you want to hire with AIPL Hire or work here, we'd love to talk."
-        primary={{ label: 'See open roles', href: '/careers' }}
-        secondary={{ label: 'Contact us', href: '/contact' }}
+        title={<>Hire smarter with <span className="text-gradient">AIPL Hire</span></>}
+        subtitle={`An AI-powered recruitment platform by ${COMPANY.legalName}.`}
+        primary={{ label: 'Get Started', href: '/register' }}
+        secondary={{ label: 'Contact Us', href: '/contact' }}
       />
     </MarketingPage>
   );

@@ -3,6 +3,7 @@ import { Mail, MapPin, Phone, Clock, PhoneCall, MessageCircle, Linkedin, Twitter
 import { pageMetadata } from '@/lib/seo';
 import { MarketingPage } from '@/components/public/MarketingPage';
 import { ContactForm } from '@/components/public/ContactForm';
+import { CompanyIdentityCard } from '@/components/public/CompanyIdentity';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { SITE } from '@/lib/site';
@@ -137,6 +138,11 @@ export default function ContactPage() {
           </GlassCard>
         </div>
       </div>
+
+      {/* Company identity (compliance) */}
+      <section className="mt-10">
+        <CompanyIdentityCard />
+      </section>
 
       {/* Map */}
       <section className="mt-10">
