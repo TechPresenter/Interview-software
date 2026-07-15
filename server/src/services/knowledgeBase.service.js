@@ -1,5 +1,5 @@
 import { KnowledgeBase } from '../models/KnowledgeBase.js';
-import { saveBuffer, extractText, fetchUrlText } from './file.service.js';
+import { saveBuffer, extractText, ExtractionError, fetchUrlText } from './file.service.js';
 import { logger } from '../config/logger.js';
 
 /**
@@ -40,10 +40,21 @@ export async function ingestSources({ files = [], urls = [], text = '' } = {}) {
   const segments = [];
 
   for (const f of files) {
-    const extracted = await extractText(f.buffer, f.mimetype, f.originalname);
+    // An unreadable file is recorded with its reason rather than dropped: a KB
+    // that silently ingested nothing is exactly why question generation looked
+    // broken — the source was listed, its text was empty, and nothing said so.
+    let extracted = '';
+    let error = null;
+    try {
+      extracted = await extractText(f.buffer, f.mimetype, f.originalname);
+    } catch (err) {
+      if (!(err instanceof ExtractionError)) throw err;
+      error = err.message;
+      logger.warn({ file: f.originalname, err: err.message }, 'Knowledge base source could not be read');
+    }
     const stored = await saveBuffer(f.buffer, f.originalname);
     segments.push({
-      source: { kind: 'file', label: f.originalname, url: stored.url, mime: f.mimetype, bytes: f.size, chars: extracted.length },
+      source: { kind: 'file', label: f.originalname, url: stored.url, mime: f.mimetype, bytes: f.size, chars: extracted.length, error },
       text: extracted,
     });
   }

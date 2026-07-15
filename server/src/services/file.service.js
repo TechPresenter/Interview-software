@@ -27,18 +27,111 @@ export async function saveBuffer(buffer, originalName) {
 }
 
 /**
+ * A file we could not read, with a reason worth showing the person who uploaded it.
+ * `code` lets callers distinguish "give us a different file" from "try again".
+ */
+export class ExtractionError extends Error {
+  constructor(message, code = 'unreadable') {
+    super(message);
+    this.name = 'ExtractionError';
+    this.code = code;
+  }
+}
+
+/** A PDF's bytes are only a PDF if they say so; multipart mishaps land here first. */
+const looksLikePdf = (buf) => buf?.length > 4 && buf.slice(0, 5).toString('latin1') === '%PDF-';
+
+/** Legacy Word (.doc) is an OLE compound file, not a zip — mammoth cannot read it. */
+const looksLikeLegacyDoc = (buf) =>
+  buf?.length > 8 && buf.slice(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
+
+/**
+ * Pull the text layer out of a PDF.
+ *
+ * Uses pdfjs-dist rather than pdf-parse: pdf-parse (1.1.4) returns a DIFFERENT
+ * answer for the same bytes on repeated calls — measured at 3 successes in 6 on
+ * one valid file, failing with "bad XRef entry" / "Invalid number: =". Because
+ * extractText swallowed that into '', a resume simply refused to auto-fill about
+ * half the time, and knowledge bases silently ingested nothing. pdfjs-dist is
+ * Mozilla's own parser and returned 8/8 on the same fixture.
+ *
+ * `new Uint8Array(buffer)` is deliberate: pdf.js takes ownership of the array it
+ * is handed, so passing multer's pooled Buffer view would let it read (and
+ * detach) memory that is not ours.
+ */
+async function extractPdf(buffer) {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  let doc;
+  try {
+    doc = await pdfjs.getDocument({
+      data: new Uint8Array(buffer),
+      useSystemFonts: true,
+      isEvalSupported: false,
+      // A password-protected file should say so, not hang waiting for input.
+      password: '',
+    }).promise;
+  } catch (err) {
+    if (err?.name === 'PasswordException') {
+      throw new ExtractionError('This PDF is password-protected. Remove the password and upload it again.', 'password_protected');
+    }
+    throw new ExtractionError('This PDF could not be read — it may be corrupted. Try re-exporting or saving it again.', 'corrupt');
+  }
+  try {
+    let out = '';
+    for (let i = 1; i <= doc.numPages; i += 1) {
+      // Pages are read in order; the parser holds per-document state.
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      out += `${content.items.map((it) => it.str).join(' ')}\n`;
+      page.cleanup();
+    }
+    return out.trim();
+  } finally {
+    await doc.destroy();
+  }
+}
+
+/**
  * Extract plaintext from a document buffer. Supports PDF, DOCX, TXT/MD, CSV,
  * XLSX, PPTX, and ZIP (recurses into supported members). Heavy parsers are
- * imported lazily; any failure degrades gracefully to empty text.
+ * imported lazily.
+ *
+ * Throws ExtractionError when a file cannot be read. It used to return '' for
+ * every failure, which made a corrupt upload indistinguishable from an empty one
+ * — the user saw "could not read enough text" with no idea whether the fault was
+ * theirs or ours.
+ *
  * @returns {Promise<string>}
+ * @throws {ExtractionError}
  */
 export async function extractText(buffer, mimetype = '', originalName = '') {
   const ext = path.extname(originalName).toLowerCase();
   const mt = mimetype || '';
+  if (!buffer?.length) throw new ExtractionError('That file is empty.', 'empty_file');
+
   try {
     if (mt.includes('pdf') || ext === '.pdf') {
-      const { default: pdfParse } = await import('pdf-parse/lib/pdf-parse.js');
-      return ((await pdfParse(buffer)).text || '').trim();
+      if (!looksLikePdf(buffer)) {
+        throw new ExtractionError('That file is named .pdf but is not a PDF. Re-save it and try again.', 'not_a_pdf');
+      }
+      const text = await extractPdf(buffer);
+      if (!text) {
+        // A scanned PDF is pictures of words: pdf.js finds no text layer. Say so
+        // plainly — the fix is the user's (upload a text PDF), not a retry.
+        throw new ExtractionError(
+          'This PDF has no selectable text — it looks like a scan or photo. Upload a text-based PDF or DOCX, or paste the text instead.',
+          'no_text_layer',
+        );
+      }
+      return text;
+    }
+    if (ext === '.doc' || looksLikeLegacyDoc(buffer)) {
+      // mammoth reads OOXML (.docx) only; handed a .doc it throws "is this a zip
+      // file?", which the old catch turned into a silent empty result.
+      throw new ExtractionError(
+        'Legacy .doc files are not supported. Open it and "Save As" .docx or PDF, then upload again.',
+        'legacy_doc',
+      );
     }
     if (ext === '.docx' || mt.includes('wordprocessingml') || mt.includes('msword')) {
       const { default: mammoth } = await import('mammoth');
@@ -81,15 +174,26 @@ export async function extractText(buffer, mimetype = '', originalName = '') {
         const entry = zip.files[name];
         if (entry.dir || !SUPPORTED.includes(path.extname(name).toLowerCase())) continue;
         const buf = await entry.async('nodebuffer');
-        out += `\n# ${name}\n${await extractText(buf, '', name)}\n`;
+        try {
+          out += `\n# ${name}\n${await extractText(buf, '', name)}\n`;
+        } catch (err) {
+          // One unreadable member must not cost the archive: note it and continue.
+          logger.warn({ err: err.message, member: name }, 'Skipped an unreadable file inside the archive');
+          out += `\n# ${name}\n(could not be read: ${err.message})\n`;
+        }
       }
       return out.trim();
     }
     // Plain text / markdown / fallback
     return buffer.toString('utf8').trim();
   } catch (err) {
+    // Already diagnosed — pass it to the caller intact.
+    if (err instanceof ExtractionError) throw err;
     logger.warn({ err: err.message, originalName }, 'Text extraction failed');
-    return '';
+    throw new ExtractionError(
+      `Could not read "${originalName || 'that file'}". It may be corrupted or in an unsupported format.`,
+      'unreadable',
+    );
   }
 }
 

@@ -5,7 +5,7 @@ import { Notification } from '../models/Notification.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
-import { saveBuffer, extractText } from '../services/file.service.js';
+import { saveBuffer, extractText, ExtractionError } from '../services/file.service.js';
 import { interviewLink } from '../services/interview.service.js';
 
 /**
@@ -65,10 +65,17 @@ export const updateProfile = asyncHandler(async (req, res) => {
 /** POST /me/resume — store + extract text into the profile. */
 export const uploadResume = asyncHandler(async (req, res) => {
   if (!req.file) throw ApiError.badRequest('Resume file required (field "resume")');
-  const [{ url, filename }, text] = await Promise.all([
-    saveBuffer(req.file.buffer, req.file.originalname),
-    extractText(req.file.buffer, req.file.mimetype, req.file.originalname),
-  ]);
+  const { url, filename } = await saveBuffer(req.file.buffer, req.file.originalname);
+  // Keep the file even if its text cannot be read — the candidate's upload should
+  // not be lost because we could not parse a scan.
+  let text = '';
+  let warning = null;
+  try {
+    text = await extractText(req.file.buffer, req.file.mimetype, req.file.originalname);
+  } catch (err) {
+    if (!(err instanceof ExtractionError)) throw err;
+    warning = err.message;
+  }
   const user = await User.findById(req.user._id);
   user.meta = {
     ...(user.meta || {}),
@@ -76,7 +83,7 @@ export const uploadResume = asyncHandler(async (req, res) => {
   };
   user.markModified('meta');
   await user.save();
-  return ok(res, { resume: user.meta.profile.resume }, 'Resume uploaded');
+  return ok(res, { resume: user.meta.profile.resume, warning }, warning || 'Resume uploaded');
 });
 
 /** GET /me/notifications */

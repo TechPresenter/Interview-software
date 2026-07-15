@@ -6,7 +6,7 @@ import { ok, created } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { Company } from '../../models/Company.js';
-import { saveBuffer, extractText } from '../../services/file.service.js';
+import { saveBuffer, extractText, ExtractionError } from '../../services/file.service.js';
 import { analyzeResume, parsedToCandidate } from '../../services/ai/resume.analyzer.js';
 import { logActivity } from '../../services/audit.service.js';
 import { safeSendTemplated } from '../../services/email.service.js';
@@ -153,10 +153,10 @@ export const uploadResumeFile = asyncHandler(async (req, res) => {
   const candidate = await Candidate.findOne(scope(req, { _id: req.params.id })).populate('job', 'title skills');
   if (!candidate) throw ApiError.notFound('Candidate not found');
 
-  const [{ url, filename }, text] = await Promise.all([
-    saveBuffer(req.file.buffer, req.file.originalname),
-    extractText(req.file.buffer, req.file.mimetype, req.file.originalname),
-  ]);
+  // The file is kept even when its text cannot be read, so a recruiter still has
+  // the attachment and can fill the profile in by hand.
+  const { url, filename } = await saveBuffer(req.file.buffer, req.file.originalname);
+  const { text, warning } = await readResume(req.file);
 
   candidate.resume = { url, filename, text, uploadedAt: new Date() };
 
@@ -188,8 +188,23 @@ export const uploadResumeFile = asyncHandler(async (req, res) => {
   }
   await candidate.save();
 
-  return ok(res, { resume: candidate.resume, analysis, parsed }, 'Resume uploaded');
+  return ok(res, { resume: candidate.resume, analysis, parsed, warning }, warning || 'Resume uploaded');
 });
+
+/**
+ * Read a resume's text, turning an unreadable file into a message rather than a
+ * 500. Extraction failures are the user's to act on — a scan, a legacy .doc, a
+ * corrupted export — so they are reported, not thrown away.
+ * @returns {Promise<{text: string, warning: string|null}>}
+ */
+async function readResume(file) {
+  try {
+    return { text: await extractText(file.buffer, file.mimetype, file.originalname), warning: null };
+  } catch (err) {
+    if (!(err instanceof ExtractionError)) throw err;
+    return { text: '', warning: err.message };
+  }
+}
 
 const isEmptyField = (v) => v == null || v === '' || (Array.isArray(v) && v.length === 0);
 
@@ -202,12 +217,17 @@ const isEmptyField = (v) => v == null || v === '' || (Array.isArray(v) && v.leng
 export const parseResume = asyncHandler(async (req, res) => {
   if (!req.file) throw ApiError.badRequest('Resume file is required (field "resume")');
 
-  const [{ url, filename }, text] = await Promise.all([
-    saveBuffer(req.file.buffer, req.file.originalname),
-    extractText(req.file.buffer, req.file.mimetype, req.file.originalname),
-  ]);
+  const { url, filename } = await saveBuffer(req.file.buffer, req.file.originalname);
+  const { text, warning } = await readResume(req.file);
   if (!text || text.trim().length < 30) {
-    return ok(res, { resume: { url, filename }, fields: {}, analysis: null, warning: 'Could not read enough text from this file to auto-fill.' }, 'Resume stored');
+    // `warning` names the actual reason (scanned PDF, legacy .doc, corrupt file);
+    // falling back to the vague line only when the file really is near-empty.
+    return ok(res, {
+      resume: { url, filename },
+      fields: {},
+      analysis: null,
+      warning: warning || 'This file contains almost no text, so there was nothing to auto-fill.',
+    }, 'Resume stored');
   }
 
   let analysis = null;
