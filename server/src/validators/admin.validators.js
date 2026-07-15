@@ -5,6 +5,7 @@ import {
   INDUSTRIES,
   QUESTION_STATUS,
   EXPERIENCE_LEVELS,
+  INTERVIEW_ROUNDS,
   DIFFICULTY,
   COMPETENCIES,
 } from '../constants/enums.js';
@@ -137,6 +138,40 @@ export const questionReviewSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+export const bulkReviewSchema = z.object({
+  ids: z.array(objectId).min(1).max(200),
+  status: z.enum(['approved', 'rejected']),
+});
+
+/** The AI generation inputs. Everything is optional except a relevance anchor. */
+export const generateQuestionsSchema = z
+  .object({
+    jobId: objectId.optional(),
+    jobTitle: z.string().max(160).optional(),
+    jobDescription: z.string().max(20000).optional(),
+    department: z.string().max(120).optional(),
+    industry: z.enum(INDUSTRIES).optional(),
+    skills: z.array(z.string()).optional(),
+    resumeText: z.string().max(20000).optional(),
+    experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
+    yearsExperience: z.number().min(0).max(60).optional(),
+    education: z.string().max(300).optional(),
+    certifications: z.array(z.string()).optional(),
+    round: z.enum(INTERVIEW_ROUNDS).optional(),
+    difficulty: z.enum(DIFFICULTY).optional(),
+    count: z.number().int().min(1).max(50).optional(),
+    durationMinutes: z.number().int().min(5).max(240).optional(),
+    language: z.enum(['en', 'hi', 'bilingual']).optional(),
+    types: z.array(z.enum(QUESTION_TYPES)).optional(),
+    knowledge: z.string().max(20000).optional(),
+    save: z.boolean().optional(),
+  })
+  // Without at least one of these the model has nothing to anchor relevance to,
+  // and generic questions are exactly what this feature must not produce.
+  .refine((b) => b.jobId || b.jobTitle || b.jobDescription || b.skills?.length, {
+    message: 'Provide a job, a job title, a description, or skills — the AI needs something to make the questions relevant to',
+  });
+
 /* ── AI management ─────────────────────────────────────── */
 export const aiSettingsSchema = z.object({
   model: z.string().optional(),
@@ -150,7 +185,10 @@ export const aiWeightageSchema = z.object(
 );
 
 export const aiPromptSchema = z.object({
-  key: z.enum(['greeting', 'nextQuestion', 'followUp', 'scoreAnswer', 'finalReport', 'analyzeResume']),
+  key: z.enum([
+    'greeting', 'nextQuestion', 'followUp', 'scoreAnswer', 'finalReport', 'analyzeResume',
+    'generateQuestions', 'generateAnswerKey',
+  ]),
   system: z.string().optional(),
   template: z.string().min(1),
 });

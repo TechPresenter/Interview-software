@@ -39,7 +39,12 @@ const questionSchema = new Schema(
     language: { type: String, enum: ['en', 'hi', 'bilingual'], default: 'en', index: true },
 
     text: { type: String, required: true },
+    /** Hindi rendering, used when `language: 'bilingual'`. */
+    textHi: { type: String },
     skills: [String], // doubles as the tag array (matched against job requirements)
+    /** Why this question suits the role. AI-generated questions must justify
+     *  their own relevance; surfaced to the interviewer as context. */
+    rationale: { type: String },
 
     /* ── Type-specific structure ── */
     coding: {

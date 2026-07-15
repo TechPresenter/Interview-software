@@ -1,9 +1,13 @@
 import { Question } from '../../models/Question.js';
+import { Job } from '../../models/Job.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok, created } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { audit } from '../../services/audit.service.js';
+import { config } from '../../config/index.js';
+import * as generator from '../../services/ai/question.generator.js';
+import { contextFor } from '../../services/knowledgeBase.service.js';
 
 /**
  * Global question bank (company: null). Super-admin maintained; available to all
@@ -147,6 +151,82 @@ export const bulkReview = asyncHandler(async (req, res) => {
   );
   await audit({ req, action: `question.bulk_${status}`, entityType: 'Question', meta: { count: result.modifiedCount } });
   return ok(res, { updated: result.modifiedCount }, `${result.modifiedCount} questions ${status}`);
+});
+
+/**
+ * POST /admin/questions/generate — AI-generate questions from a job spec.
+ *
+ * `save: false` (default) previews without writing, so a human sees the set
+ * before it can reach a candidate. Saved questions land as `pending_review`,
+ * never `approved` — the selector only serves approved questions, so nothing
+ * generated here can reach a live interview until someone signs off.
+ */
+export const generate = asyncHandler(async (req, res) => {
+  if (!config.ai.enabled) throw ApiError.badRequest('AI is not configured');
+  const body = { ...req.body };
+
+  // Hydrate from a job when one is referenced, so the caller can pass just jobId.
+  if (body.jobId) {
+    const job = await Job.findById(body.jobId).lean();
+    if (!job) throw ApiError.notFound('Job not found');
+    body.jobTitle ??= job.title;
+    body.jobDescription ??= job.description;
+    body.department ??= job.department;
+    body.industry ??= job.industry;
+    body.skills ??= (job.skills || []).map((s) => s.name);
+    if (job.knowledgeBase && !body.knowledge) {
+      const ctx = await contextFor(job.knowledgeBase, { query: job.title, maxChars: 6000 });
+      body.knowledge = ctx?.text || null;
+    }
+  }
+
+  const { questions, dropped, reasons } = await generator.generateQuestions(body, { companyId: null });
+  if (!questions.length) {
+    throw ApiError.badRequest(
+      'No usable questions were produced — every candidate question was filtered as irrelevant or duplicate. Try widening the skills or lowering the count.',
+      { code: 'NO_QUESTIONS', meta: { dropped, reasons } },
+    );
+  }
+
+  if (!body.save) return ok(res, { questions, dropped, reasons }, 'Preview generated — nothing saved yet');
+
+  const docs = await Question.insertMany(
+    questions.map((q) => ({
+      ...q,
+      company: null,
+      status: 'pending_review', // must be approved before any interview can use it
+      source: 'ai',
+      createdBy: req.user._id,
+    })),
+    { ordered: false },
+  );
+  await audit({ req, action: 'question.ai_generate', entityType: 'Question', meta: { inserted: docs.length, dropped } });
+  return created(res, { questions: docs, inserted: docs.length, dropped, reasons }, `${docs.length} questions generated — pending review`);
+});
+
+/** POST /admin/questions/:id/answer-key — generate the full answer key for one question. */
+export const answerKey = asyncHandler(async (req, res) => {
+  if (!config.ai.enabled) throw ApiError.badRequest('AI is not configured');
+  const q = await Question.findOne({ _id: req.params.id, company: null });
+  if (!q) throw ApiError.notFound('Question not found');
+
+  const key = await generator.generateAnswerKey({
+    question: q.text,
+    jobTitle: q.jobRole,
+    skills: q.skills,
+    difficulty: q.difficulty,
+    competencies: q.competencies,
+    language: q.language,
+  });
+  if (!key) throw ApiError.internal('Could not generate an answer key');
+
+  q.answerKey = key;
+  // keyPoints ARE the scoring anchor — keep them in sync unless hand-authored.
+  if (!q.expectedPoints?.length && key.keyPoints.length) q.expectedPoints = key.keyPoints;
+  q.updatedBy = req.user._id;
+  await q.save();
+  await audit({ req, action: 'question.answer_key', entityType: 'Question', entityId: q._id });
+  return ok(res, q, 'Answer key generated');
 });
 
 /** DELETE /admin/questions/:id — hard delete. Prefer archive. */

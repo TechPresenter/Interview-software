@@ -11,6 +11,8 @@ import {
   updateQuestionSchema,
   bulkQuestionsSchema,
   questionReviewSchema,
+  bulkReviewSchema,
+  generateQuestionsSchema,
   aiSettingsSchema,
   aiWeightageSchema,
   aiPromptSchema,
@@ -103,7 +105,9 @@ router.get('/questions', questions.list);
 router.get('/questions/stats', questions.stats);
 router.post('/questions', validate(upsertQuestionSchema), questions.create);
 router.post('/questions/bulk', validate(bulkQuestionsSchema), questions.bulkCreate);
-router.post('/questions/bulk-review', questions.bulkReview);
+router.post('/questions/generate', validate(generateQuestionsSchema), questions.generate);
+router.post('/questions/bulk-review', validate(bulkReviewSchema), questions.bulkReview);
+router.post('/questions/:id/answer-key', questions.answerKey);
 router.patch('/questions/:id', validate(updateQuestionSchema), questions.update);
 router.post('/questions/:id/duplicate', questions.duplicate);
 router.post('/questions/:id/archive', questions.archive);

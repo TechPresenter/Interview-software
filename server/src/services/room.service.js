@@ -515,12 +515,14 @@ async function generateQuestion(interview, job, lastAnswer) {
       });
       if (picked) {
         markUsed(picked._id);
+        // Bilingual questions carry both renderings; serve the interview's language.
+        const text = interview.config.language === 'hi' && picked.textHi ? picked.textHi : picked.text;
         return {
-          text: picked.text,
+          text,
           questionId: picked._id,
           competencies: picked.competencies?.length ? picked.competencies : ['technical', 'communication'],
           expectedPoints: picked.expectedPoints?.length ? picked.expectedPoints : (picked.answerKey?.keyPoints || []),
-          rationale: picked.answerKey?.interviewerNotes || 'Selected from the curated question bank.',
+          rationale: picked.answerKey?.interviewerNotes || picked.rationale || 'Selected from the curated question bank.',
           isFollowUp: false,
         };
       }
