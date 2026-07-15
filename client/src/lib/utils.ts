@@ -13,6 +13,8 @@ export function formatCompact(n: number) {
 
 /** Fetch a (same-origin or CORS-enabled) URL and trigger a browser download. */
 export async function downloadFile(url: string, filename: string) {
+  // Lazily imported so server components using `cn` never pull in the tracker.
+  import('./track').then((m) => m.trackFeature('download', { filename })).catch(() => {});
   try {
     const res = await fetch(url);
     const blob = await res.blob();

@@ -55,6 +55,18 @@ export const geo = asyncHandler(async (req, res) => {
   return ok(res, await dash.geoAnalytics(since, until, { country, region }));
 });
 
+/** GET /admin/analytics/features?from&to — feature-usage analytics. */
+export const features = asyncHandler(async (req, res) => {
+  const { since, until } = parseRange(req.query);
+  return ok(res, await dash.featureUsage(since, until));
+});
+
+/** GET /admin/analytics/journeys?from&to — session journeys + entry/exit pages. */
+export const journeys = asyncHandler(async (req, res) => {
+  const { since, until } = parseRange(req.query);
+  return ok(res, await dash.journeys(since, until, 20));
+});
+
 /** GET /admin/analytics/realtime — active visitors + recent page views. */
 export const realtime = asyncHandler(async (_req, res) => ok(res, await dash.realtime()));
 

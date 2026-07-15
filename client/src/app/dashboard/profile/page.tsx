@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, Upload, FileText, Camera, Shield, KeyRound } from 'lucide-react';
 import { candidateApi } from '@/lib/candidate.api';
 import { accountApi } from '@/lib/account.api';
+import { trackFeature } from '@/lib/track';
 import { useAuth } from '@/store/auth.store';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -74,13 +75,13 @@ export default function ProfilePage() {
 
   const uploadResume = useMutation({
     mutationFn: (file: File) => candidateApi.uploadResume(file),
-    onSuccess: () => { toast.success('Resume uploaded'); qc.invalidateQueries({ queryKey: ['profile'] }); },
+    onSuccess: () => { trackFeature('resume_upload'); toast.success('Resume uploaded'); qc.invalidateQueries({ queryKey: ['profile'] }); },
     onError: () => toast.error('Upload failed'),
   });
 
   const uploadPhoto = useMutation({
     mutationFn: (file: File) => accountApi.uploadAvatar(file),
-    onSuccess: async () => { toast.success('Photo updated'); await hydrate(); qc.invalidateQueries({ queryKey: ['profile'] }); },
+    onSuccess: async () => { trackFeature('photo_upload'); toast.success('Photo updated'); await hydrate(); qc.invalidateQueries({ queryKey: ['profile'] }); },
     onError: () => toast.error('Upload failed'),
   });
 

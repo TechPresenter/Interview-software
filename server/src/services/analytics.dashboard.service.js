@@ -171,7 +171,7 @@ const groupTop = (match, field, limit = 8) =>
 
 export async function trafficBreakdowns(since, until) {
   const match = { createdAt: { $gte: since, $lte: until } };
-  const [series, topPages, sources, mediums, devices, browsers, os, countries, referrers, heatmap] = await Promise.all([
+  const [series, topPages, sources, mediums, devices, browsers, os, countries, referrers, campaigns, heatmap] = await Promise.all([
     PageView.aggregate([
       { $match: match },
       { $group: { _id: dayFmt, pageviews: { $sum: 1 }, sessions: { $addToSet: '$sessionId' } } },
@@ -186,6 +186,7 @@ export async function trafficBreakdowns(since, until) {
     groupTop(match, 'os', 6),
     groupTop(match, 'country', 10),
     groupTop(match, 'referrer', 8),
+    groupTop(match, 'campaign', 8),
     PageView.aggregate([
       { $match: match },
       { $group: { _id: { dow: { $dayOfWeek: '$createdAt' }, hour: { $hour: '$createdAt' } }, value: { $sum: 1 } } },
@@ -193,7 +194,7 @@ export async function trafficBreakdowns(since, until) {
   ]);
   return {
     series: series.map((d) => ({ label: d._id, pageviews: d.pageviews, sessions: d.sessions })),
-    topPages, sources, mediums, devices, browsers, os, countries, referrers,
+    topPages, sources, mediums, devices, browsers, os, countries, referrers, campaigns,
     heatmap: heatmap.map((h) => ({ dow: h._id.dow, hour: h._id.hour, value: h.value })),
   };
 }
@@ -421,6 +422,116 @@ export async function geoAnalytics(since, until, { country, region } = {}) {
       newVisitors: r.newVisitors,
       returningVisitors: Math.max(0, r.visitors - r.newVisitors),
     })),
+  };
+}
+
+/**
+ * Feature-usage analytics from `category: 'feature'` events. Any feature
+ * instrumented with `trackFeature(name)` shows up here automatically — no
+ * schema or query changes needed.
+ */
+export async function featureUsage(since, until) {
+  const match = { category: 'feature', createdAt: { $gte: since, $lte: until } };
+  const [byFeature, totals, trend, visitors] = await Promise.all([
+    AnalyticsEvent.aggregate([
+      { $match: match },
+      { $group: { _id: '$name', uses: { $sum: 1 }, users: { $addToSet: '$visitorId' }, last: { $max: '$createdAt' } } },
+      { $project: { uses: 1, last: 1, users: { $size: '$users' } } },
+      { $sort: { uses: -1 } },
+      { $limit: 30 },
+    ]),
+    AnalyticsEvent.aggregate([
+      { $match: match },
+      { $group: { _id: null, uses: { $sum: 1 }, users: { $addToSet: '$visitorId' } } },
+      { $project: { uses: 1, users: { $size: '$users' } } },
+    ]),
+    AnalyticsEvent.aggregate([
+      { $match: match },
+      { $group: { _id: dayFmt, value: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+    PageView.distinct('visitorId', { createdAt: { $gte: since, $lte: until } }).then((v) => v.length),
+  ]);
+
+  const t = totals[0] || { uses: 0, users: 0 };
+  const rows = byFeature.map((f) => ({ name: f._id, uses: f.uses, users: f.users, lastUsedAt: f.last }));
+  return {
+    totals: {
+      uses: t.uses,
+      activeUsers: t.users,
+      visitors,
+      adoptionRate: visitors ? Math.round((t.users / visitors) * 1000) / 10 : 0,
+      features: rows.length,
+    },
+    byFeature: rows,
+    mostUsed: rows.slice(0, 5),
+    leastUsed: [...rows].reverse().slice(0, 5),
+    trend: trend.map((d) => ({ label: d._id, value: d.value })),
+  };
+}
+
+/**
+ * User-journey analytics: per-session entry → navigation path → exit, plus the
+ * top entry and exit pages for the window.
+ */
+export async function journeys(since, until, limit = 20) {
+  const match = { createdAt: { $gte: since, $lte: until } };
+  const firstLast = (op) => [
+    { $match: match },
+    { $sort: { createdAt: 1 } },
+    { $group: { _id: '$sessionId', path: { [op]: '$path' } } },
+    { $group: { _id: '$path', value: { $sum: 1 } } },
+    { $sort: { value: -1 } },
+    { $limit: 8 },
+  ];
+
+  const [sessions, entryPages, exitPages] = await Promise.all([
+    PageView.aggregate([
+      { $match: match },
+      { $sort: { createdAt: 1 } },
+      {
+        $group: {
+          _id: '$sessionId',
+          steps: { $push: '$path' },
+          entryPath: { $first: '$path' },
+          exitPath: { $last: '$path' },
+          start: { $min: '$createdAt' },
+          end: { $max: '$createdAt' },
+          country: { $first: '$country' },
+          device: { $first: '$device' },
+          source: { $first: '$source' },
+        },
+      },
+      {
+        $project: {
+          steps: { $slice: ['$steps', 12] },
+          pages: { $size: '$steps' },
+          entryPath: 1, exitPath: 1, start: 1, end: 1, country: 1, device: 1, source: 1,
+          durationMs: { $subtract: ['$end', '$start'] },
+        },
+      },
+      { $sort: { start: -1 } },
+      { $limit: limit },
+    ]),
+    PageView.aggregate(firstLast('$first')),
+    PageView.aggregate(firstLast('$last')),
+  ]);
+
+  return {
+    sessions: sessions.map((s) => ({
+      sessionId: s._id,
+      entry: s.entryPath || '—',
+      exit: s.exitPath || '—',
+      steps: s.steps || [],
+      pages: s.pages,
+      durationSeconds: Math.max(0, Math.round((s.durationMs || 0) / 1000)),
+      country: s.country || '',
+      device: s.device || '',
+      source: s.source || '',
+      startedAt: s.start,
+    })),
+    entryPages: entryPages.map((e) => ({ label: e._id, value: e.value })),
+    exitPages: exitPages.map((e) => ({ label: e._id, value: e.value })),
   };
 }
 

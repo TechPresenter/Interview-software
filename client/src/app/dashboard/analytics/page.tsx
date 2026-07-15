@@ -8,10 +8,11 @@ import {
   Users, UserPlus, Activity, Eye, MousePointerClick, Timer, TrendingDown, Globe2,
   DollarSign, CreditCard, Repeat, Coins, Mail, Bell, Inbox, CalendarClock, Newspaper,
   Download, FileSpreadsheet, FileText, Radio, Wifi, Sparkles, Layers, MonitorSmartphone,
-  Target, Zap, ListTree, MapPin,
+  Target, Zap, ListTree, MapPin, Boxes, Route,
 } from 'lucide-react';
 import { adminApi } from '@/lib/admin.api';
 import { number, relativeTime } from '@/lib/format';
+import { trackFeature } from '@/lib/track';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -30,7 +31,7 @@ const DAY = 864e5;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const ago = (n: number) => iso(new Date(Date.now() - n * DAY));
 const PRESETS: [string, number][] = [['7D', 7], ['30D', 30], ['90D', 90]];
-const TABS = ['Overview', 'Engagement', 'Traffic', 'Audience', 'Geography', 'Business'] as const;
+const TABS = ['Overview', 'Engagement', 'Features', 'Journeys', 'Traffic', 'Audience', 'Geography', 'Business'] as const;
 type Tab = (typeof TABS)[number];
 
 const DEVICE_COLORS: Record<string, string> = {
@@ -71,6 +72,7 @@ export default function AnalyticsPage() {
 
   const doExport = async (format: 'csv' | 'xlsx' | 'pdf') => {
     setExporting(format);
+    trackFeature('report_export', { format });
     try { await adminApi.exportAnalytics({ from, to, format }); } finally { setExporting(''); }
   };
 
@@ -130,6 +132,8 @@ export default function AnalyticsPage() {
 
       {tab === 'Overview' && <OverviewTab b={b} t={t} funnel={funnel} loading={summary.isLoading} />}
       {tab === 'Engagement' && <EngagementTab data={engagement.data} loading={engagement.isLoading} />}
+      {tab === 'Features' && <FeaturesTab from={from} to={to} />}
+      {tab === 'Journeys' && <JourneysTab from={from} to={to} />}
       {tab === 'Traffic' && <TrafficTab data={traffic.data} loading={traffic.isLoading} />}
       {tab === 'Audience' && <AudienceTab data={traffic.data} loading={traffic.isLoading} />}
       {tab === 'Geography' && <GeographyTab from={from} to={to} />}
@@ -230,6 +234,7 @@ function TrafficTab({ data, loading }: any) {
         <ChartCard title="Traffic sources" icon={Globe2}><BarList data={topList(data?.sources)} /></ChartCard>
         <ChartCard title="Channels / mediums" icon={Layers}><BarList data={topList(data?.mediums)} /></ChartCard>
         <ChartCard title="Referrers" icon={Globe2}><BarList data={topList(data?.referrers)} /></ChartCard>
+        <ChartCard title="Campaigns (UTM)" icon={Target} hint="utm_campaign"><BarList data={topList(data?.campaigns)} /></ChartCard>
       </div>
       <ChartCard title="Activity heatmap" icon={Activity} hint="day × hour">
         <Heatmap cells={data?.heatmap ?? []} />
@@ -389,6 +394,113 @@ function EngagementTab({ data, loading }: any) {
           </div>
         </ChartCard>
       </div>
+    </div>
+  );
+}
+
+/* ── Feature usage ── */
+function FeaturesTab({ from, to }: { from: string; to: string }) {
+  const { data, isLoading } = useQuery({ queryKey: ['analytics-features', from, to], queryFn: () => adminApi.analyticsFeatures(from, to) });
+  if (isLoading) return <LoadingGrid />;
+  const t = data?.totals ?? {};
+  const rows: any[] = data?.byFeature ?? [];
+  const trend = (data?.trend ?? []).map((d: any) => ({ label: d.label, value: d.value }));
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile label="Total Usage" value={t.uses ?? 0} icon={Zap} color="violet" compact delay={0} />
+        <StatTile label="Active Users" value={t.activeUsers ?? 0} icon={Users} color="green" compact delay={0.05} />
+        <StatTile label="Features Used" value={t.features ?? 0} icon={Boxes} color="cyan" delay={0.1} />
+        <StatTile label="Adoption Rate" value={t.adoptionRate ?? 0} icon={Target} color="pink" suffix="%" delay={0.15} />
+      </div>
+
+      <ChartCard title="Feature usage trend" icon={Activity} hint="per day"><AreaChart data={trend} /></ChartCard>
+
+      <ChartCard title="Feature usage" icon={Boxes} hint={`${rows.length} tracked`}>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No feature usage in this range yet — features report via <code className="text-accent">trackFeature()</code> (downloads, resume/photo upload, AI interview, report export). Data appears as they&apos;re used.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[440px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
+                  <th className="py-2 pr-3 font-medium">Feature</th>
+                  <th className="py-2 pr-3 text-right font-medium">Uses</th>
+                  <th className="py-2 pr-3 text-right font-medium">Users</th>
+                  <th className="py-2 text-right font-medium">Last used</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((f) => (
+                  <tr key={f.name} className="border-b border-border/40 last:border-0">
+                    <td className="py-2 pr-3 font-medium">{f.name}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{number(f.uses)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{number(f.users)}</td>
+                    <td className="py-2 text-right text-muted-foreground">{f.lastUsedAt ? relativeTime(f.lastUsedAt) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ChartCard>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChartCard title="Most used" icon={Sparkles} hint="top 5">
+          <BarList data={(data?.mostUsed ?? []).map((f: any) => ({ label: f.name, value: f.uses, hint: number(f.uses) }))} />
+        </ChartCard>
+        <ChartCard title="Least used" icon={TrendingDown} hint="needs attention">
+          <BarList data={(data?.leastUsed ?? []).map((f: any) => ({ label: f.name, value: f.uses, hint: number(f.uses) }))} />
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+/* ── User journeys ── */
+function JourneysTab({ from, to }: { from: string; to: string }) {
+  const { data, isLoading } = useQuery({ queryKey: ['analytics-journeys', from, to], queryFn: () => adminApi.analyticsJourneys(from, to) });
+  if (isLoading) return <LoadingGrid />;
+  const sessions: any[] = data?.sessions ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChartCard title="Top entry pages" icon={MousePointerClick} hint="where sessions start"><BarList data={topList(data?.entryPages)} /></ChartCard>
+        <ChartCard title="Top exit pages" icon={TrendingDown} hint="where sessions end"><BarList data={topList(data?.exitPages)} /></ChartCard>
+      </div>
+
+      <ChartCard title="Recent user journeys" icon={Route} hint={`${sessions.length} sessions · entry → path → exit`}>
+        {sessions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No sessions in this range yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {sessions.map((s) => (
+              <div key={s.sessionId} className="rounded-xl border border-border p-3">
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">{s.pages} page{s.pages === 1 ? '' : 's'}</span>
+                  <span>{fmtDuration(s.durationSeconds)}</span>
+                  {s.device && <span className="capitalize">· {s.device}</span>}
+                  {s.country && <span>· {s.country}</span>}
+                  {s.source && <span>· {s.source}</span>}
+                  <span className="ml-auto">{relativeTime(s.startedAt)}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {s.steps.map((p: string, i: number) => (
+                    <span key={i} className="inline-flex items-center gap-1.5">
+                      <span className={cn('rounded-md px-1.5 py-0.5 font-mono', i === 0 ? 'bg-accent/15 text-accent' : i === s.steps.length - 1 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-foreground/80')}>{p}</span>
+                      {i < s.steps.length - 1 && <span className="text-muted-foreground">→</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ChartCard>
     </div>
   );
 }

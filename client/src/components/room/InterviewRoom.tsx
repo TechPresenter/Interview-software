@@ -11,6 +11,7 @@ import { toast } from '@/components/ui/toast';
 import { enterFullscreen } from '@/hooks/useAntiCheat';
 import { useProctoring } from '@/hooks/useProctoring';
 import { loadVoices, speak, playAudios, stopSpeaking, type Lang } from '@/lib/voice';
+import { trackFeature } from '@/lib/track';
 import { cn } from '@/lib/utils';
 
 type Phase = 'starting' | 'active' | 'submitting' | 'finishing' | 'done';
@@ -214,6 +215,7 @@ export function InterviewRoom({
       try {
         const res = await roomApi.start(token, lang);
         if (!mounted) return;
+        trackFeature('ai_interview_start', { language: lang });
         const intro = [interviewer?.intro, res.greeting, res.question?.text].filter(Boolean).join(' ');
         setTranscript([interviewer?.intro && { role: 'ai', text: interviewer.intro }, res.greeting && { role: 'ai', text: res.greeting }, res.question && { role: 'ai', text: res.question.text }].filter(Boolean) as Turn[]);
         setQuestion(res.question);
@@ -267,6 +269,7 @@ export function InterviewRoom({
     localStorage.removeItem(`iv:${token}:${progress.current}`);
     try {
       const res = await roomApi.answer(token, { answer: text, durationSeconds: Math.round((Date.now() - answerStart.current) / 1000) });
+      trackFeature('ai_interview_answer', { chars: text.length });
       setCommitted(''); setInterim('');
       if (res.done) { pushAi(res.message, lang); await finish(); return; }
       if (!res.question) {
