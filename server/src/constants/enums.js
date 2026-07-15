@@ -145,6 +145,7 @@ export const NOTIFICATION_TYPES = [
 
 export const COMPETENCIES = [
   'technical',
+  'domain', // industry/role knowledge, distinct from general technical skill
   'communication',
   'confidence',
   'behavioral',
@@ -152,3 +153,22 @@ export const COMPETENCIES = [
   'problemSolving',
   'culturalFit',
 ];
+
+/**
+ * Default scoring weights. MUST sum to 1.0.
+ *
+ * Single source of truth: settings.service and scoring.engine both held their
+ * own verbatim copy, so adding a competency to one silently skewed the other.
+ * `aggregate()` renormalises over the competencies that have data, so a stored
+ * admin override missing a newer key stays valid.
+ */
+export const DEFAULT_AI_WEIGHTAGE = Object.freeze({
+  technical: 0.25,
+  domain: 0.15,
+  problemSolving: 0.18,
+  communication: 0.14,
+  behavioral: 0.1,
+  confidence: 0.08,
+  leadership: 0.05,
+  culturalFit: 0.05,
+});

@@ -1,5 +1,6 @@
 import { SystemSetting } from '../models/SystemSetting.js';
 import { redis } from '../config/redis.js';
+import { DEFAULT_AI_WEIGHTAGE } from '../constants/enums.js';
 
 /**
  * Typed accessors over the SystemSetting key/value store, with a short Redis
@@ -74,15 +75,9 @@ function maskValue(value) {
 }
 
 /** Default AI competency weightage (mirrors scoring.engine defaults). */
-export const DEFAULT_AI_WEIGHTAGE = {
-  technical: 0.3,
-  problemSolving: 0.2,
-  communication: 0.15,
-  behavioral: 0.1,
-  confidence: 0.1,
-  leadership: 0.075,
-  culturalFit: 0.075,
-};
+// Re-exported from constants so this module and the scoring engine cannot drift
+// apart — they each used to carry their own copy.
+export { DEFAULT_AI_WEIGHTAGE };
 
 export async function getAiWeightage() {
   return getSetting('ai.weightage', DEFAULT_AI_WEIGHTAGE);

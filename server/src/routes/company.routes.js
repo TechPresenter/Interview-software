@@ -131,6 +131,9 @@ router.get('/reports/ranking', reports.ranking);
 router.get('/reports/ranking/export', reports.exportRanking);
 router.get('/reports/:id', reports.getOne);
 router.get('/reports/:id/export', reports.exportReport);
+router.post('/reports/:id/regenerate', reports.regenerate);
+router.post('/reports/:id/notes', reports.addNote);
+router.delete('/reports/:id/notes/:noteId', reports.removeNote);
 
 /* ── Knowledge bases ───────────────────────────────────── */
 router.get('/knowledge-bases', kb.list);

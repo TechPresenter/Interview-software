@@ -1,11 +1,17 @@
 import { Report } from '../../models/Report.js';
 import { Job } from '../../models/Job.js';
+import { Interview } from '../../models/Interview.js';
+import { Answer } from '../../models/Answer.js';
 import { Branding } from '../../models/Branding.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { reportToPdf, rankingToExcel } from '../../services/export.service.js';
+import { generateReport } from '../../services/ai/report.engine.js';
+import { getAiWeightage } from '../../services/settings.service.js';
+import { logActivity } from '../../services/audit.service.js';
+import { config } from '../../config/index.js';
 
 const scope = (req, extra = {}) => ({ company: req.companyId, ...extra });
 
@@ -31,6 +37,84 @@ export const getOne = asyncHandler(async (req, res) => {
     .lean();
   if (!report) throw ApiError.notFound('Report not found');
   return ok(res, report);
+});
+
+/**
+ * POST /company/reports/:id/regenerate — re-run the AI evaluation.
+ *
+ * Useful after the weightage or prompts change, or when a report was produced
+ * while AI was degraded. The transcript is immutable, so this only ever rewrites
+ * the evaluation — recruiter notes are preserved.
+ */
+export const regenerate = asyncHandler(async (req, res) => {
+  if (!config.ai.enabled) throw ApiError.badRequest('AI is not configured');
+  const report = await Report.findOne(scope(req, { _id: req.params.id }));
+  if (!report) throw ApiError.notFound('Report not found');
+
+  const [interview, answers, job] = await Promise.all([
+    Interview.findById(report.interview).lean(),
+    Answer.find({ interview: report.interview }).sort('order').lean(),
+    report.job ? Job.findById(report.job).lean() : null,
+  ]);
+  if (!interview) throw ApiError.notFound('Interview not found');
+  if (!answers.length) throw ApiError.badRequest('This interview has no answers to evaluate');
+
+  const weightage = await getAiWeightage();
+  const generated = await generateReport({
+    job,
+    transcript: (interview.transcript || []).map((t) => `${t.role.toUpperCase()}: ${t.text}`).join('\n'),
+    evaluations: answers.map((a) => a.evaluation || {}),
+    answers,
+    integrityScore: interview.proctoring?.integrityScore,
+    weightage,
+    company: req.companyId,
+    interview: interview._id,
+    language: req.body?.language || interview.config?.language || 'en',
+  });
+
+  // Assign field-by-field so recruiterNotes (human-authored) survive.
+  Object.assign(report, generated, { model: config.ai.model, generatedBy: 'ai' });
+  await report.save();
+  await logActivity({
+    company: req.companyId,
+    user: req.user._id,
+    action: 'report.regenerated',
+    entityType: 'Report',
+    entityId: report._id,
+    summary: `Report regenerated for interview ${report.interview}`,
+  });
+  return ok(res, report, 'Report regenerated');
+});
+
+/** POST /company/reports/:id/notes — append a recruiter note. */
+export const addNote = asyncHandler(async (req, res) => {
+  const note = String(req.body?.note || '').trim();
+  if (!note) throw ApiError.badRequest('Note cannot be empty');
+  const report = await Report.findOne(scope(req, { _id: req.params.id }));
+  if (!report) throw ApiError.notFound('Report not found');
+
+  report.recruiterNotes.push({
+    author: req.user._id,
+    authorName: req.user.name,
+    note: note.slice(0, 4000),
+  });
+  await report.save();
+  return ok(res, report.recruiterNotes, 'Note added');
+});
+
+/** DELETE /company/reports/:id/notes/:noteId — remove one's own note. */
+export const removeNote = asyncHandler(async (req, res) => {
+  const report = await Report.findOne(scope(req, { _id: req.params.id }));
+  if (!report) throw ApiError.notFound('Report not found');
+  const note = report.recruiterNotes.id(req.params.noteId);
+  if (!note) throw ApiError.notFound('Note not found');
+  // A recruiter may delete their own note; company admins may delete any.
+  if (String(note.author) !== String(req.user._id) && req.user.role !== 'company_admin') {
+    throw ApiError.forbidden('You can only delete your own notes');
+  }
+  note.deleteOne();
+  await report.save();
+  return ok(res, report.recruiterNotes, 'Note removed');
 });
 
 /** GET /company/reports/ranking?job= — candidates ranked by overall score. */

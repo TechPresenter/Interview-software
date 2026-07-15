@@ -361,6 +361,10 @@ export async function complete(interview) {
         job,
         transcript: transcriptText,
         evaluations: answers.map((a) => a.evaluation || {}),
+        // The full answers drive the per-question breakdown + skill coverage.
+        // They were already loaded here and thrown away after the evaluations
+        // were mapped out of them.
+        answers,
         integrityScore: interview.proctoring.integrityScore,
         weightage,
         company: interview.company,

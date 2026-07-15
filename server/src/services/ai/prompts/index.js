@@ -72,7 +72,10 @@ ${language === 'hi' ? 'The "question" text MUST be written in Hindi (Devanagari)
     messages: [
       {
         role: 'user',
-        content: `Scoring weightage: ${JSON.stringify(weightage)}\nPer-answer evaluations: ${JSON.stringify(perAnswer)}\nFull transcript: ${transcript}\n\nReturn JSON:\n{"scores": {"technical": n, "communication": n, "confidence": n, "behavioral": n, "leadership": n, "problemSolving": n, "culturalFit": n}, "overallScore": n, "strengths": string[], "weaknesses": string[], "improvementAreas": string[], "detailedFeedback": string, "recommendation": "strong_hire"|"hire"|"consider"|"reject"} (all scores 0-100)${language === 'hi' ? '\nWrite ALL narrative text — strengths, weaknesses, improvementAreas, and detailedFeedback — in Hindi (Devanagari). Keep the JSON keys, the numeric scores, and the "recommendation" enum value in English.' : ''}`,
+        content: `Scoring weightage: ${JSON.stringify(weightage)}\nPer-answer evaluations: ${JSON.stringify(perAnswer)}\nFull transcript: ${transcript}\n\nReturn JSON:\n{"scores": {"technical": n, "domain": n, "communication": n, "confidence": n, "behavioral": n, "leadership": n, "problemSolving": n, "culturalFit": n}, "overallScore": n, "strengths": string[], "weaknesses": string[], "improvementAreas": string[], "detailedFeedback": string, "candidateSummary": string, "recommendation": "strong_hire"|"hire"|"consider"|"reject"} (all scores 0-100)
+
+"domain" is role/industry-specific knowledge, as distinct from general technical skill.
+"candidateSummary" is shown TO THE CANDIDATE: 2-4 encouraging, constructive sentences on how they did and what to work on. It must never mention scores, the recommendation, or whether they are likely to be hired.${language === 'hi' ? '\nWrite ALL narrative text — strengths, weaknesses, improvementAreas, detailedFeedback, and candidateSummary — in Hindi (Devanagari). Keep the JSON keys, the numeric scores, and the "recommendation" enum value in English.' : ''}`,
       },
     ],
   }),

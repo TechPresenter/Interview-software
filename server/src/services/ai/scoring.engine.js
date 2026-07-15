@@ -1,6 +1,6 @@
 import { completeJson } from './claude.client.js';
 import { prompts, applyPromptOverride } from './prompts/index.js';
-import { COMPETENCIES } from '../../constants/enums.js';
+import { COMPETENCIES, DEFAULT_AI_WEIGHTAGE } from '../../constants/enums.js';
 
 /**
  * AI Scoring Engine
@@ -73,16 +73,9 @@ export function aggregate(evaluations, weightage = defaultWeightage()) {
   return { scores, overallScore };
 }
 
+/** @returns {Record<string, number>} a mutable copy of the shared defaults. */
 export function defaultWeightage() {
-  return {
-    technical: 0.3,
-    problemSolving: 0.2,
-    communication: 0.15,
-    behavioral: 0.1,
-    confidence: 0.1,
-    leadership: 0.075,
-    culturalFit: 0.075,
-  };
+  return { ...DEFAULT_AI_WEIGHTAGE };
 }
 
 const clamp = (n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
