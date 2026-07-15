@@ -33,6 +33,16 @@ const DURATIONS = [15, 30, 45, 60, 90];
 const omitEmpty = <T extends object>(o: T): Partial<T> =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== '')) as Partial<T>;
 
+/** The modal's config state → the shape the API expects. */
+function configPayload(cfg: Cfg): Record<string, unknown> {
+  const out: Record<string, unknown> = omitEmpty(cfg);
+  // introCount is a Select, so it arrives as a string. '' ("Auto") was already
+  // dropped by omitEmpty, which is exactly how the server reads "auto"; the rest
+  // must go back to numbers or the schema rejects them.
+  if (typeof out.introCount === 'string') out.introCount = Number(out.introCount);
+  return out;
+}
+
 /**
  * Render a 400 from the API. The validator returns `details` keyed by field path
  * ('config.experienceLevel'); showing only `message` is what turned every one of
@@ -49,6 +59,9 @@ function apiErrorMessage(e: any): string {
 }
 
 type Cfg = {
+  // A Select with three meanings, so it is a string here: '' = auto, '0' = off,
+  // '1'..'3' = exactly that many. configPayload() converts it back to a number.
+  introCount: string;
   language: string; allowLanguageChange: boolean; durationMinutes: number; questionCount: number; difficulty: string; experienceLevel: string;
   passingScore: number; timePerQuestionSeconds: number; maxRetries: number;
   adaptiveDifficulty: boolean; followUps: boolean; randomOrder: boolean; autoSubmit: boolean;
@@ -56,6 +69,7 @@ type Cfg = {
   proctoring: boolean; resumeBased: boolean; jdBased: boolean;
 };
 const DEFAULT_CFG: Cfg = {
+  introCount: '',
   language: 'en', allowLanguageChange: false, durationMinutes: 30, questionCount: 8, difficulty: 'medium', experienceLevel: '',
   passingScore: 50, timePerQuestionSeconds: 0, maxRetries: 0,
   adaptiveDifficulty: true, followUps: true, randomOrder: false, autoSubmit: true,
@@ -92,8 +106,8 @@ export default function InterviewsPage() {
   const schedule = useMutation({
     mutationFn: () => companyApi.schedule({
       candidate, types, sendInvite,
-      // omitEmpty, not cfg: an unselected dropdown ('' = "Any") is not a value.
-      config: omitEmpty(cfg),
+      // configPayload, not cfg: an unselected dropdown ('' = "Any") is not a value.
+      config: configPayload(cfg),
       knowledgeBase: knowledgeBase || undefined,
       questionSet: questionSet || undefined,
       round: round || undefined,
@@ -235,6 +249,10 @@ export default function InterviewsPage() {
               {customDuration && <input type="number" min={5} max={600} value={cfg.durationMinutes} onChange={(e) => setC('durationMinutes', Number(e.target.value) || 30)} placeholder="Minutes" className="mt-2 h-10 w-full rounded-xl border border-input bg-background/60 px-3 text-sm outline-none focus:border-primary" />}
             </div>
             <NumField label="Number of questions" value={cfg.questionCount} onChange={(v) => setC('questionCount', v)} min={1} max={50} />
+            {/* Background questions are ADDITIVE — they don't come out of the
+                question count above, so this never shrinks the real interview. */}
+            <Select label="Background questions" value={cfg.introCount} onChange={(v) => setC('introCount', v)}
+              options={[['', 'Auto (recommended)'], ['0', 'None — go straight to questions'], ['1', '1 · background'], ['2', '2 · + projects'], ['3', '3 · + motivation']].map(([v, l]) => ({ label: l, value: v }))} />
             <Select label="Difficulty" value={cfg.difficulty} onChange={(v) => setC('difficulty', v)} options={[['easy', 'Beginner'], ['medium', 'Intermediate'], ['hard', 'Advanced'], ['expert', 'Expert']].map(([v, l]) => ({ label: l, value: v }))} />
             {/* 'junior' is a real EXPERIENCE_LEVEL and was missing here, so the
                 one level between fresher and mid could not be picked at all. */}

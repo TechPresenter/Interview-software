@@ -53,6 +53,14 @@ const interviewSchema = new Schema(
       // 'expert' completes the ladder that engine.adaptDifficulty already steps along.
       difficulty: { type: String, enum: ['easy', 'medium', 'hard', 'expert'], default: 'medium' },
       experienceLevel: { type: String }, // e.g. fresher | mid | senior
+      /**
+       * How many background questions to ask before the first scored one.
+       *   undefined → auto (sized by questionCount and duration; never zero)
+       *   0         → off. The single lever an admin has to opt out.
+       *   1..3      → honoured verbatim
+       * No default: `undefined` must stay distinguishable from `0`.
+       */
+      introCount: { type: Number },
       adaptiveDifficulty: { type: Boolean, default: true },
       followUps: { type: Boolean, default: true }, // AI follow-up questions
       randomOrder: { type: Boolean, default: false },
@@ -98,11 +106,39 @@ const interviewSchema = new Schema(
       // rather than only the last couple of turns.
       competenciesCovered: [String],
       skipsUsed: { type: Number, default: 0 },
+      /**
+       * The background stages planned for this interview, resolved once in
+       * start() and then fixed. Empty for every interview scheduled before this
+       * shipped, which is what makes the change migration-free: `introAsked (0)
+       * < introPlan.length (0)` is false, so a live interview never enters the
+       * intro path and behaves exactly as it did.
+       */
+      introPlan: [String],
+      /** How many background STAGES have been answered (follow-ups don't count). */
+      introAsked: { type: Number, default: 0 },
+      /**
+       * Whether the background questions address an early-career candidate.
+       * Resolved once in start() (the only place the candidate doc is loaded)
+       * so the wording stays stable for the whole interview.
+       */
+      introFresher: { type: Boolean, default: false },
       // The question currently awaiting an answer.
       pendingQuestion: {
         text: String,
         competencies: [String],
         isFollowUp: { type: Boolean, default: false },
+        /**
+         * A background/warm-up turn rather than a scored question.
+         *
+         * This line is load-bearing, not documentation. `pendingQuestion` is a
+         * nested path with declared leaves and no `strict: false`, so mongoose
+         * strips any undeclared key AT ASSIGNMENT — in memory, before a save is
+         * even attempted. Set `isIntro` without declaring it and it reads back
+         * `undefined`, every `if (!pending.isIntro)` guard passes, and the intro
+         * silently scores itself and eats the question budget: exactly the
+         * behaviour the flag exists to prevent, with no error anywhere.
+         */
+        isIntro: { type: Boolean, default: false },
         // Set when the question came from the Question bank (enables usage
         // analytics + joining answers back to bank questions).
         questionId: { type: Schema.Types.ObjectId, ref: 'Question' },
@@ -120,6 +156,14 @@ const interviewSchema = new Schema(
         role: { type: String, enum: ['ai', 'candidate', 'system'] },
         text: String,
         at: { type: Date, default: Date.now },
+        /**
+         * Marks a background turn. The recruiter reads the whole transcript, but
+         * the report's LLM must not: report.engine prefers the model's own
+         * `recommendation`, and it is fed the transcript — so without this flag,
+         * unscoring the intro protects the numbers while small talk still
+         * reaches the hire/reject verdict.
+         */
+        intro: { type: Boolean, default: false },
       },
     ],
 

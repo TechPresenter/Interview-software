@@ -141,6 +141,9 @@ export const interviewConfigSchema = z
     // z.enum().optional() rejects '' — so the default form state was, by itself,
     // an automatic 400. optionalEnum reads '' as "not chosen".
     experienceLevel: optionalEnum(EXPERIENCE_LEVELS),
+    // Background questions before the first scored one. Omitted = auto; 0 = off
+    // (the one lever an admin has to skip the background phase); 1-3 = verbatim.
+    introCount: z.number().int().min(0).max(3).optional(),
     adaptiveDifficulty: z.boolean().optional(),
     followUps: z.boolean().optional(),
     randomOrder: z.boolean().optional(),

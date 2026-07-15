@@ -58,6 +58,9 @@ const jobSchema = new Schema(
       // undefined and a job could never set its own difficulty or level.
       difficulty: { type: String, enum: [...DIFFICULTY, null], default: null },
       experienceLevel: { type: String, enum: [...EXPERIENCE_LEVELS, null], default: null },
+      // Background questions for this role. null = unset, so scheduleInterview's
+      // `cfg[key] ?? bp[key] ?? def` falls through to auto.
+      introCount: { type: Number, default: null },
       adaptiveDifficulty: { type: Boolean, default: true },
       followUps: { type: Boolean, default: true },
       useQuestionBank: { type: Boolean, default: true },

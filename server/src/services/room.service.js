@@ -13,6 +13,7 @@ import { generateReport } from './ai/report.engine.js';
 import { getAiWeightage } from './settings.service.js';
 import { contextFor } from './knowledgeBase.service.js';
 import { selectNextQuestion, markUsed } from './question.selector.js';
+import { planFor, isFresher, introQuestion, bridge } from './ai/intro.stages.js';
 import { isAiConfigured } from './ai/ai.status.js';
 import { QuestionSet } from '../models/QuestionSet.js';
 import { logActivity } from './audit.service.js';
@@ -100,9 +101,23 @@ export async function roomView(interview) {
   };
 }
 
+/**
+ * What the candidate's progress bar shows.
+ *
+ * Counts background turns as turns. They are additive — they never touch
+ * `currentIndex`, which stays the count of SCORED questions and keeps
+ * isComplete() honest — but to the person answering they are questions like any
+ * other. Left out, the bar would sit frozen at "Question 1 of 8" for the whole
+ * intro, and on a 1-question interview the room would offer "Submit & finish"
+ * (InterviewRoom keys that off current + 1 >= total) under "tell me about
+ * yourself".
+ */
 function progressOf(interview) {
-  const total = interview.config.questionCount || 8;
-  return { current: Math.min(interview.engineState.currentIndex, total), total };
+  const scored = interview.config.questionCount || 8;
+  const intro = interview.engineState.introPlan?.length || 0;
+  const total = scored + intro;
+  const done = interview.engineState.currentIndex + (interview.engineState.introAsked || 0);
+  return { current: Math.min(done, total), total };
 }
 
 /** Begin the interview: greeting + first question. Idempotent-ish. */
@@ -135,9 +150,25 @@ export async function start(interview, { language } = {}) {
   // engineState default ('medium') silently won every interview.
   interview.engineState.difficulty = interview.config.difficulty || 'medium';
 
+  // Plan the background phase once, here, and freeze it. start() is the only
+  // activation point: the resume guard above returns early for any in-flight
+  // interview, so nothing scheduled before this shipped can be re-planned.
+  // Resolving it here also means generateQuestion never needs the candidate doc.
+  interview.engineState.introPlan = planFor({ config: interview.config });
+  interview.engineState.introAsked = 0;
+  interview.engineState.introFresher = isFresher({ config: interview.config, candidate });
+
   let greeting = `Hi ${candidate?.name?.split(' ')[0] || 'there'}, welcome to your interview for ${job?.title || 'the role'}. I'll ask a few questions — answer naturally. Ready when you are.`;
   try {
-    greeting = await engine.greet({ interview, candidate, job });
+    // The greeting promises "roughly N questions". Background turns are ones the
+    // candidate has to answer, so N must include them or the greeting disagrees
+    // with the progress bar it sits above.
+    greeting = await engine.greet({
+      interview,
+      candidate,
+      job,
+      questionCount: (interview.config.questionCount || 8) + interview.engineState.introPlan.length,
+    });
   } catch (err) {
     logger.warn({ err: err.message }, 'greeting fallback');
   }
@@ -166,10 +197,18 @@ export async function answer(interview, payload) {
   if (!pending?.text) throw ApiError.badRequest('No question is awaiting an answer');
 
   const job = interview.job ? await Job.findById(interview.job).lean() : null;
+  const isIntro = Boolean(pending.isIntro);
 
   // Score the answer (graceful fallback if AI unavailable).
   let evaluation = { score: null, competencyScores: {}, reasoning: 'Not scored', keywordsHit: [], keywordsMissed: [] };
-  if (await isAiConfigured('scoring', { company: interview.company })) {
+  if (isIntro) {
+    // Background answers are never scored. "Tell me about yourself" has no right
+    // answer to mark against, an empty competencyScores is inert in the report's
+    // aggregate, and skipping it saves an LLM call per background turn. Above
+    // all it keeps a rehearsed elevator pitch from moving the technical ladder:
+    // adaptDifficulty reads the scalar score and cannot tell where it came from.
+    evaluation = { score: null, competencyScores: {}, reasoning: 'Background question — not scored.', keywordsHit: [], keywordsMissed: [] };
+  } else if (await isAiConfigured('scoring', { company: interview.company })) {
     try {
       evaluation = await scoreAnswer({
         job,
@@ -197,6 +236,7 @@ export async function answer(interview, payload) {
     competencies: pending.competencies,
     expectedPoints: pending.expectedPoints,
     isFollowUp: pending.isFollowUp,
+    isIntro,
     response: payload.answer || '',
     audioUrl: payload.audioUrl,
     durationSeconds: payload.durationSeconds,
@@ -204,16 +244,28 @@ export async function answer(interview, payload) {
     evaluation: { ...evaluation, competencyScores: evaluation.competencyScores },
   });
 
-  interview.transcript.push({ role: 'candidate', text: payload.answer || '' });
-  interview.engineState.currentIndex += 1;
+  interview.transcript.push({ role: 'candidate', text: payload.answer || '', intro: isIntro });
+  if (isIntro) {
+    // A background turn advances the background plan, NOT the question budget.
+    // isComplete() is `currentIndex >= questionCount` and compares a number to a
+    // number — it cannot tell an intro from a real question. Incrementing here
+    // would let the intro eat the scored interview: at questionCount=1 the whole
+    // thing would be "tell me about yourself", reported as a finished interview
+    // with a hire/reject verdict. A follow-up doesn't advance the stage cursor;
+    // only the stage question itself does.
+    if (!pending.isFollowUp) interview.engineState.introAsked += 1;
+  } else {
+    interview.engineState.currentIndex += 1;
+  }
   interview.engineState.askedTexts.push(pending.text);
   if (pending.questionId) interview.engineState.askedQuestionIds.push(pending.questionId);
   for (const c of pending.competencies || []) {
     if (!interview.engineState.competenciesCovered.includes(c)) interview.engineState.competenciesCovered.push(c);
   }
   // Respect the toggle — this used to adapt unconditionally, so turning
-  // adaptive difficulty OFF had no effect.
-  if (interview.config.adaptiveDifficulty) {
+  // adaptive difficulty OFF had no effect. Never adapt on a background answer:
+  // a polished intro would step the ladder up before the first real question.
+  if (interview.config.adaptiveDifficulty && !isIntro) {
     interview.engineState.difficulty = engine.adaptDifficulty(interview.engineState.difficulty, evaluation.score);
   }
 
@@ -225,14 +277,48 @@ export async function answer(interview, payload) {
     keywordsMissed: evaluation.keywordsMissed,
   });
 
-  // Done?
-  if (engine.isComplete(interview)) {
+  // Done? Never mid-background: isComplete() only reads currentIndex, which the
+  // intro doesn't move, so this cannot fire during the intro of a normal
+  // interview. The isIntro guard covers the one case where it could — an
+  // interview resumed with currentIndex already at the budget.
+  if (!isIntro && engine.isComplete(interview)) {
     interview.engineState.phase = 'closing';
     interview.engineState.pendingQuestion = undefined;
     const closing = 'Thank you — that completes the interview. We are generating your evaluation now.';
     interview.transcript.push({ role: 'ai', text: closing });
     await interview.save();
     return { done: true, message: closing, progress: progressOf(interview) };
+  }
+
+  // Follow up on a background answer, so the AI picks up the thread of what the
+  // candidate actually said instead of moving on regardless. The scorer is off
+  // for these, so there's no evaluation.followUpSuggested to reuse — this is the
+  // one place that spends a call on maybeFollowUp(), which until now was dead
+  // code (its DB-overridable 'followUp' prompt key was editable and unreachable).
+  // Bounded: one per stage, because a follow-up's answer is itself isFollowUp and
+  // fails this guard. Honours the existing followUps toggle.
+  if (isIntro && interview.config.followUps && !pending.isFollowUp) {
+    try {
+      const text = await engine.maybeFollowUp({ interview, question: pending.text, answer: payload.answer });
+      if (text) {
+        const followUp = {
+          text,
+          competencies: pending.competencies,
+          isIntro: true, // still background: unscored, and out of the report
+          isFollowUp: true,
+          expectedPoints: [],
+          rationale: 'Follow-up on the background answer.',
+        };
+        interview.engineState.phase = 'follow_up';
+        interview.engineState.pendingQuestion = followUp;
+        interview.transcript.push({ role: 'ai', text: followUp.text, intro: true });
+        await interview.save();
+        return { done: false, question: publicQuestion(followUp), progress: progressOf(interview) };
+      }
+    } catch (err) {
+      // A background follow-up is a nicety; never fail the interview for it.
+      logger.warn({ err: err.message }, 'intro follow-up skipped');
+    }
   }
 
   // Follow-up: dig into the answer we just scored when the evaluator flagged
@@ -258,8 +344,12 @@ export async function answer(interview, payload) {
   // Next question.
   interview.engineState.phase = 'questioning';
   const next = await generateQuestion(interview, job, payload.answer);
+  // Spec stage 9, "transition to technical": a clause on the first scored
+  // question rather than a turn of its own. "Gradually move" is a sentence, not
+  // something the candidate should have to answer.
+  if (isIntro && !next.isIntro) next.text = `${bridge({ jobTitle: job?.title, language: interview.config.language })} ${next.text}`;
   interview.engineState.pendingQuestion = next;
-  interview.transcript.push({ role: 'ai', text: next.text });
+  interview.transcript.push({ role: 'ai', text: next.text, intro: Boolean(next.isIntro) });
   await interview.save();
 
   return { done: false, question: publicQuestion(next), progress: progressOf(interview) };
@@ -280,8 +370,12 @@ export async function skip(interview) {
   if (!pending?.text) throw ApiError.badRequest('No question to skip');
 
   const job = interview.job ? await Job.findById(interview.job).lean() : null;
+  const isIntro = Boolean(pending.isIntro);
 
-  // Record the skip as a zero-scored answer for the report trail.
+  // Record the skip as a zero-scored answer for the report trail — except for a
+  // background question, which has no score to zero. Booking a 0 for declining
+  // "tell me about yourself" would put small talk into the hire/reject verdict
+  // as a failure, and burn one of the recruiter's scored questions doing it.
   await Answer.create({
     interview: interview._id,
     question: pending.questionId,
@@ -289,18 +383,27 @@ export async function skip(interview) {
     competencies: pending.competencies,
     expectedPoints: pending.expectedPoints,
     skipped: true,
+    isIntro,
     response: '(skipped)',
     order: interview.engineState.currentIndex,
-    evaluation: { score: 0, competencyScores: {}, reasoning: 'Candidate skipped this question.' },
+    evaluation: isIntro
+      ? { score: null, competencyScores: {}, reasoning: 'Background question — skipped, not scored.' }
+      : { score: 0, competencyScores: {}, reasoning: 'Candidate skipped this question.' },
   });
 
-  interview.transcript.push({ role: 'candidate', text: '(skipped)' });
-  interview.engineState.currentIndex += 1;
+  interview.transcript.push({ role: 'candidate', text: '(skipped)', intro: isIntro });
+  if (isIntro) {
+    // Advance the background plan, not the question budget — otherwise skipping
+    // the intro silently costs the candidate real questions.
+    if (!pending.isFollowUp) interview.engineState.introAsked += 1;
+  } else {
+    interview.engineState.currentIndex += 1;
+  }
   interview.engineState.skipsUsed = used + 1;
   interview.engineState.askedTexts.push(pending.text);
   if (pending.questionId) interview.engineState.askedQuestionIds.push(pending.questionId);
 
-  if (engine.isComplete(interview)) {
+  if (!isIntro && engine.isComplete(interview)) {
     interview.engineState.phase = 'closing';
     interview.engineState.pendingQuestion = undefined;
     const closing = 'Thank you — that completes the interview. We are generating your evaluation now.';
@@ -310,8 +413,9 @@ export async function skip(interview) {
   }
 
   const next = await generateQuestion(interview, job, null);
+  if (isIntro && !next.isIntro) next.text = `${bridge({ jobTitle: job?.title, language: interview.config.language })} ${next.text}`;
   interview.engineState.pendingQuestion = next;
-  interview.transcript.push({ role: 'ai', text: next.text });
+  interview.transcript.push({ role: 'ai', text: next.text, intro: Boolean(next.isIntro) });
   await interview.save();
   return {
     done: false,
@@ -375,19 +479,33 @@ export async function complete(interview) {
     Candidate.findById(interview.candidate),
   ]);
 
+  // Background shapes what we ask, never what we conclude.
+  //
+  // Leaving intro rows in the evaluations is nearly harmless — an empty
+  // competencyScores is inert in the aggregate — but that only protects the
+  // NUMBERS. report.engine prefers the model's own `recommendation`, and the
+  // model is handed the transcript, so an unfiltered transcript lets small talk
+  // decide hire/reject while the scores look untouched. Both have to be filtered
+  // or neither is. The recruiter still reads the whole thing in the interview
+  // transcript and the Answer rows — nothing is hidden, it just doesn't vote.
+  const scoredAnswers = answers.filter((a) => !a.isIntro);
+
   let report = null;
   if (await isAiConfigured('report', { company: interview.company })) {
     try {
       const weightage = await getAiWeightage();
-      const transcriptText = interview.transcript.map((t) => `${t.role.toUpperCase()}: ${t.text}`).join('\n');
+      const transcriptText = interview.transcript
+        .filter((t) => !t.intro)
+        .map((t) => `${t.role.toUpperCase()}: ${t.text}`)
+        .join('\n');
       const generated = await generateReport({
         job,
         transcript: transcriptText,
-        evaluations: answers.map((a) => a.evaluation || {}),
+        evaluations: scoredAnswers.map((a) => a.evaluation || {}),
         // The full answers drive the per-question breakdown + skill coverage.
         // They were already loaded here and thrown away after the evaluations
         // were mapped out of them.
-        answers,
+        answers: scoredAnswers,
         integrityScore: interview.proctoring.integrityScore,
         weightage,
         company: interview.company,
@@ -544,6 +662,7 @@ function fromBankQuestion(picked, interview, rationale) {
 /**
  * Produce the next question, in descending order of relevance:
  *
+ *  -1. the background phase      — static, unscored, always first
  *   0. an assigned QuestionSet    — fixed and ordered, identical for every candidate
  *   1. the curated Question bank  — recruiter-approved, carries a real answer key
  *   2. the LLM                    — adaptive, grounded in the JD + knowledge base
@@ -554,6 +673,20 @@ function fromBankQuestion(picked, interview, rationale) {
  * was wired in, a single AI hiccup silently dropped every interview to tier 3.
  */
 async function generateQuestion(interview, job, lastAnswer) {
+  const { introPlan = [], introAsked = 0 } = interview.engineState;
+
+  // ── Tier -1: background ──
+  // Must sit above tier 0: that returns immediately, so anything below it never
+  // runs for a QuestionSet interview. Driven by the plan cursor rather than by a
+  // tier outcome, so it can't re-fire on tier 0's fall-through.
+  if (introAsked < introPlan.length) {
+    return introQuestion(introPlan[introAsked], {
+      jobTitle: job?.title,
+      fresher: interview.engineState.introFresher,
+      language: interview.config.language,
+    });
+  }
+
   // ── Tier 0: a fixed set ──
   if (interview.questionSet) {
     try {
@@ -674,15 +807,21 @@ function minutesRemaining(interview) {
   return Math.max(0, Math.round(total - elapsed));
 }
 
+/**
+ * Tier 3, the last resort. These must not duplicate the background phase:
+ * fallbackQuestion indexes by currentIndex, which is 0 at the FIRST SCORED
+ * question — so a fallback list starting with "Tell me about yourself" asked it
+ * again, verbatim, immediately after the bridge announcing the move to technical.
+ * Three entries were dropped for that reason ("Tell me about yourself…", "Walk me
+ * through a project you are proud of.", "Where do you want to grow…"); the intro
+ * covers all three properly now. What remains is role-neutral and behavioural.
+ */
 const FALLBACKS = [
-  'Tell me about yourself and why this role interests you.',
   'Describe a challenging problem you solved recently. What was your approach?',
   'How do you prioritize work when everything feels urgent?',
   'Tell me about a time you worked with a difficult teammate.',
   'What is a recent thing you learned, and how did you apply it?',
-  'Walk me through a project you are proud of.',
   'How do you handle feedback on your work?',
-  'Where do you want to grow over the next year?',
 ];
 const fallbackQuestion = (interview) => FALLBACKS[interview.engineState.currentIndex % FALLBACKS.length];
 

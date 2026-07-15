@@ -20,14 +20,22 @@ export function adaptDifficulty(current, lastScore) {
   return current;
 }
 
-/** Produce the opening greeting message. */
-export async function greet({ interview, candidate, job }) {
+/**
+ * Produce the opening greeting message.
+ *
+ * `questionCount` is overridable because the greeting promises the candidate
+ * "roughly N questions" and the background phase adds turns they must answer.
+ * Left at config.questionCount, the greeting would undercount and disagree with
+ * the progress bar directly beneath it. Defaults to the config, so existing
+ * callers are unaffected.
+ */
+export async function greet({ interview, candidate, job, questionCount }) {
   const built = await applyPromptOverride('greeting', prompts.greeting({
     candidateName: candidate.name,
     jobTitle: job?.title || 'the role',
     interviewType: interviewTypeLabel(interview.types),
     durationMinutes: interview.config.durationMinutes,
-    questionCount: interview.config.questionCount,
+    questionCount: questionCount ?? interview.config.questionCount,
     language: interview.config.language,
   }));
   const { text } = await complete({

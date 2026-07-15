@@ -15,6 +15,13 @@ const answerSchema = new Schema(
     competencies: [String],
     expectedPoints: [String],
     isFollowUp: { type: Boolean, default: false },
+    /**
+     * A background answer. Persisted like any other so the recruiter can read
+     * it, but excluded from every scored surface: the aggregate, the per-question
+     * breakdown, skill coverage, and the transcript the report's LLM sees.
+     * Intro shapes what we ask, never what we conclude.
+     */
+    isIntro: { type: Boolean, default: false },
     skipped: { type: Boolean, default: false },
 
     response: { type: String, default: '' }, // transcribed/typed answer

@@ -30,6 +30,10 @@ export async function scheduleInterview({ companyId, candidate, job, types, roun
     questionCount: pick('questionCount', 8),
     difficulty: pick('difficulty', 'medium'),
     experienceLevel: pick('experienceLevel', undefined),
+    // undefined = auto-size the background phase. The `??` chain means a job
+    // blueprint's null falls through to auto too, and only an explicit 0 —
+    // from the recruiter or the job — turns the background phase off.
+    introCount: pick('introCount', undefined),
     adaptiveDifficulty: pick('adaptiveDifficulty', true),
     followUps: pick('followUps', true),
     randomOrder: pick('randomOrder', false),
