@@ -21,6 +21,33 @@ import { toast } from '@/components/ui/toast';
 const TYPES = ['hr', 'technical', 'behavioral', 'aptitude', 'coding'];
 const DURATIONS = [15, 30, 45, 60, 90];
 
+/**
+ * Drop keys whose value is '' before sending.
+ *
+ * A <Select> uses '' for its placeholder — "Any", "None", "not chosen" — which
+ * is UI state, not data. Sending it means the API has to interpret '' as an
+ * experience level, and it (rightly) refuses: the whole scheduling form was
+ * dead because DEFAULT_CFG.experienceLevel is '' and nobody had to touch the
+ * dropdown to send it. Omitting the key says "unset" in the way JSON has for it.
+ */
+const omitEmpty = <T extends object>(o: T): Partial<T> =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== '')) as Partial<T>;
+
+/**
+ * Render a 400 from the API. The validator returns `details` keyed by field path
+ * ('config.experienceLevel'); showing only `message` is what turned every one of
+ * these into an unactionable "Validation failed".
+ */
+function apiErrorMessage(e: any): string {
+  const data = e?.response?.data;
+  const details = data?.details as Record<string, string> | undefined;
+  if (details && typeof details === 'object') {
+    const lines = Object.entries(details).map(([field, msg]) => `${field}: ${msg}`);
+    if (lines.length) return lines.join('\n');
+  }
+  return data?.message || 'Something went wrong. Please try again.';
+}
+
 type Cfg = {
   language: string; allowLanguageChange: boolean; durationMinutes: number; questionCount: number; difficulty: string; experienceLevel: string;
   passingScore: number; timePerQuestionSeconds: number; maxRetries: number;
@@ -64,7 +91,10 @@ export default function InterviewsPage() {
 
   const schedule = useMutation({
     mutationFn: () => companyApi.schedule({
-      candidate, types, sendInvite, config: cfg, knowledgeBase: knowledgeBase || undefined,
+      candidate, types, sendInvite,
+      // omitEmpty, not cfg: an unselected dropdown ('' = "Any") is not a value.
+      config: omitEmpty(cfg),
+      knowledgeBase: knowledgeBase || undefined,
       questionSet: questionSet || undefined,
       round: round || undefined,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
@@ -76,7 +106,7 @@ export default function InterviewsPage() {
       setOpen(false);
       qc.invalidateQueries({ queryKey: ['interviews'] });
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed'),
+    onError: (e: any) => toast.error(apiErrorMessage(e)),
   });
 
   const invite = useMutation({ mutationFn: (id: string) => companyApi.invite(id), onSuccess: () => toast.success('Invitation sent') });
@@ -206,7 +236,9 @@ export default function InterviewsPage() {
             </div>
             <NumField label="Number of questions" value={cfg.questionCount} onChange={(v) => setC('questionCount', v)} min={1} max={50} />
             <Select label="Difficulty" value={cfg.difficulty} onChange={(v) => setC('difficulty', v)} options={[['easy', 'Beginner'], ['medium', 'Intermediate'], ['hard', 'Advanced'], ['expert', 'Expert']].map(([v, l]) => ({ label: l, value: v }))} />
-            <Select label="Experience level" value={cfg.experienceLevel} onChange={(v) => setC('experienceLevel', v)} options={[['', 'Any'], ['fresher', 'Fresher'], ['mid', 'Mid-level'], ['senior', 'Senior'], ['lead', 'Lead']].map(([v, l]) => ({ label: l, value: v }))} />
+            {/* 'junior' is a real EXPERIENCE_LEVEL and was missing here, so the
+                one level between fresher and mid could not be picked at all. */}
+            <Select label="Experience level" value={cfg.experienceLevel} onChange={(v) => setC('experienceLevel', v)} options={[['', 'Any'], ['fresher', 'Fresher'], ['junior', 'Junior'], ['mid', 'Mid-level'], ['senior', 'Senior'], ['lead', 'Lead']].map(([v, l]) => ({ label: l, value: v }))} />
             <NumField label="Passing score (%)" value={cfg.passingScore} onChange={(v) => setC('passingScore', v)} min={0} max={100} />
             <NumField label="Time / question (sec, 0 = none)" value={cfg.timePerQuestionSeconds} onChange={(v) => setC('timePerQuestionSeconds', v)} min={0} max={3600} />
             <NumField label="Max retry attempts" value={cfg.maxRetries} onChange={(v) => setC('maxRetries', v)} min={0} max={10} />

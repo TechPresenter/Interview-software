@@ -9,8 +9,7 @@ import {
   DIFFICULTY,
   EXPERIENCE_LEVELS,
 } from '../constants/enums.js';
-
-const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
+import { objectId, optionalId, nullishId, optionalEnum, nullishEnum } from './shared.js';
 
 /* ── Jobs ──────────────────────────────────────────────── */
 const skill = z.object({
@@ -22,7 +21,7 @@ const skill = z.object({
 export const createJobSchema = z.object({
   title: z.string().min(2).max(160),
   department: z.string().optional(),
-  industry: z.enum(INDUSTRIES).nullish(),
+  industry: nullishEnum(INDUSTRIES),
   location: z.string().optional(),
   employmentType: z.enum(['full_time', 'part_time', 'contract', 'internship', 'temporary']).optional(),
   workMode: z.enum(['onsite', 'remote', 'hybrid']).optional(),
@@ -38,18 +37,18 @@ export const createJobSchema = z.object({
   interviewConfig: z
     .object({
       types: z.array(z.enum(INTERVIEW_TYPES)).optional(),
-      round: z.enum(INTERVIEW_ROUNDS).nullish(),
+      round: nullishEnum(INTERVIEW_ROUNDS),
       durationMinutes: z.number().int().positive().optional(),
       questionCount: z.number().int().positive().optional(),
-      difficulty: z.enum(DIFFICULTY).nullish(),
-      experienceLevel: z.enum(EXPERIENCE_LEVELS).nullish(),
+      difficulty: nullishEnum(DIFFICULTY),
+      experienceLevel: nullishEnum(EXPERIENCE_LEVELS),
       adaptiveDifficulty: z.boolean().optional(),
       followUps: z.boolean().optional(),
       useQuestionBank: z.boolean().optional(),
-      language: z.enum(['en', 'hi']).optional(),
+      language: optionalEnum(['en', 'hi']),
       allowSkip: z.boolean().optional(),
       maxSkips: z.number().int().min(0).max(10).optional(),
-      questionSet: objectId.nullish(),
+      questionSet: nullishId,
     })
     .optional(),
   knowledgeBase: objectId.optional().nullable(),
@@ -130,14 +129,18 @@ export const addNoteSchema = z.object({ body: z.string().min(1).max(2000) });
 /* ── Interviews ────────────────────────────────────────── */
 export const interviewConfigSchema = z
   .object({
-    language: z.enum(['en', 'hi']).optional(),
+    language: optionalEnum(['en', 'hi']),
     allowLanguageChange: z.boolean().optional(),
     durationMinutes: z.number().int().positive().max(600).optional(),
     questionCount: z.number().int().positive().max(50).optional(),
     // 'expert' was missing: the model allows it and adaptDifficulty steps up to
     // it, so scheduling an expert interview was rejected at the edge.
-    difficulty: z.enum(DIFFICULTY).optional(),
-    experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
+    difficulty: optionalEnum(DIFFICULTY),
+    // This one field made scheduling impossible. The modal's DEFAULT_CFG sends
+    // experienceLevel: '' when the recruiter hasn't picked a level, and
+    // z.enum().optional() rejects '' — so the default form state was, by itself,
+    // an automatic 400. optionalEnum reads '' as "not chosen".
+    experienceLevel: optionalEnum(EXPERIENCE_LEVELS),
     adaptiveDifficulty: z.boolean().optional(),
     followUps: z.boolean().optional(),
     randomOrder: z.boolean().optional(),
@@ -159,12 +162,20 @@ export const interviewConfigSchema = z
   .optional();
 
 export const scheduleInterviewSchema = z.object({
-  candidate: objectId,
-  job: objectId.optional(),
-  knowledgeBase: objectId.optional().nullable(),
-  questionSet: objectId.optional().nullable(),
+  // The one genuinely required field. A missing/blank candidate is the
+  // recruiter's mistake, not the browser's, so it still fails — but with
+  // "Choose a candidate to interview" rather than a regex complaint.
+  candidate: objectId.describe('Choose a candidate to interview'),
+  job: optionalId,
+  // Every one of these is an unselected <Select> away from ''. The client
+  // currently maps each to `|| undefined` by hand at the call site, which works
+  // right up until someone adds a field and forgets — which is exactly how
+  // experienceLevel got here. Tolerate '' at the schema instead of relying on
+  // every future caller remembering the convention.
+  knowledgeBase: nullishId,
+  questionSet: nullishId,
   types: z.array(z.enum(INTERVIEW_TYPES)).optional(),
-  round: z.enum(INTERVIEW_ROUNDS).optional(),
+  round: optionalEnum(INTERVIEW_ROUNDS),
   scheduledAt: z.coerce.date().optional(),
   expiresAt: z.coerce.date().optional(),
   config: interviewConfigSchema,
@@ -185,10 +196,10 @@ export const createQuestionSetSchema = z.object({
   questions: z.array(objectId).max(100).optional(),
   jobRole: z.string().max(160).optional(),
   department: z.string().max(120).optional(),
-  round: z.enum(INTERVIEW_ROUNDS).nullish(),
-  difficulty: z.enum(DIFFICULTY).nullish(),
-  experienceLevel: z.enum(EXPERIENCE_LEVELS).nullish(),
-  language: z.enum(['en', 'hi', 'bilingual']).optional(),
+  round: nullishEnum(INTERVIEW_ROUNDS),
+  difficulty: nullishEnum(DIFFICULTY),
+  experienceLevel: nullishEnum(EXPERIENCE_LEVELS),
+  language: optionalEnum(['en', 'hi', 'bilingual']),
   tags: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
 });
@@ -205,7 +216,7 @@ export const autoQuestionSetSchema = z.object({
   round: z.enum(INTERVIEW_ROUNDS).optional(),
   difficulty: z.enum(DIFFICULTY).optional(),
   experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
-  language: z.enum(['en', 'hi', 'bilingual']).optional(),
+  language: optionalEnum(['en', 'hi', 'bilingual']),
   randomOrder: z.boolean().optional(),
 });
 

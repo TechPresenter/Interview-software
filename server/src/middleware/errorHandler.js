@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { ZodError } from 'zod';
 import { ApiError } from '../utils/ApiError.js';
+import { zodErrorDetails } from '../utils/zodError.js';
 import { config } from '../config/index.js';
 import { logger } from '../config/logger.js';
 import { captureException } from '../services/observability.js';
@@ -22,9 +23,11 @@ export function errorHandler(err, req, res, _next) {
 
   if (err instanceof ZodError) {
     statusCode = 400;
-    message = 'Validation failed';
     code = 'VALIDATION_ERROR';
-    details = err.flatten().fieldErrors;
+    // Same treatment a route-mounted schema gets: full dotted paths and a
+    // message that names the field. flatten() keys on path[0] only, so this used
+    // to report every failure inside `config` as just "config".
+    ({ details, message } = zodErrorDetails(err));
   } else if (err instanceof mongoose.Error.ValidationError) {
     statusCode = 400;
     message = 'Validation failed';
