@@ -5,7 +5,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 
 export interface Column<T> {
   key: string;
-  header: string;
+  /** ReactNode so a column can render a control (e.g. a select-all checkbox). */
+  header: React.ReactNode;
   /** Custom cell renderer; defaults to row[key]. */
   render?: (row: T) => React.ReactNode;
   className?: string;

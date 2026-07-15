@@ -1,4 +1,5 @@
 import { apiGet, apiPost, api } from './api';
+import type { Question, QuestionStats, GenerateQuestionsInput, GenerateResult } from '@/types/question';
 
 /**
  * Typed thin wrappers over the /admin endpoints (Phase 2). Used with React Query
@@ -64,11 +65,21 @@ export const adminApi = {
   invoices: (params?: object) => getPaged<any>('/admin/invoices', params),
 
   // Questions
-  questions: (params?: object) => getPaged<any>('/admin/questions', params),
-  questionStats: () => apiGet<any>('/admin/questions/stats'),
-  createQuestion: (body: object) => apiPost<any>('/admin/questions', body),
-  updateQuestion: (id: string, body: object) => api.patch(`/admin/questions/${id}`, body).then((r) => r.data.data),
+  questions: (params?: object) => getPaged<Question>('/admin/questions', params),
+  questionStats: () => apiGet<QuestionStats>('/admin/questions/stats'),
+  createQuestion: (body: object) => apiPost<Question>('/admin/questions', body),
+  updateQuestion: (id: string, body: object) => api.patch(`/admin/questions/${id}`, body).then((r) => r.data.data as Question),
   deleteQuestion: (id: string) => api.delete(`/admin/questions/${id}`).then((r) => r.data),
+  duplicateQuestion: (id: string) => apiPost<Question>(`/admin/questions/${id}/duplicate`, {}),
+  archiveQuestion: (id: string) => apiPost<Question>(`/admin/questions/${id}/archive`, {}),
+  restoreQuestion: (id: string) => apiPost<Question>(`/admin/questions/${id}/restore`, {}),
+  reviewQuestion: (id: string, status: 'approved' | 'rejected', note?: string) =>
+    apiPost<Question>(`/admin/questions/${id}/review`, { status, note }),
+  bulkReviewQuestions: (ids: string[], status: 'approved' | 'rejected') =>
+    apiPost<{ updated: number }>('/admin/questions/bulk-review', { ids, status }),
+  bulkCreateQuestions: (questions: object[]) => apiPost<{ inserted: number }>('/admin/questions/bulk', { questions }),
+  generateQuestions: (body: GenerateQuestionsInput) => apiPost<GenerateResult>('/admin/questions/generate', body),
+  generateAnswerKey: (id: string) => apiPost<Question>(`/admin/questions/${id}/answer-key`, {}),
 
   // AI
   aiSettings: () => apiGet<any>('/admin/ai/settings'),

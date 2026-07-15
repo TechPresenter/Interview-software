@@ -12,6 +12,7 @@ import { generateReport } from '../../services/ai/report.engine.js';
 import { getAiWeightage } from '../../services/settings.service.js';
 import { logActivity } from '../../services/audit.service.js';
 import { config } from '../../config/index.js';
+import { toId } from '../../utils/ids.js';
 
 const scope = (req, extra = {}) => ({ company: req.companyId, ...extra });
 
@@ -132,9 +133,9 @@ export const ranking = asyncHandler(async (req, res) => {
 /** GET /company/reports/analytics — hiring funnel + score distribution. */
 export const analytics = asyncHandler(async (req, res) => {
   const [byRecommendation, scoreBuckets] = await Promise.all([
-    Report.aggregate([{ $match: { company: req.companyId } }, { $group: { _id: '$recommendation', count: { $sum: 1 } } }]),
+    Report.aggregate([{ $match: { company: toId(req.companyId) } }, { $group: { _id: '$recommendation', count: { $sum: 1 } } }]),
     Report.aggregate([
-      { $match: { company: req.companyId } },
+      { $match: { company: toId(req.companyId) } },
       {
         $bucket: {
           groupBy: '$overallScore',

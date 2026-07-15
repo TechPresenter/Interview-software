@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import { toId } from '../../utils/ids.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok } from '../../utils/ApiResponse.js';
 import { Job } from '../../models/Job.js';
@@ -89,4 +89,3 @@ export const uploadInterviewerAvatar = asyncHandler(async (req, res) => {
   return ok(res, c.aiInterviewer, 'Avatar updated');
 });
 
-const toId = (id) => new mongoose.Types.ObjectId(id);

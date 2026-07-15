@@ -9,6 +9,7 @@ import { config } from '../../config/index.js';
 import * as generator from '../../services/ai/question.generator.js';
 import { contextFor } from '../../services/knowledgeBase.service.js';
 import { scopeFilter } from '../../services/question.selector.js';
+import { toId } from '../../utils/ids.js';
 
 /**
  * A company's own question bank.
@@ -45,7 +46,8 @@ export const list = asyncHandler(async (req, res) => {
 /** GET /company/questions/stats */
 export const stats = asyncHandler(async (req, res) => {
   const [grouped] = await Question.aggregate([
-    { $match: { company: req.companyId, archivedAt: null } },
+    // aggregate does NOT cast strings to ObjectId — a raw req.companyId matches nothing.
+    { $match: { company: toId(req.companyId), archivedAt: null } },
     {
       $facet: {
         byType: [{ $group: { _id: '$type', count: { $sum: 1 } } }, { $sort: { count: -1 } }],

@@ -61,6 +61,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Jobs', href: '/dashboard/jobs', icon: Briefcase },
     { label: 'Candidates', href: '/dashboard/candidates', icon: Users },
     { label: 'Interviews', href: '/dashboard/interviews', icon: CalendarClock },
+    { label: 'Question Bank', href: '/dashboard/questions', icon: Database },
     { label: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
     { label: 'Reports', href: '/dashboard/reports', icon: FileBarChart },
     { label: 'Proctoring', href: '/dashboard/proctoring', icon: ShieldAlert },
@@ -77,6 +78,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Jobs', href: '/dashboard/jobs', icon: Briefcase },
     { label: 'Candidates', href: '/dashboard/candidates', icon: Users },
     { label: 'Interviews', href: '/dashboard/interviews', icon: CalendarClock },
+    { label: 'Question Bank', href: '/dashboard/questions', icon: Database },
     { label: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'Proctoring', href: '/dashboard/proctoring', icon: ShieldAlert },
@@ -85,6 +87,7 @@ export const navByRole: Record<Role, NavItem[]> = {
   hr_manager: [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Interviews', href: '/dashboard/interviews', icon: CalendarClock },
+    { label: 'Question Bank', href: '/dashboard/questions', icon: Database },
     { label: 'Reports', href: '/dashboard/reports', icon: FileBarChart },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'Proctoring', href: '/dashboard/proctoring', icon: ShieldAlert },
