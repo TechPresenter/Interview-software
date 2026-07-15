@@ -18,7 +18,12 @@ import { runChat } from './registry.js';
 let client = null;
 function getClient() {
   if (!config.ai.enabled) {
-    throw ApiError.internal('AI is not configured (missing ANTHROPIC_API_KEY)');
+    // Reached only after runChat() declined — either no provider is configured,
+    // or every configured provider failed. Saying "missing ANTHROPIC_API_KEY"
+    // sent people hunting for an env var when their real problem was a dead
+    // provider. Cannot consult ai.status here: claude.client → registry →
+    // ai.status would be an import cycle.
+    throw ApiError.internal('No AI provider could serve this request — the configured provider(s) failed and no ANTHROPIC_API_KEY is set');
   }
   if (!client) client = new Anthropic({ apiKey: config.ai.apiKey });
   return client;

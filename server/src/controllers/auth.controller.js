@@ -75,7 +75,7 @@ export const register = asyncHandler(async (req, res) => {
   // Fire-and-forget email verification code.
   const code = generateNumericCode();
   await setCode('verify', String(user._id), code, 600);
-  await emails.verification(email, code);
+  await emails.verification(email, code, undefined, name);
   // Branded welcome/onboarding email for new workspace owners.
   if (company) await emails.welcome(email, name).catch(() => {});
 
@@ -206,7 +206,7 @@ export const requestOtp = asyncHandler(async (req, res) => {
   if (user) {
     const code = generateNumericCode();
     await setCode('otp', String(user._id), code, 300);
-    await emails.otp(email, code);
+    await emails.otp(email, code, user.name);
   }
   return ok(res, null, 'If that email exists, a login code has been sent');
 });
@@ -232,7 +232,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   if (user) {
     const code = generateNumericCode();
     await setCode('reset', String(user._id), code, 900);
-    await emails.passwordReset(email, code);
+    await emails.passwordReset(email, code, undefined, user.name);
   }
   return ok(res, null, 'If that email exists, a reset code has been sent');
 });

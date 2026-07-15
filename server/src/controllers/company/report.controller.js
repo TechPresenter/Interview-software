@@ -12,6 +12,7 @@ import { generateReport } from '../../services/ai/report.engine.js';
 import { getAiWeightage } from '../../services/settings.service.js';
 import { logActivity } from '../../services/audit.service.js';
 import { config } from '../../config/index.js';
+import { isAiConfigured } from '../../services/ai/ai.status.js';
 import { toId } from '../../utils/ids.js';
 
 const scope = (req, extra = {}) => ({ company: req.companyId, ...extra });
@@ -48,7 +49,7 @@ export const getOne = asyncHandler(async (req, res) => {
  * the evaluation — recruiter notes are preserved.
  */
 export const regenerate = asyncHandler(async (req, res) => {
-  if (!config.ai.enabled) throw ApiError.badRequest('AI is not configured');
+  if (!(await isAiConfigured('report', { company: req.companyId }))) throw ApiError.badRequest('AI is not configured');
   const report = await Report.findOne(scope(req, { _id: req.params.id }));
   if (!report) throw ApiError.notFound('Report not found');
 

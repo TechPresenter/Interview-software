@@ -4,12 +4,11 @@ import { ApiError } from '../../utils/ApiError.js';
 import {
   getGroup,
   setMany,
-  getSetting,
   getAiWeightage,
   DEFAULT_AI_WEIGHTAGE,
 } from '../../services/settings.service.js';
-import { prompts as defaultPrompts } from '../../services/ai/prompts/index.js';
 import { complete } from '../../services/ai/claude.client.js';
+import { isAiConfigured } from '../../services/ai/ai.status.js';
 import { audit } from '../../services/audit.service.js';
 import { config } from '../../config/index.js';
 import { AiUsage } from '../../models/AiUsage.js';
@@ -23,7 +22,7 @@ export const getSettings = asyncHandler(async (_req, res) => {
     modelFast: map['ai.modelFast'] ?? config.ai.modelFast,
     maxTokens: map['ai.maxTokens'] ?? config.ai.maxTokens,
     temperature: map['ai.temperature'] ?? 0.4,
-    enabled: config.ai.enabled,
+    enabled: await isAiConfigured(),
   });
 });
 
@@ -37,7 +36,7 @@ export const updateSettings = asyncHandler(async (req, res) => {
 
 /** POST /admin/ai/test — ping Claude with a tiny prompt and report latency. */
 export const testConnection = asyncHandler(async (req, res) => {
-  if (!config.ai.enabled) throw ApiError.badRequest('No Anthropic API key configured');
+  if (!(await isAiConfigured())) throw ApiError.badRequest('No AI provider is configured');
   const start = Date.now();
   try {
     const { text } = await complete({
@@ -71,33 +70,7 @@ export const updateWeightage = asyncHandler(async (req, res) => {
   return ok(res, { weightage: req.body }, 'Weightage updated');
 });
 
-/** GET /admin/ai/prompts — stored overrides merged with defaults. */
-export const getPrompts = asyncHandler(async (_req, res) => {
-  const keys = Object.keys(defaultPrompts);
-  const result = [];
-  for (const key of keys) {
-    const override = await getSetting(`ai.prompt.${key}`, null);
-    result.push({
-      key,
-      isOverridden: Boolean(override),
-      system: override?.system ?? '(default)',
-      template: override?.template ?? '(uses built-in template — see services/ai/prompts)',
-    });
-  }
-  return ok(res, result);
-});
 
-/** PUT /admin/ai/prompts — override a single prompt template. */
-export const updatePrompt = asyncHandler(async (req, res) => {
-  const { key, system, template } = req.body;
-  await setMany(
-    'ai',
-    [{ key: `ai.prompt.${key}`, value: { system, template }, description: `Prompt: ${key}` }],
-    req.user._id,
-  );
-  await audit({ req, action: 'ai.prompt.update', meta: { key } });
-  return ok(res, { key }, 'Prompt template saved');
-});
 
 /** GET /admin/ai/usage/top-companies?days= — biggest AI consumers. */
 export const topConsumers = asyncHandler(async (req, res) => {

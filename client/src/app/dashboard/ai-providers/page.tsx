@@ -134,7 +134,13 @@ export default function AiProvidersPage() {
   const { data, isLoading } = useQuery({ queryKey: ['ai-providers'], queryFn: adminApi.aiProviders });
   const providers: any[] = useMemo(() => data?.providers ?? [], [data]);
   const catalog: any[] = data?.catalog ?? [];
-  const modules: string[] = data?.modules ?? ['chat', 'content', 'image', 'embeddings', 'interview', 'scoring', 'report', 'resume'];
+  // Fallback only — the server's AI_MODULES is the source of truth, and a stale
+  // copy here silently hides routing checkboxes for newer modules.
+  const modules: string[] = data?.modules ?? [
+    'chat', 'content', 'image', 'embeddings',
+    'interview', 'scoring', 'report', 'resume',
+    'question_generation', 'answer_key',
+  ];
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

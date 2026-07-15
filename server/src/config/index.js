@@ -4,6 +4,19 @@ import { z } from 'zod';
 dotenv.config();
 
 /**
+ * An optional value that may legitimately be left blank in .env.
+ *
+ * `z.string().min(1).optional()` accepts undefined but REJECTS '', so a commented
+ * -out-by-blanking key (`ANTHROPIC_API_KEY=`) refused to boot the whole server
+ * with an opaque validation error. Leaving a key blank is the normal way to say
+ * "not using this", so treat '' as absent.
+ */
+const optionalSecret = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+  z.string().min(1).optional(),
+);
+
+/**
  * Validates and normalizes environment variables once at boot.
  * Fails fast with a readable error if required config is missing.
  */
@@ -22,11 +35,20 @@ const schema = z.object({
   JWT_ACCESS_EXPIRES: z.string().default('15m'),
   JWT_REFRESH_EXPIRES: z.string().default('7d'),
 
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_API_KEY: optionalSecret,
   AI_MODEL: z.string().default('claude-opus-4-8'),
   AI_MODEL_FAST: z.string().default('claude-haiku-4-5-20251001'),
   AI_MAX_TOKENS: z.coerce.number().default(4096),
   AI_ENCRYPTION_KEY: z.string().optional(), // encrypts stored provider API keys
+
+  // Bootstrap an OpenAI provider straight from the environment. Providers are
+  // normally registered in the admin panel (the AiProvider collection); this
+  // exists because dropping OPENAI_API_KEY into .env is the obvious thing to
+  // try, and zod silently strips unknown keys — so it looked configured while
+  // nothing read it.
+  OPENAI_API_KEY: optionalSecret,
+  OPENAI_MODEL: z.string().default('gpt-4o'),
+  OPENAI_BASE_URL: optionalSecret,
 
   // Sarvam AI — natural Indian-language TTS for the interview room (Hindi/English).
   SARVAM_API_KEY: z.string().optional(),
@@ -97,8 +119,24 @@ export const config = {
     model: env.AI_MODEL,
     modelFast: env.AI_MODEL_FAST,
     maxTokens: env.AI_MAX_TOKENS,
+    /**
+     * Whether the BUILT-IN Anthropic SDK path is usable — nothing more.
+     *
+     * It is NOT "is AI available": a provider configured in the admin panel
+     * (or OPENAI_API_KEY below) makes AI perfectly available while this stays
+     * false. Guarding a feature on this flag is what produced the bogus
+     * "AI is not configured" error against a working OpenAI key.
+     * Ask services/ai/ai.status.js isAiConfigured() instead.
+     */
     enabled: Boolean(env.ANTHROPIC_API_KEY),
     encryptionKey: env.AI_ENCRYPTION_KEY,
+    /** Env-configured OpenAI, surfaced to the registry as a virtual provider. */
+    openai: {
+      apiKey: env.OPENAI_API_KEY,
+      model: env.OPENAI_MODEL,
+      baseUrl: env.OPENAI_BASE_URL,
+      enabled: Boolean(env.OPENAI_API_KEY),
+    },
   },
   voice: {
     sarvam: {

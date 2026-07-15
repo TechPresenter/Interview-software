@@ -8,6 +8,7 @@ import { EmailLog } from '../models/EmailLog.js';
 import { decryptSecret } from '../utils/crypto.js';
 import { interpolate } from './template.service.js';
 import { renderBranded } from './email/layout.js';
+import { escapeHtml } from './email/components.js';
 import { DEFAULT_TEMPLATES } from './email/templates.js';
 
 /**
@@ -168,13 +169,37 @@ export async function sendEmail({ to, subject, html, text, from, replyTo, compan
   }
 }
 
+/** Mirrors the Branding schema default; only used when branding is unreachable. */
+const BRAND_FALLBACK = 'AIPL Hire';
+
+/**
+ * The one place that decides the platform name for an email. Callers must not
+ * re-default it: preview said 'HireSense' while send said 'AIPL Hire', so a
+ * preview could misrepresent what actually ships.
+ */
 async function safeBranding() {
   try {
-    return (await Branding.getGlobal()).toObject();
+    const b = (await Branding.getGlobal()).toObject();
+    return { ...b, platformName: b.platformName || BRAND_FALLBACK };
   } catch {
-    return { platformName: 'AIPL Hire' };
+    return { platformName: BRAND_FALLBACK };
   }
 }
+
+/**
+ * Escape every value before it lands in an HTML context.
+ *
+ * `interpolate` substitutes raw, and template bodies are static strings, so a
+ * value cannot escape itself at build time. Several vars are attacker-supplied
+ * (a candidate's name, a contact-form message) and land in a recruiter's inbox,
+ * so `name = '<a href="…">click</a>'` would inject markup into the email.
+ * Escaping a URL inside href="" is still correct — `&` becomes `&amp;`, which is
+ * what HTML requires and clients decode back.
+ */
+const escapeVars = (vars = {}) =>
+  Object.fromEntries(
+    Object.entries(vars).map(([k, v]) => [k, typeof v === 'string' ? escapeHtml(v) : v]),
+  );
 
 /** Resolve a template (DB override → built-in default) and interpolate it. */
 async function resolveTemplate(key, vars) {
@@ -185,10 +210,12 @@ async function resolveTemplate(key, vars) {
   } catch {
     /* ignore */
   }
+  const safe = escapeVars(vars);
   return {
+    // The subject is plain text — escaping it would ship a literal "&amp;".
     subject: interpolate(dbTpl?.subject ?? def?.subject ?? key, vars),
-    bodyHtml: interpolate(dbTpl?.body ?? def?.html ?? '<p>{{message}}</p>', vars),
-    preheader: interpolate(def?.preheader ?? '', vars),
+    bodyHtml: interpolate(dbTpl?.body ?? def?.html ?? '<p>{{message}}</p>', safe),
+    preheader: interpolate(def?.preheader ?? '', safe),
     category: def?.category,
   };
 }
@@ -204,7 +231,7 @@ function stripHtml(html) {
 /** Render the full branded HTML for a template without sending (preview). */
 export async function previewTemplate(key, vars = {}) {
   const branding = await safeBranding();
-  const tpl = await resolveTemplate(key, { platformName: branding.platformName || 'HireSense', name: 'there', ...vars });
+  const tpl = await resolveTemplate(key, { platformName: branding.platformName, name: 'there', ...vars });
   const html = renderBranded({ branding, subject: tpl.subject, bodyHtml: tpl.bodyHtml, preheader: tpl.preheader, assetBase: ASSET_BASE });
   return { subject: tpl.subject, html, category: tpl.category };
 }
@@ -217,7 +244,7 @@ export async function previewTemplate(key, vars = {}) {
  */
 export async function sendTemplated(key, { to, vars = {}, company, relatedUser, createdBy, scheduledFor } = {}) {
   const branding = await safeBranding();
-  const mergedVars = { platformName: branding.platformName || 'AIPL Hire', name: 'there', dashboardUrl: config.clientUrl, ...vars };
+  const mergedVars = { platformName: branding.platformName, name: 'there', dashboardUrl: config.clientUrl, ...vars };
   const tpl = await resolveTemplate(key, mergedVars);
   const log = await EmailLog.create({
     to,
@@ -276,9 +303,12 @@ export function formatMoney(amount, currency = 'INR') {
 
 /** Auth-flow convenience helpers — now branded + logged. */
 export const emails = {
-  verification: (to, code, link) => sendTemplated('account_verification', { to, vars: { code, link: link || config.clientUrl } }),
-  otp: (to, code) => sendTemplated('login_otp', { to, vars: { code } }),
-  passwordReset: (to, code, link) => sendTemplated('password_reset', { to, vars: { code, link: link || config.clientUrl } }),
+  // `name` is optional but worth passing — without it every one of these greets
+  // the recipient as "Hi there," (sendTemplated's default), which is what
+  // production has been sending.
+  verification: (to, code, link, name) => sendTemplated('account_verification', { to, vars: { code, link: link || config.clientUrl, ...(name ? { name } : {}) } }),
+  otp: (to, code, name) => sendTemplated('login_otp', { to, vars: { code, ...(name ? { name } : {}) } }),
+  passwordReset: (to, code, link, name) => sendTemplated('password_reset', { to, vars: { code, link: link || config.clientUrl, ...(name ? { name } : {}) } }),
   welcome: (to, name, link) => sendTemplated('welcome', { to, vars: { name, link: link || config.clientUrl } }),
 };
 

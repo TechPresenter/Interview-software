@@ -13,6 +13,7 @@ import { generateReport } from './ai/report.engine.js';
 import { getAiWeightage } from './settings.service.js';
 import { contextFor } from './knowledgeBase.service.js';
 import { selectNextQuestion, markUsed } from './question.selector.js';
+import { isAiConfigured } from './ai/ai.status.js';
 import { QuestionSet } from '../models/QuestionSet.js';
 import { logActivity } from './audit.service.js';
 import { notify } from './notification.service.js';
@@ -150,7 +151,7 @@ export async function answer(interview, payload) {
 
   // Score the answer (graceful fallback if AI unavailable).
   let evaluation = { score: null, competencyScores: {}, reasoning: 'Not scored', keywordsHit: [], keywordsMissed: [] };
-  if (config.ai.enabled) {
+  if (await isAiConfigured('scoring', { company: interview.company })) {
     try {
       evaluation = await scoreAnswer({
         job,
@@ -357,7 +358,7 @@ export async function complete(interview) {
   ]);
 
   let report = null;
-  if (config.ai.enabled) {
+  if (await isAiConfigured('report', { company: interview.company })) {
     try {
       const weightage = await getAiWeightage();
       const transcriptText = interview.transcript.map((t) => `${t.role.toUpperCase()}: ${t.text}`).join('\n');
@@ -562,7 +563,7 @@ async function generateQuestion(interview, job, lastAnswer) {
   }
 
   // ── Tier 2: the LLM ──
-  if (config.ai.enabled) {
+  if (await isAiConfigured('interview', { company: interview.company })) {
     try {
       // Ground questions in the assigned knowledge base (interview overrides job).
       let knowledge = null;

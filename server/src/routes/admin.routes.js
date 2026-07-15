@@ -15,7 +15,9 @@ import {
   generateQuestionsSchema,
   aiSettingsSchema,
   aiWeightageSchema,
-  aiPromptSchema,
+  promptTemplateCreateSchema,
+  promptTemplateUpdateSchema,
+  promptPreviewSchema,
   settingsGroupSchema,
 } from '../validators/admin.validators.js';
 
@@ -24,6 +26,8 @@ import * as companies from '../controllers/admin/company.controller.js';
 import * as subs from '../controllers/admin/subscription.controller.js';
 import * as questions from '../controllers/admin/question.controller.js';
 import * as ai from '../controllers/admin/ai.controller.js';
+import * as aiStatus from '../controllers/admin/aiStatus.controller.js';
+import * as promptTemplates from '../controllers/admin/promptTemplate.controller.js';
 import * as system from '../controllers/admin/system.controller.js';
 import * as cms from '../controllers/admin/cms.controller.js';
 import * as adminCandidates from '../controllers/admin/candidate.controller.js';
@@ -121,10 +125,29 @@ router.put('/ai/settings', validate(aiSettingsSchema), ai.updateSettings);
 router.post('/ai/test', ai.testConnection);
 router.get('/ai/weightage', ai.getWeightage);
 router.put('/ai/weightage', validate(aiWeightageSchema), ai.updateWeightage);
-router.get('/ai/prompts', ai.getPrompts);
-router.put('/ai/prompts', validate(aiPromptSchema), ai.updatePrompt);
 router.get('/ai/analytics', dashboard.aiAnalytics);
 router.get('/ai/usage/top-companies', ai.topConsumers);
+
+/* ── AI connection diagnostics ─────────────────────────── */
+router.get('/ai/status', aiStatus.status);
+router.post('/ai/status/test', aiStatus.test);
+router.post('/ai/status/test-all', aiStatus.testAll);
+
+/* ── AI prompt templates ───────────────────────────────── */
+// Literal paths MUST precede /prompts/:id or Express matches :id='export'.
+router.get('/prompts', promptTemplates.list);
+router.get('/prompts/export', promptTemplates.exportAll);
+router.post('/prompts/import', promptTemplates.importAll);
+router.post('/prompts/preview', validate(promptPreviewSchema), promptTemplates.preview);
+router.post('/prompts', validate(promptTemplateCreateSchema), promptTemplates.create);
+router.get('/prompts/:id', promptTemplates.getOne);
+router.put('/prompts/:id', validate(promptTemplateUpdateSchema), promptTemplates.update);
+router.delete('/prompts/:id', promptTemplates.remove);
+router.patch('/prompts/:id/activate', promptTemplates.setActive);
+router.patch('/prompts/:id/toggle', promptTemplates.toggle);
+router.post('/prompts/:id/reset', promptTemplates.resetToDefault);
+router.get('/prompts/:id/versions', promptTemplates.versionHistory);
+router.post('/prompts/:id/versions/:version/restore', promptTemplates.restoreVersion);
 
 /* ── AI providers (multi-provider management) ──────────── */
 router.get('/ai-providers', aiProviders.list);

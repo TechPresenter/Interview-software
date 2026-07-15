@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
 import { toast } from '@/components/ui/toast';
+import { PromptManager } from '@/components/ai/PromptManager';
+import { AiStatusPanel } from '@/components/ai/AiStatusPanel';
 
 export default function AiManagementPage() {
   return (
@@ -32,13 +34,14 @@ export default function AiManagementPage() {
           </Link>
         }
       />
+      <AiStatusPanel />
       <UsageSummary />
       <ProvidersPointer />
       <div className="grid gap-6 lg:grid-cols-2">
         <Settings />
         <Weightage />
       </div>
-      <Prompts />
+      <PromptManager />
     </div>
   );
 }
@@ -216,30 +219,3 @@ function Weightage() {
   );
 }
 
-function Prompts() {
-  const { data, isLoading } = useQuery({ queryKey: ['ai-prompts'], queryFn: adminApi.aiPrompts });
-  return (
-    <GlassCard>
-      <div className="mb-4 flex items-center gap-2">
-        <FileText className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Prompt templates</h2>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {isLoading && Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-20 rounded-xl" />)}
-        {(data ?? []).map((p: any) => (
-          <div key={p.key} className={cn('rounded-xl border p-4', p.isOverridden ? 'border-primary/40' : 'border-border')}>
-            <div className="flex items-center justify-between">
-              <p className="font-medium">{titleCase(p.key)}</p>
-              <Badge tone={p.isOverridden ? 'default' : 'muted'}>{p.isOverridden ? 'custom' : 'default'}</Badge>
-            </div>
-            <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{p.system}</p>
-          </div>
-        ))}
-      </div>
-      <p className="mt-4 text-xs text-muted-foreground">
-        Override editor (PUT <code className="text-accent">/admin/ai/prompts</code>) ships with the prompt-editing UI;
-        templates currently resolve to the built-in versions in <code>services/ai/prompts</code>.
-      </p>
-    </GlassCard>
-  );
-}

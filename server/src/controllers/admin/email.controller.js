@@ -8,14 +8,26 @@ import { previewTemplate, sendTemplated } from '../../services/email.service.js'
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { audit } from '../../services/audit.service.js';
 
-/** Sample values used for previews + test sends. */
-const SAMPLE = {
+/**
+ * Sample values used for previews + test sends.
+ *
+ * Must cover EVERY variable declared across DEFAULT_TEMPLATES — a template whose
+ * variable is missing here previews with a blank where real content goes, which
+ * is worse than useless for someone checking their copy. test/email.templates.test.js
+ * asserts this stays complete.
+ */
+export const SAMPLE = {
   name: 'Alex Doe', code: '482913', link: 'https://app.example.com/welcome', platformName: 'HireSense',
   jobTitle: 'Senior Engineer', company: 'Acme Inc', scheduledAt: 'Mon, 24 Jun · 3:00 PM', expiresAt: 'in 7 days',
   score: '82%', recommendation: 'Hire', amount: '$49.00', invoiceNumber: 'INV-2026-AB12', date: 'Jun 24, 2026',
   dueDate: 'Jul 1, 2026', planName: 'Professional', renewalDate: 'Jul 24, 2026', daysLeft: '3', role: 'Recruiter',
   ticketId: '1042', subject: 'We shipped an update', status: 'In progress', message: 'Thanks for reaching out — we’re on it.',
   event: 'New sign-in from Chrome', ip: '203.0.113.7', time: 'just now',
+  email: 'alex.doe@example.com', phone: '+91 98765 43210', password: 'Tmp-8fQ2xR!vZ',
+  newStatus: 'Suspended', reason: 'The role was filled internally.', severity: 'High',
+  previousAt: 'Fri, 21 Jun · 11:00 AM', timeSlot: 'Tue, 25 Jun · 10:30 AM IST',
+  salary: '₹24,00,000 per annum', startDate: 'Mon, 1 Sep 2026',
+  unsubscribeUrl: 'https://app.example.com/unsubscribe?t=sample',
 };
 
 /** GET /admin/email/templates — catalog merged with overrides. */

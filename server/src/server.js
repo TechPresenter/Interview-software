@@ -6,6 +6,7 @@ import { connectDB, disconnectDB } from './config/db.js';
 import { redis } from './config/redis.js';
 import { initSocket } from './socket/index.js';
 import { initObservability } from './services/observability.js';
+import { isAiConfigured } from './services/ai/ai.status.js';
 import { startScheduler } from './jobs/scheduler.js';
 
 /**
@@ -22,9 +23,14 @@ async function bootstrap() {
   // Realtime (Socket.IO + Redis adapter)
   await initSocket(server);
 
-  server.listen(config.port, () => {
+  server.listen(config.port, async () => {
     logger.info(`🚀 API listening on http://localhost:${config.port}${config.apiPrefix}`);
-    logger.info(`   env=${config.env}  ai=${config.ai.enabled ? 'on' : 'off'}`);
+    // Reports whether ANY provider can serve — env key or one registered in the
+    // admin panel. It used to read config.ai.enabled and so printed ai=off on a
+    // box with a perfectly healthy OpenAI provider, misleading the one person
+    // most likely to be debugging exactly that.
+    const ai = await isAiConfigured().catch(() => false);
+    logger.info(`   env=${config.env}  ai=${ai ? 'on' : 'off'}`);
   });
 
   // Background scheduler (trial-expiry + renewal reminders).

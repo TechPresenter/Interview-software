@@ -5,10 +5,10 @@ import { ok, created } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { logActivity } from '../../services/audit.service.js';
-import { config } from '../../config/index.js';
 import * as generator from '../../services/ai/question.generator.js';
 import { contextFor } from '../../services/knowledgeBase.service.js';
 import { scopeFilter } from '../../services/question.selector.js';
+import { isAiConfigured } from '../../services/ai/ai.status.js';
 import { toId } from '../../utils/ids.js';
 
 /**
@@ -176,7 +176,7 @@ export const remove = asyncHandler(async (req, res) => {
 
 /** POST /company/questions/generate — AI-generate into this company's bank. */
 export const generate = asyncHandler(async (req, res) => {
-  if (!config.ai.enabled) throw ApiError.badRequest('AI is not configured');
+  if (!(await isAiConfigured('question_generation'))) throw ApiError.badRequest('AI is not configured');
   const body = { ...req.body };
 
   if (body.jobId) {
@@ -220,7 +220,7 @@ export const generate = asyncHandler(async (req, res) => {
 
 /** POST /company/questions/:id/answer-key */
 export const answerKey = asyncHandler(async (req, res) => {
-  if (!config.ai.enabled) throw ApiError.badRequest('AI is not configured');
+  if (!(await isAiConfigured('answer_key'))) throw ApiError.badRequest('AI is not configured');
   const q = await Question.findOne(owned(req, { _id: req.params.id }));
   if (!q) throw ApiError.notFound('Question not found');
 

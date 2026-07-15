@@ -14,6 +14,7 @@
     "seed:demo": "node src/scripts/seed-demo.js",
     "check:db": "node src/scripts/check-db.js",
     "migrate:questions": "node src/scripts/migrate-question-taxonomy.js",
+    "seed:prompts": "node src/scripts/seed-prompts.js",
     "lint": "eslint src",
     "test": "vitest run"
   },

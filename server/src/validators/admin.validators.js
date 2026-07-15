@@ -9,6 +9,7 @@ import {
   DIFFICULTY,
   COMPETENCIES,
 } from '../constants/enums.js';
+import { PROMPT_KEYS } from '../services/ai/prompts/defaults.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
 
@@ -184,13 +185,39 @@ export const aiWeightageSchema = z.object(
   Object.fromEntries(COMPETENCIES.map((c) => [c, z.number().min(0).max(1)])),
 );
 
-export const aiPromptSchema = z.object({
-  key: z.enum([
-    'greeting', 'nextQuestion', 'followUp', 'scoreAnswer', 'finalReport', 'analyzeResume',
-    'generateQuestions', 'generateAnswerKey',
-  ]),
+/* ── AI prompt templates ───────────────────────────────── */
+
+const promptVariable = z.object({ name: z.string().min(1), description: z.string().optional() });
+
+export const promptTemplateCreateSchema = z.object({
+  key: z.enum(PROMPT_KEYS),
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
   system: z.string().optional(),
   template: z.string().min(1),
+  variables: z.array(promptVariable).optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const promptTemplateUpdateSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  system: z.string().optional(),
+  template: z.string().min(1).optional(),
+  variables: z.array(promptVariable).optional(),
+  isActive: z.boolean().optional(),
+  /** Free-text note recorded against the version this edit creates. */
+  note: z.string().max(300).optional(),
+});
+
+export const promptPreviewSchema = z.object({
+  key: z.enum(PROMPT_KEYS),
+  vars: z.record(z.any()).optional(),
+  // An unsaved draft — lets the admin see a body before committing it.
+  system: z.string().optional(),
+  template: z.string().optional(),
 });
 
 /* ── Candidates (admin) ────────────────────────────────── */

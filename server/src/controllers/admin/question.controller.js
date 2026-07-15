@@ -5,9 +5,9 @@ import { ok, created } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../../utils/query.js';
 import { audit } from '../../services/audit.service.js';
-import { config } from '../../config/index.js';
 import * as generator from '../../services/ai/question.generator.js';
 import { contextFor } from '../../services/knowledgeBase.service.js';
+import { isAiConfigured } from '../../services/ai/ai.status.js';
 
 /**
  * Global question bank (company: null). Super-admin maintained; available to all
@@ -162,7 +162,7 @@ export const bulkReview = asyncHandler(async (req, res) => {
  * generated here can reach a live interview until someone signs off.
  */
 export const generate = asyncHandler(async (req, res) => {
-  if (!config.ai.enabled) throw ApiError.badRequest('AI is not configured');
+  if (!(await isAiConfigured('question_generation'))) throw ApiError.badRequest('AI is not configured');
   const body = { ...req.body };
 
   // Hydrate from a job when one is referenced, so the caller can pass just jobId.
@@ -206,7 +206,7 @@ export const generate = asyncHandler(async (req, res) => {
 
 /** POST /admin/questions/:id/answer-key — generate the full answer key for one question. */
 export const answerKey = asyncHandler(async (req, res) => {
-  if (!config.ai.enabled) throw ApiError.badRequest('AI is not configured');
+  if (!(await isAiConfigured('answer_key'))) throw ApiError.badRequest('AI is not configured');
   const q = await Question.findOne({ _id: req.params.id, company: null });
   if (!q) throw ApiError.notFound('Question not found');
 

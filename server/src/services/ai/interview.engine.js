@@ -95,8 +95,16 @@ export async function nextQuestion({ interview, job, candidate, askedQuestions, 
 
 /** Decide on a follow-up question for the last answer (or null). */
 export async function maybeFollowUp({ interview, question, answer }) {
+  // This spread the built prompt directly, so a saved 'followUp' override was
+  // stored and never read — the admin panel reported success and changed nothing.
+  const built = await applyPromptOverride('followUp', prompts.followUp({
+    question,
+    answer,
+    interviewType: interviewTypeLabel(interview.types),
+    language: interview.config?.language,
+  }));
   const { data } = await completeJson({
-    ...prompts.followUp({ question, answer, interviewType: interviewTypeLabel(interview.types), language: interview.config?.language }),
+    ...built,
     feature: 'interview',
     company: interview.company,
     interview: interview._id,

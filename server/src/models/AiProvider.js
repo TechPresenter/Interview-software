@@ -17,7 +17,17 @@ export const PROVIDER_TYPES = [
 ];
 
 /** Modules a provider can be assigned to serve. */
-export const AI_MODULES = ['chat', 'content', 'image', 'embeddings', 'interview', 'scoring', 'report', 'resume'];
+/**
+ * Modules a provider can be routed to. These MUST stay in sync with the
+ * `feature` names the AI services actually pass to complete()/completeJson() —
+ * a feature name missing here cannot be routed in the admin UI and only reaches
+ * a provider through the isDefault escape hatch.
+ */
+export const AI_MODULES = [
+  'chat', 'content', 'image', 'embeddings',
+  'interview', 'scoring', 'report', 'resume',
+  'question_generation', 'answer_key',
+];
 
 /**
  * Configurable AI provider. Super-admins register multiple providers and route

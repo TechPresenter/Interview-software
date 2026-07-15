@@ -13,7 +13,15 @@ const aiUsageSchema = new Schema(
     providerType: { type: String },
     feature: {
       type: String,
-      enum: ['interview', 'scoring', 'report', 'resume', 'chat', 'content', 'image', 'embeddings', 'test', 'other'],
+      // Keep in sync with AI_MODULES (models/AiProvider.js) and the `feature`
+      // names the services pass. A missing name throws a ValidationError that
+      // recordUsage swallows, so the call's tokens/cost vanish from analytics
+      // with only a log line — question_generation/answer_key did exactly that.
+      enum: [
+        'interview', 'scoring', 'report', 'resume',
+        'question_generation', 'answer_key',
+        'chat', 'content', 'image', 'embeddings', 'test', 'other',
+      ],
       required: true,
       index: true,
     },

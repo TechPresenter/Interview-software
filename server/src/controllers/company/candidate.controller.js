@@ -10,7 +10,7 @@ import { saveBuffer, extractText } from '../../services/file.service.js';
 import { analyzeResume, parsedToCandidate } from '../../services/ai/resume.analyzer.js';
 import { logActivity } from '../../services/audit.service.js';
 import { safeSendTemplated } from '../../services/email.service.js';
-import { config } from '../../config/index.js';
+import { isAiConfigured } from '../../services/ai/ai.status.js';
 
 const scope = (req, extra = {}) => ({ company: req.companyId, ...extra });
 
@@ -163,7 +163,7 @@ export const uploadResumeFile = asyncHandler(async (req, res) => {
   // Best-effort AI analysis + profile extraction (don't fail the upload if AI is down).
   let analysis = null;
   let parsed = null;
-  if (config.ai.enabled && text) {
+  if ((await isAiConfigured('resume', { company: req.companyId })) && text) {
     try {
       analysis = await analyzeResume({
         resumeText: text,
@@ -212,7 +212,7 @@ export const parseResume = asyncHandler(async (req, res) => {
 
   let analysis = null;
   let fields = {};
-  if (config.ai.enabled) {
+  if (await isAiConfigured('resume', { company: req.companyId })) {
     try {
       const job = req.query.job ? await Job.findOne(scope(req, { _id: req.query.job })).select('title skills').lean() : null;
       analysis = await analyzeResume({

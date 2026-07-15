@@ -1,5 +1,5 @@
 import { completeJson } from './claude.client.js';
-import { prompts } from './prompts/index.js';
+import { prompts, applyPromptOverride } from './prompts/index.js';
 
 /**
  * Resume Analyzer
@@ -18,8 +18,10 @@ export async function analyzeResume({ resumeText, jobTitle, requiredSkills, comp
   if (!resumeText || resumeText.trim().length < 30) {
     throw new Error('Resume text is too short to analyze');
   }
+  // Was spread directly, so a saved 'analyzeResume' override never took effect.
+  const built = await applyPromptOverride('analyzeResume', prompts.analyzeResume({ resumeText, jobTitle, requiredSkills }));
   const { data } = await completeJson({
-    ...prompts.analyzeResume({ resumeText, jobTitle, requiredSkills }),
+    ...built,
     feature: 'resume',
     company,
     maxTokens: 3000,

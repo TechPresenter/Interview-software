@@ -35,6 +35,19 @@ function timeout(ms) {
   return { signal: ctrl.signal, clear: () => clearTimeout(handle) };
 }
 
+/**
+ * A failed vendor call, with the status and body kept intact. The category (bad
+ * key vs bad model vs rate limit) is only recoverable from the status, and the
+ * body carries the vendor's own explanation — throwing the message alone leaves
+ * a caller unable to tell a 401 from a 429. The message stays the vendor's.
+ */
+function httpError(res, data) {
+  const err = new Error(data?.error?.message || data?.message || `HTTP ${res.status}`);
+  err.status = res.status;
+  err.body = data;
+  return err;
+}
+
 /* ── OpenAI-compatible (openai, grok, deepseek, mistral, groq, openrouter, custom) ── */
 async function openaiChat(cfg, { system, messages, maxTokens, temperature }) {
   const meta = providerMeta(cfg.type);
@@ -53,7 +66,7 @@ async function openaiChat(cfg, { system, messages, maxTokens, temperature }) {
       body: JSON.stringify({ model: cfg.model || meta.defaultModel, messages: msgs, max_tokens: maxTokens, temperature }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error?.message || data?.message || `HTTP ${res.status}`);
+    if (!res.ok) throw httpError(res, data);
     const u = data.usage || {};
     return {
       text: data.choices?.[0]?.message?.content ?? '',
@@ -80,7 +93,7 @@ async function azureChat(cfg, { system, messages, maxTokens, temperature }) {
       body: JSON.stringify({ messages: msgs, max_tokens: maxTokens, temperature }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+    if (!res.ok) throw httpError(res, data);
     const u = data.usage || {};
     return {
       text: data.choices?.[0]?.message?.content ?? '',
@@ -106,7 +119,7 @@ async function geminiChat(cfg, { system, messages, maxTokens, temperature }) {
   try {
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: t.signal, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+    if (!res.ok) throw httpError(res, data);
     const u = data.usageMetadata || {};
     return {
       text: (data.candidates?.[0]?.content?.parts || []).map((p) => p.text).join(''),
@@ -148,7 +161,7 @@ async function anthropicChat(cfg, { system, messages, maxTokens, temperature }) 
       }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+    if (!res.ok) throw httpError(res, data);
     const u = data.usage || {};
     return {
       text: (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n'),
@@ -180,7 +193,19 @@ export async function chat(cfg, payload) {
   }
 }
 
-/** Ping a provider config with a tiny prompt; never throws. */
+/**
+ * Ping a provider config with a tiny prompt; never throws.
+ *
+ * The failure is reported raw — vendor message, HTTP status and transport code —
+ * rather than categorised here. services/ai/ai.status.js turns those into a
+ * category; it imports this module, so importing it back to classify would be an
+ * import cycle (the same constraint that duplicates NO_SAMPLING_PARAMS above).
+ *
+ * The parsed body is deliberately NOT returned: callers hand this straight to an
+ * HTTP response, and the gemini adapter carries the key in the query string, so
+ * anything echoing the request URL back would leak it. `error` already holds the
+ * vendor's own message, which is all the classifier needs.
+ */
 export async function testConnection(cfg) {
   const start = Date.now();
   try {
@@ -193,7 +218,15 @@ export async function testConnection(cfg) {
     });
     return { ok: true, latencyMs: Date.now() - start, model: cfg.model || providerMeta(cfg.type).defaultModel, sample: String(text).trim().slice(0, 40) };
   } catch (err) {
-    return { ok: false, latencyMs: Date.now() - start, error: err?.message || 'Connection failed' };
+    return {
+      ok: false,
+      latencyMs: Date.now() - start,
+      error: err?.message || 'Connection failed',
+      status: err?.status,
+      code: err?.code || err?.cause?.code,
+      name: err?.name,
+      model: cfg?.model || providerMeta(cfg?.type).defaultModel,
+    };
   }
 }
 

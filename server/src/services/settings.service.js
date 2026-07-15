@@ -32,7 +32,13 @@ export async function getGroup(group, { unmask = false } = {}) {
     group: d.group,
     description: d.description,
     isSecret: d.isSecret,
-    value: !unmask && (d.isSecret || (typeof d.value === 'string' && SECRET_HINT.test(d.key)))
+    // Only STRINGS are ever masked. Secrets are always strings (api keys,
+    // passwords), whereas SECRET_HINT matches on the key NAME and so also fires
+    // on innocent structured settings — `ai.prompt.generateAnswerKey` matches
+    // /key/i. Masking an object collapsed it to the bare MASK, and setMany's
+    // round-trip guard only inspects strings, so the mask wrote itself back over
+    // the real value.
+    value: !unmask && typeof d.value === 'string' && (d.isSecret || SECRET_HINT.test(d.key))
       ? maskValue(d.value)
       : d.value,
     updatedAt: d.updatedAt,
@@ -55,7 +61,8 @@ export async function setMany(group, entries, userId) {
         $set: {
           group,
           value,
-          isSecret: Boolean(isSecret) || SECRET_HINT.test(key),
+          // A non-string value is never a secret — see the masking note in getGroup.
+          isSecret: typeof value === 'string' && (Boolean(isSecret) || SECRET_HINT.test(key)),
           description,
           updatedBy: userId,
         },

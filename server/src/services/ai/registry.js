@@ -1,6 +1,8 @@
 import { AiProvider } from '../../models/AiProvider.js';
 import { AiUsage } from '../../models/AiUsage.js';
 import { chat as providerChat, providerMeta } from './providers.js';
+import { invalidateAiStatusCache, providerRoutingQuery } from './ai.status.js';
+import { config } from '../../config/index.js';
 import { logger } from '../../config/logger.js';
 
 /**
@@ -10,6 +12,9 @@ import { logger } from '../../config/logger.js';
  * A provider is a candidate for a module if it is the default OR explicitly lists
  * the module in its `modules` array. Candidates are tried in priority order
  * (lower `priority` first, default first); the first success wins.
+ *
+ * `module` is the caller's `feature` name, so every routable feature must be an
+ * AI_MODULES member (models/AiProvider.js) or only the default can serve it.
  */
 
 // Rough, generic token pricing ($/1M) when a provider-specific rate is unknown.
@@ -50,6 +55,7 @@ async function activeProviderCount() {
 /** Invalidate the active-provider cache (call after create/update/delete). */
 export function invalidateProviderCache() {
   countAt = 0;
+  invalidateAiStatusCache();
 }
 
 function toConfig(doc) {
@@ -65,12 +71,40 @@ function toConfig(doc) {
   };
 }
 
-/** Active providers that can serve `module`, ordered for failover. */
+/**
+ * OPENAI_API_KEY in the environment, presented as a provider.
+ *
+ * Registering a provider in the admin panel is the intended path, but putting a
+ * key in .env is the obvious thing to try, and an env-only key previously
+ * reached nothing at all. It is a LAST-RESORT candidate: a provider the operator
+ * explicitly configured in the panel always wins.
+ *
+ * Duck-types the AiProvider doc surface the failover loop touches — note it has
+ * no `_id`, which is what marks it synthetic (there is no row to write health to).
+ */
+function envOpenAiProvider() {
+  if (!config.ai.openai?.enabled) return null;
+  return {
+    label: 'OpenAI (environment)',
+    type: 'openai',
+    model: config.ai.openai.model,
+    baseUrl: config.ai.openai.baseUrl,
+    isDefault: true,
+    getApiKey: () => config.ai.openai.apiKey,
+  };
+}
+
+/**
+ * Active providers that can serve `module`, ordered for failover.
+ * Routing comes from ai.status.providerRoutingQuery so this and isAiConfigured()
+ * cannot disagree — when they did, the guard admitted requests routing refused.
+ */
 export async function resolveProviders(module, { company } = {}) {
-  const or = [{ company: null }];
-  if (company) or.push({ company });
-  const docs = await AiProvider.find({ isActive: true, $or: or }).select('+apiKey').sort('priority -isDefault -updatedAt');
-  return docs.filter((d) => d.isDefault || (module && (d.modules || []).includes(module)));
+  const docs = await AiProvider.find(providerRoutingQuery(module, { company }))
+    .select('+apiKey')
+    .sort('priority -isDefault -updatedAt');
+  const envProvider = envOpenAiProvider();
+  return envProvider ? [...docs, envProvider] : docs;
 }
 
 /**
@@ -81,28 +115,42 @@ export async function resolveProviders(module, { company } = {}) {
  * @returns {Promise<null | { text:string, usage:{inputTokens,outputTokens}, provider:{id,label,type} }>}
  */
 export async function runChat({ module = 'chat', company, system, messages, maxTokens, temperature, feature }) {
-  if ((await activeProviderCount()) === 0) return null;
+  // The count guard exists to keep Mongo off the hot path when nothing is
+  // configured — but an env-configured OpenAI key is not in that count, so it
+  // must not short-circuit here.
+  if ((await activeProviderCount()) === 0 && !config.ai.openai?.enabled) return null;
   const providers = await resolveProviders(module, { company });
   if (!providers.length) return null;
 
   for (const doc of providers) {
-    if (!doc.getApiKey()) continue;
+    if (!doc.getApiKey()) {
+      // Undecryptable keys look identical to missing ones downstream, so a rotated
+      // AI_ENCRYPTION_KEY/JWT_ACCESS_SECRET presents as "AI is not configured"
+      // with no breadcrumb. Say so rather than skipping in silence.
+      logger.warn({ provider: doc.label }, 'AI provider has no usable API key (missing, or the encryption key changed); skipping');
+      continue;
+    }
     const start = Date.now();
     const model = doc.model || providerMeta(doc.type).defaultModel;
     try {
       const out = await providerChat(toConfig(doc), { system, messages, maxTokens, temperature });
       const latencyMs = Date.now() - start;
-      await AiProvider.findByIdAndUpdate(doc._id, {
-        $set: { health: 'healthy', lastSuccessAt: new Date(), lastLatencyMs: latencyMs },
-      });
+      // The env provider has no row to record health against.
+      if (doc._id) {
+        await AiProvider.findByIdAndUpdate(doc._id, {
+          $set: { health: 'healthy', lastSuccessAt: new Date(), lastLatencyMs: latencyMs },
+        });
+      }
       await recordUsage({ provider: doc, feature: feature || module, model, usage: out.usage, latencyMs, success: true, company });
-      return { text: out.text, usage: out.usage, provider: { id: String(doc._id), label: doc.label, type: doc.type } };
+      return { text: out.text, usage: out.usage, provider: { id: doc._id ? String(doc._id) : 'env', label: doc.label, type: doc.type } };
     } catch (err) {
       const latencyMs = Date.now() - start;
       logger.warn({ provider: doc.label, err: err?.message }, 'AI provider failed; trying next');
-      await AiProvider.findByIdAndUpdate(doc._id, {
-        $set: { health: 'down', lastErrorAt: new Date(), lastError: String(err?.message || 'error').slice(0, 300), lastLatencyMs: latencyMs },
-      });
+      if (doc._id) {
+        await AiProvider.findByIdAndUpdate(doc._id, {
+          $set: { health: 'down', lastErrorAt: new Date(), lastError: String(err?.message || 'error').slice(0, 300), lastLatencyMs: latencyMs },
+        });
+      }
       await recordUsage({ provider: doc, feature: feature || module, model, usage: {}, latencyMs, success: false, company });
       // failover → next provider
     }
