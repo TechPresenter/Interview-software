@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
+    "@napi-rs/canvas": "^0.1.65",
     "@sentry/node": "^8.26.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^2.4.3",
@@ -52,6 +53,7 @@
     "razorpay": "^2.9.4",
     "socket.io": "^4.7.5",
     "stripe": "^16.9.0",
+    "tesseract.js": "^5.1.1",
     "xss": "^1.0.15",
     "zod": "^3.23.8"
   },

@@ -14,12 +14,23 @@ const RESUME_TYPES = new Set([
   'text/plain',
 ]);
 
+/** Scans and phone photos of a CV — read by OCR (services/ocr.service.js). */
+const RESUME_EXTS = ['.pdf', '.docx', '.doc', '.txt', '.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff'];
+
+const extOf = (name) => (String(name).match(/\.[^.]+$/) || [''])[0].toLowerCase();
+
 export const uploadResume = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  // Scans are heavier than exported PDFs; 5 MB rejected ordinary phone photos.
+  limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (RESUME_TYPES.has(file.mimetype)) return cb(null, true);
-    cb(ApiError.badRequest('Only PDF, DOCX, or TXT resumes are allowed'));
+    // Accept on EITHER mimetype or extension. Browsers and mobile clients send
+    // application/octet-stream for .docx often enough that a mimetype-only gate
+    // rejected real resumes — the knowledge-base filter has always keyed off the
+    // extension for exactly this reason.
+    if (RESUME_TYPES.has(file.mimetype) || file.mimetype.startsWith('image/')) return cb(null, true);
+    if (RESUME_EXTS.includes(extOf(file.originalname))) return cb(null, true);
+    cb(ApiError.badRequest('Upload a PDF, DOCX, TXT, or an image of the resume (PNG/JPG).'));
   },
 }).single('resume');
 
@@ -77,7 +88,9 @@ export const uploadRecordingChunk = multer({
 }).single('chunk');
 
 /** Knowledge-base documents (multiple). PDF/DOCX/TXT/MD/CSV/XLSX/PPTX/ZIP. */
-const KB_EXTS = ['.pdf', '.docx', '.doc', '.txt', '.md', '.csv', '.xlsx', '.xls', '.pptx', '.ppt', '.zip'];
+const KB_EXTS = ['.pdf', '.docx', '.doc', '.txt', '.md', '.csv', '.xlsx', '.xls', '.pptx', '.ppt', '.zip',
+  // Scanned pages and photos, read via OCR.
+  '.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff'];
 export const uploadKnowledge = multer({
   storage,
   limits: { fileSize: 25 * 1024 * 1024, files: 10 }, // 25 MB each, up to 10

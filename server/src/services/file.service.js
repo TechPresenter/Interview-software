@@ -41,6 +41,9 @@ export class ExtractionError extends Error {
 /** A PDF's bytes are only a PDF if they say so; multipart mishaps land here first. */
 const looksLikePdf = (buf) => buf?.length > 4 && buf.slice(0, 5).toString('latin1') === '%PDF-';
 
+/** Photographed or scanned documents; readable only by OCR. */
+const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tif', '.tiff'];
+
 /** Legacy Word (.doc) is an OLE compound file, not a zip — mammoth cannot read it. */
 const looksLikeLegacyDoc = (buf) =>
   buf?.length > 8 && buf.slice(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
@@ -115,15 +118,35 @@ export async function extractText(buffer, mimetype = '', originalName = '') {
         throw new ExtractionError('That file is named .pdf but is not a PDF. Re-save it and try again.', 'not_a_pdf');
       }
       const text = await extractPdf(buffer);
-      if (!text) {
-        // A scanned PDF is pictures of words: pdf.js finds no text layer. Say so
-        // plainly — the fix is the user's (upload a text PDF), not a retry.
-        throw new ExtractionError(
-          'This PDF has no selectable text — it looks like a scan or photo. Upload a text-based PDF or DOCX, or paste the text instead.',
-          'no_text_layer',
-        );
+      if (text) return text;
+
+      // No text layer: the file is pictures of words (a scan or a phone photo).
+      // Reading it costs seconds per page, which is why it is the fallback and
+      // never the first attempt.
+      logger.info({ originalName }, 'PDF has no text layer; falling back to OCR');
+      const { ocrPdf } = await import('./ocr.service.js');
+      const ocr = await ocrPdf(buffer).catch((err) => {
+        logger.warn({ err: err.message, originalName }, 'OCR failed');
+        return null;
+      });
+      if (ocr?.text) {
+        logger.info({ originalName, pages: ocr.pages, confidence: ocr.confidence }, 'OCR extracted text from a scanned PDF');
+        return ocr.text;
       }
-      return text;
+      throw new ExtractionError(
+        'This PDF looks like a scan, and no text could be read from it even with OCR. Try a clearer scan, a text-based PDF, or paste the text instead.',
+        'ocr_failed',
+      );
+    }
+    if (IMAGE_EXTS.includes(ext) || mt.startsWith('image/')) {
+      // A photographed or scanned resume arrives as a plain image.
+      const { ocrImage } = await import('./ocr.service.js');
+      const { text } = await ocrImage(buffer).catch(() => ({ text: '' }));
+      if (text) return text;
+      throw new ExtractionError(
+        'No text could be read from that image. A sharper, straight-on photo or scan usually works.',
+        'ocr_failed',
+      );
     }
     if (ext === '.doc' || looksLikeLegacyDoc(buffer)) {
       // mammoth reads OOXML (.docx) only; handed a .doc it throws "is this a zip

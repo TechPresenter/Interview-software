@@ -37,3 +37,7 @@ dump.rdb
 next-env.d.ts
 .turbo/
 Thumbs.db
+
+# Tesseract downloads its ~5MB language model on first use.
+server/.tesseract/
+eng.traineddata
