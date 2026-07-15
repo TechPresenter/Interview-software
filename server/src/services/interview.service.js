@@ -14,7 +14,7 @@ import { ApiError } from '../utils/ApiError.js';
  * Create an interview from a candidate + job, applying the job's interview
  * blueprint (overridable). Enforces the monthly interview plan limit.
  */
-export async function scheduleInterview({ companyId, candidate, job, types, config: cfg = {}, scheduledAt, expiresAt, invitedBy, knowledgeBase }) {
+export async function scheduleInterview({ companyId, candidate, job, types, round, config: cfg = {}, scheduledAt, expiresAt, invitedBy, knowledgeBase, questionSet }) {
   await assertWithinLimit(companyId, 'interviews');
 
   const bp = job?.interviewConfig || {};
@@ -41,6 +41,7 @@ export async function scheduleInterview({ companyId, candidate, job, types, conf
     proctoring: pick('proctoring', true),
     resumeBased: pick('resumeBased', false),
     jdBased: pick('jdBased', true),
+    useQuestionBank: pick('useQuestionBank', true),
     allowSkip: pick('allowSkip', true),
     maxSkips: pick('maxSkips', 2),
   };
@@ -51,7 +52,10 @@ export async function scheduleInterview({ companyId, candidate, job, types, conf
     candidate: candidate._id,
     // Explicit KB selected at schedule time overrides the job's KB.
     knowledgeBase: knowledgeBase || job?.knowledgeBase || undefined,
+    // A fixed set makes the interview identical for every candidate.
+    questionSet: questionSet || job?.interviewConfig?.questionSet || undefined,
     types: types?.length ? types : bp.types?.length ? bp.types : ['hr'],
+    round: round || bp.round || undefined,
     config,
     scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
     expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 14 * 864e5), // custom, else 14 days

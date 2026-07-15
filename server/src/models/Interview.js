@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { nanoid } from 'nanoid';
-import { INTERVIEW_TYPES, INTERVIEW_STATUS } from '../constants/enums.js';
+import { INTERVIEW_TYPES, INTERVIEW_STATUS, INTERVIEW_ROUNDS } from '../constants/enums.js';
 
 const { Schema } = mongoose;
 
@@ -32,7 +32,16 @@ const interviewSchema = new Schema(
     accessToken: { type: String, unique: true, default: () => nanoid(24), index: true },
 
     types: [{ type: String, enum: INTERVIEW_TYPES }],
+    /** Which round this is. Drives question selection + report framing. */
+    round: { type: String, enum: INTERVIEW_ROUNDS, default: 'technical' },
     status: { type: String, enum: INTERVIEW_STATUS, default: 'scheduled', index: true },
+
+    /**
+     * A fixed, ordered set of questions. When present the engine serves these in
+     * order instead of ranking the bank live — every candidate gets the exact
+     * same questions, which is what makes comparing them fair.
+     */
+    questionSet: { type: Schema.Types.ObjectId, ref: 'QuestionSet', default: null },
 
     config: {
       language: { type: String, enum: ['en', 'hi'], default: 'en' },

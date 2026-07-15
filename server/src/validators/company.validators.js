@@ -1,5 +1,14 @@
 import { z } from 'zod';
-import { INTERVIEW_TYPES, JOB_STATUS, PIPELINE_STAGES } from '../constants/enums.js';
+import {
+  INTERVIEW_TYPES,
+  JOB_STATUS,
+  PIPELINE_STAGES,
+  INTERVIEW_ROUNDS,
+  QUESTION_TYPES,
+  INDUSTRIES,
+  DIFFICULTY,
+  EXPERIENCE_LEVELS,
+} from '../constants/enums.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
 
@@ -13,6 +22,7 @@ const skill = z.object({
 export const createJobSchema = z.object({
   title: z.string().min(2).max(160),
   department: z.string().optional(),
+  industry: z.enum(INDUSTRIES).nullish(),
   location: z.string().optional(),
   employmentType: z.enum(['full_time', 'part_time', 'contract', 'internship', 'temporary']).optional(),
   workMode: z.enum(['onsite', 'remote', 'hybrid']).optional(),
@@ -23,12 +33,23 @@ export const createJobSchema = z.object({
   salary: z
     .object({ min: z.number().optional(), max: z.number().optional(), currency: z.string().optional() })
     .optional(),
+  // zod strips unknown keys, so anything missing here never reached the model —
+  // difficulty/language/allowSkip on the blueprint were silently discarded.
   interviewConfig: z
     .object({
       types: z.array(z.enum(INTERVIEW_TYPES)).optional(),
+      round: z.enum(INTERVIEW_ROUNDS).nullish(),
       durationMinutes: z.number().int().positive().optional(),
       questionCount: z.number().int().positive().optional(),
+      difficulty: z.enum(DIFFICULTY).nullish(),
+      experienceLevel: z.enum(EXPERIENCE_LEVELS).nullish(),
       adaptiveDifficulty: z.boolean().optional(),
+      followUps: z.boolean().optional(),
+      useQuestionBank: z.boolean().optional(),
+      language: z.enum(['en', 'hi']).optional(),
+      allowSkip: z.boolean().optional(),
+      maxSkips: z.number().int().min(0).max(10).optional(),
+      questionSet: objectId.nullish(),
     })
     .optional(),
   knowledgeBase: objectId.optional().nullable(),
@@ -113,11 +134,14 @@ export const interviewConfigSchema = z
     allowLanguageChange: z.boolean().optional(),
     durationMinutes: z.number().int().positive().max(600).optional(),
     questionCount: z.number().int().positive().max(50).optional(),
-    difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
-    experienceLevel: z.string().max(40).optional(),
+    // 'expert' was missing: the model allows it and adaptDifficulty steps up to
+    // it, so scheduling an expert interview was rejected at the edge.
+    difficulty: z.enum(DIFFICULTY).optional(),
+    experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
     adaptiveDifficulty: z.boolean().optional(),
     followUps: z.boolean().optional(),
     randomOrder: z.boolean().optional(),
+    useQuestionBank: z.boolean().optional(),
     passingScore: z.number().min(0).max(100).optional(),
     timePerQuestionSeconds: z.number().int().min(0).max(3600).optional(),
     autoSubmit: z.boolean().optional(),
@@ -138,7 +162,9 @@ export const scheduleInterviewSchema = z.object({
   candidate: objectId,
   job: objectId.optional(),
   knowledgeBase: objectId.optional().nullable(),
+  questionSet: objectId.optional().nullable(),
   types: z.array(z.enum(INTERVIEW_TYPES)).optional(),
+  round: z.enum(INTERVIEW_ROUNDS).optional(),
   scheduledAt: z.coerce.date().optional(),
   expiresAt: z.coerce.date().optional(),
   config: interviewConfigSchema,
@@ -150,6 +176,37 @@ export const autoInterviewSchema = z.object({
   stage: z.enum(PIPELINE_STAGES).optional(),
   types: z.array(z.enum(INTERVIEW_TYPES)).optional(),
   sendInvite: z.boolean().optional(),
+});
+
+/* ── Question sets ─────────────────────────────────────── */
+export const createQuestionSetSchema = z.object({
+  name: z.string().min(2).max(160),
+  description: z.string().max(1000).optional(),
+  questions: z.array(objectId).max(100).optional(),
+  jobRole: z.string().max(160).optional(),
+  department: z.string().max(120).optional(),
+  round: z.enum(INTERVIEW_ROUNDS).nullish(),
+  difficulty: z.enum(DIFFICULTY).nullish(),
+  experienceLevel: z.enum(EXPERIENCE_LEVELS).nullish(),
+  language: z.enum(['en', 'hi', 'bilingual']).optional(),
+  tags: z.array(z.string()).optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const updateQuestionSetSchema = createQuestionSetSchema.partial();
+
+export const autoQuestionSetSchema = z.object({
+  name: z.string().max(160).optional(),
+  count: z.number().int().min(1).max(50).optional(),
+  skills: z.array(z.string()).optional(),
+  type: z.enum(QUESTION_TYPES).optional(),
+  industry: z.enum(INDUSTRIES).optional(),
+  jobRole: z.string().max(160).optional(),
+  round: z.enum(INTERVIEW_ROUNDS).optional(),
+  difficulty: z.enum(DIFFICULTY).optional(),
+  experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
+  language: z.enum(['en', 'hi', 'bilingual']).optional(),
+  randomOrder: z.boolean().optional(),
 });
 
 /** Company workspace deletion — requires typing the exact company name. */

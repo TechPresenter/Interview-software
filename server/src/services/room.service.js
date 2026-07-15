@@ -13,6 +13,7 @@ import { generateReport } from './ai/report.engine.js';
 import { getAiWeightage } from './settings.service.js';
 import { contextFor } from './knowledgeBase.service.js';
 import { selectNextQuestion, markUsed } from './question.selector.js';
+import { QuestionSet } from '../models/QuestionSet.js';
 import { logActivity } from './audit.service.js';
 import { notify } from './notification.service.js';
 import { safeSendTemplated } from './email.service.js';
@@ -489,9 +490,24 @@ export async function recordEvidence(interview, { imageBase64, type = 'screensho
 
 /* ── helpers ───────────────────────────────────────────── */
 
+/** Shape a bank Question doc into the engine's pendingQuestion. */
+function fromBankQuestion(picked, interview, rationale) {
+  // Bilingual questions carry both renderings; serve the interview's language.
+  const text = interview.config.language === 'hi' && picked.textHi ? picked.textHi : picked.text;
+  return {
+    text,
+    questionId: picked._id,
+    competencies: picked.competencies?.length ? picked.competencies : ['technical', 'communication'],
+    expectedPoints: picked.expectedPoints?.length ? picked.expectedPoints : (picked.answerKey?.keyPoints || []),
+    rationale: picked.answerKey?.interviewerNotes || picked.rationale || rationale,
+    isFollowUp: false,
+  };
+}
+
 /**
  * Produce the next question, in descending order of relevance:
  *
+ *   0. an assigned QuestionSet    — fixed and ordered, identical for every candidate
  *   1. the curated Question bank  — recruiter-approved, carries a real answer key
  *   2. the LLM                    — adaptive, grounded in the JD + knowledge base
  *   3. a generic hardcoded prompt — last resort only
@@ -501,6 +517,22 @@ export async function recordEvidence(interview, { imageBase64, type = 'screensho
  * was wired in, a single AI hiccup silently dropped every interview to tier 3.
  */
 async function generateQuestion(interview, job, lastAnswer) {
+  // ── Tier 0: a fixed set ──
+  if (interview.questionSet) {
+    try {
+      const set = await QuestionSet.findById(interview.questionSet).populate('questions').lean();
+      const asked = new Set((interview.engineState.askedQuestionIds || []).map(String));
+      const next = (set?.questions || []).find((q) => q && !asked.has(String(q._id)) && q.isActive !== false);
+      if (next) {
+        markUsed(next._id);
+        return fromBankQuestion(next, interview, 'From the assigned question set.');
+      }
+      // Set exhausted — fall through and let the bank/LLM continue.
+    } catch (err) {
+      logger.warn({ err: err.message }, 'question set lookup failed; falling through');
+    }
+  }
+
   // ── Tier 1: the bank ──
   if (interview.config.useQuestionBank !== false) {
     try {
@@ -519,16 +551,7 @@ async function generateQuestion(interview, job, lastAnswer) {
       });
       if (picked) {
         markUsed(picked._id);
-        // Bilingual questions carry both renderings; serve the interview's language.
-        const text = interview.config.language === 'hi' && picked.textHi ? picked.textHi : picked.text;
-        return {
-          text,
-          questionId: picked._id,
-          competencies: picked.competencies?.length ? picked.competencies : ['technical', 'communication'],
-          expectedPoints: picked.expectedPoints?.length ? picked.expectedPoints : (picked.answerKey?.keyPoints || []),
-          rationale: picked.answerKey?.interviewerNotes || picked.rationale || 'Selected from the curated question bank.',
-          isFollowUp: false,
-        };
+        return fromBankQuestion(picked, interview, 'Selected from the curated question bank.');
       }
     } catch (err) {
       logger.warn({ err: err.message }, 'question bank selection failed; falling through to AI');

@@ -22,6 +22,8 @@ import * as candidates from '../controllers/company/candidate.controller.js';
 import * as interviews from '../controllers/company/interview.controller.js';
 import * as pipeline from '../controllers/company/pipeline.controller.js';
 import * as reports from '../controllers/company/report.controller.js';
+import * as questions from '../controllers/company/question.controller.js';
+import * as questionSets from '../controllers/company/questionSet.controller.js';
 import * as billing from '../controllers/company/billing.controller.js';
 import * as kb from '../controllers/knowledgeBase.controller.js';
 import * as staffCtrl from '../controllers/company/staff.controller.js';
@@ -32,7 +34,21 @@ import * as apiKeys from '../controllers/company/apiKey.controller.js';
 import * as proctoring from '../controllers/proctoring.controller.js';
 import * as account from '../controllers/company/account.controller.js';
 import { createApiKeySchema } from '../validators/apiKey.validators.js';
-import { deleteAccountSchema } from '../validators/company.validators.js';
+import {
+  deleteAccountSchema,
+  createQuestionSetSchema,
+  updateQuestionSetSchema,
+  autoQuestionSetSchema,
+} from '../validators/company.validators.js';
+import {
+  upsertQuestionSchema,
+  updateQuestionSchema,
+  bulkQuestionsSchema,
+  questionReviewSchema,
+  bulkReviewSchema,
+  generateQuestionsSchema,
+} from '../validators/admin.validators.js';
+import { requirePermission } from '../services/permission.service.js';
 
 export const router = Router();
 
@@ -125,6 +141,31 @@ router.get('/proctoring/export', proctoring.exportCsv);
 router.get('/proctoring/:id', proctoring.detail);
 
 /* ── Reports (specific routes before :id) ──────────────── */
+/* ── Question bank ─────────────────────────────────────── */
+// Previously super_admin-only under /admin, so companies got a 403 on their own bank.
+router.get('/questions', requirePermission('questions', 'read'), questions.list);
+router.get('/questions/stats', requirePermission('questions', 'read'), questions.stats);
+router.post('/questions', requirePermission('questions', 'create'), validate(upsertQuestionSchema), questions.create);
+router.post('/questions/bulk', requirePermission('questions', 'create'), validate(bulkQuestionsSchema), questions.bulkCreate);
+router.post('/questions/generate', requirePermission('questions', 'create'), validate(generateQuestionsSchema), questions.generate);
+router.post('/questions/bulk-review', requirePermission('questions', 'update'), validate(bulkReviewSchema), questions.bulkReview);
+router.patch('/questions/:id', requirePermission('questions', 'update'), validate(updateQuestionSchema), questions.update);
+router.post('/questions/:id/duplicate', requirePermission('questions', 'create'), questions.duplicate);
+router.post('/questions/:id/archive', requirePermission('questions', 'update'), questions.archive);
+router.post('/questions/:id/restore', requirePermission('questions', 'update'), questions.restore);
+router.post('/questions/:id/review', requirePermission('questions', 'update'), validate(questionReviewSchema), questions.review);
+router.post('/questions/:id/answer-key', requirePermission('questions', 'update'), questions.answerKey);
+router.delete('/questions/:id', requirePermission('questions', 'delete'), questions.remove);
+
+/* ── Question sets ─────────────────────────────────────── */
+router.get('/question-sets', requirePermission('questions', 'read'), questionSets.list);
+router.post('/question-sets', requirePermission('questions', 'create'), validate(createQuestionSetSchema), questionSets.create);
+router.post('/question-sets/auto', requirePermission('questions', 'create'), validate(autoQuestionSetSchema), questionSets.auto);
+router.get('/question-sets/:id', requirePermission('questions', 'read'), questionSets.getOne);
+router.patch('/question-sets/:id', requirePermission('questions', 'update'), validate(updateQuestionSetSchema), questionSets.update);
+router.post('/question-sets/:id/duplicate', requirePermission('questions', 'create'), questionSets.duplicate);
+router.delete('/question-sets/:id', requirePermission('questions', 'delete'), questionSets.remove);
+
 router.get('/reports', reports.list);
 router.get('/reports/analytics', reports.analytics);
 router.get('/reports/ranking', reports.ranking);

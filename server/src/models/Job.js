@@ -1,5 +1,11 @@
 import mongoose from 'mongoose';
-import { JOB_STATUS } from '../constants/enums.js';
+import {
+  JOB_STATUS,
+  INDUSTRIES,
+  INTERVIEW_ROUNDS,
+  DIFFICULTY,
+  EXPERIENCE_LEVELS,
+} from '../constants/enums.js';
 
 const { Schema } = mongoose;
 
@@ -18,6 +24,8 @@ const jobSchema = new Schema(
     title: { type: String, required: true, trim: true, maxlength: 160 },
     slug: { type: String, index: true },
     department: { type: String },
+    /** Drives industry-relevant question selection + generation. */
+    industry: { type: String, enum: [...INDUSTRIES, null], default: null, index: true },
     location: { type: String },
     employmentType: {
       type: String,
@@ -43,12 +51,21 @@ const jobSchema = new Schema(
     // Default interview blueprint used when auto-scheduling for this job.
     interviewConfig: {
       types: [{ type: String }], // e.g. ['hr','technical']
+      round: { type: String, enum: [...INTERVIEW_ROUNDS, null], default: null },
       durationMinutes: { type: Number, default: 30 },
       questionCount: { type: Number, default: 8 },
+      // These were absent, so scheduleInterview's `bp.difficulty` was always
+      // undefined and a job could never set its own difficulty or level.
+      difficulty: { type: String, enum: [...DIFFICULTY, null], default: null },
+      experienceLevel: { type: String, enum: [...EXPERIENCE_LEVELS, null], default: null },
       adaptiveDifficulty: { type: Boolean, default: true },
+      followUps: { type: Boolean, default: true },
+      useQuestionBank: { type: Boolean, default: true },
       language: { type: String, enum: ['en', 'hi'], default: 'en' },
       allowSkip: { type: Boolean, default: true },
       maxSkips: { type: Number, default: 2 },
+      /** Default fixed question set for this role. */
+      questionSet: { type: Schema.Types.ObjectId, ref: 'QuestionSet', default: null },
     },
 
     // Optional knowledge base that grounds AI interview questions for this role.
