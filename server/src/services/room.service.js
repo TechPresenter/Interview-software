@@ -91,6 +91,10 @@ export async function roomView(interview) {
     phase: interview.engineState.phase,
     progress: progressOf(interview),
     pendingQuestion: interview.status === 'in_progress' ? publicQuestion(interview.engineState.pendingQuestion) : undefined,
+    // The token for whatever question is pending, so a room that reconnects
+    // (refresh, dropped mobile connection) resyncs and its next submit is
+    // recognised as new rather than as a replay.
+    turn: interview.engineState.turnCount || 0,
     transcript: interview.transcript,
     skips: {
       allowed: interview.config.allowSkip,
@@ -100,6 +104,33 @@ export async function roomView(interview) {
     },
   };
 }
+
+const CLOSING = 'Thank you — that completes the interview. We are generating your evaluation now.';
+
+/**
+ * Make a question the pending one and mint a fresh turn token.
+ *
+ * Every path that serves a question goes through here, so the token and the
+ * question can never drift apart.
+ */
+function serve(interview, question) {
+  interview.engineState.pendingQuestion = question;
+  interview.engineState.turnCount = (interview.engineState.turnCount || 0) + 1;
+  return question;
+}
+
+/**
+ * Is this submit answering a question we have already moved past?
+ *
+ * The candidate's client aborts at 30s while the request carries on serverside,
+ * so a timed-out submit is usually a SUCCESSFUL one the candidate never saw. The
+ * retry that follows carries the token of the question they were looking at,
+ * which is now stale — that is what distinguishes a replay from a real answer.
+ *
+ * A submit with no token at all is treated as genuine: a tab loaded before this
+ * shipped must not be locked out mid-interview.
+ */
+const isReplay = (interview, turn) => turn != null && turn !== (interview.engineState.turnCount || 0);
 
 /**
  * What the candidate's progress bar shows.
@@ -134,6 +165,7 @@ export async function start(interview, { language } = {}) {
       greeting: interview.transcript.find((t) => t.role === 'ai')?.text,
       question: publicQuestion(interview.engineState.pendingQuestion),
       progress: progressOf(interview),
+      turn: interview.engineState.turnCount || 0,
     };
   }
 
@@ -174,15 +206,14 @@ export async function start(interview, { language } = {}) {
   }
   interview.transcript.push({ role: 'ai', text: greeting });
 
-  const question = await generateQuestion(interview, job, null);
-  interview.engineState.pendingQuestion = question;
-  interview.transcript.push({ role: 'ai', text: question.text });
+  const question = serve(interview, await generateQuestion(interview, job, null));
+  interview.transcript.push({ role: 'ai', text: question.text, intro: Boolean(question.isIntro) });
   await interview.save();
 
   emitToCompany(interview.company, 'interview:started', { id: interview._id });
   await logActivity({ company: interview.company, action: 'interview.started', entityType: 'Interview', entityId: interview._id, summary: `${candidate?.name} started their interview` });
 
-  return { greeting, question: publicQuestion(question), progress: progressOf(interview) };
+  return { greeting, question: publicQuestion(question), progress: progressOf(interview), turn: interview.engineState.turnCount };
 }
 
 /**
@@ -194,6 +225,23 @@ export async function answer(interview, payload) {
   if (interview.status === 'paused') throw ApiError.badRequest('The interviewer paused this interview — please wait a moment.', { code: 'PAUSED' });
   if (interview.status !== 'in_progress') throw ApiError.badRequest('Interview is not in progress');
   const pending = interview.engineState.pendingQuestion;
+
+  // A submit for a question we have already moved past is the retry of a request
+  // that actually succeeded — the candidate's client gave up at 30s while this
+  // one finished. Record nothing, charge nothing, and just show them where they
+  // really are. Without this the answer they wrote for Q1 is filed against Q2,
+  // Q2 is never asked, and nothing anywhere reports a problem.
+  if (isReplay(interview, payload.turn)) {
+    if (!pending?.text) return { done: true, message: CLOSING, progress: progressOf(interview) };
+    return {
+      done: false,
+      question: publicQuestion(pending),
+      progress: progressOf(interview),
+      turn: interview.engineState.turnCount,
+      replayed: true,
+    };
+  }
+
   if (!pending?.text) throw ApiError.badRequest('No question is awaiting an answer');
 
   const job = interview.job ? await Job.findById(interview.job).lean() : null;
@@ -284,7 +332,7 @@ export async function answer(interview, payload) {
   if (!isIntro && engine.isComplete(interview)) {
     interview.engineState.phase = 'closing';
     interview.engineState.pendingQuestion = undefined;
-    const closing = 'Thank you — that completes the interview. We are generating your evaluation now.';
+    const closing = CLOSING;
     interview.transcript.push({ role: 'ai', text: closing });
     await interview.save();
     return { done: true, message: closing, progress: progressOf(interview) };
@@ -297,23 +345,26 @@ export async function answer(interview, payload) {
   // code (its DB-overridable 'followUp' prompt key was editable and unreachable).
   // Bounded: one per stage, because a follow-up's answer is itself isFollowUp and
   // fails this guard. Honours the existing followUps toggle.
-  if (isIntro && interview.config.followUps && !pending.isFollowUp) {
+  // `payload.answer?.trim()`: there is nothing to probe in a blank. Seen live —
+  // a candidate submitted an empty background answer and the model dutifully
+  // followed up on it ("share an example of a project you did..."), which reads
+  // as the interviewer ignoring them, and costs a call to do it.
+  if (isIntro && interview.config.followUps && !pending.isFollowUp && payload.answer?.trim()) {
     try {
       const text = await engine.maybeFollowUp({ interview, question: pending.text, answer: payload.answer });
       if (text) {
-        const followUp = {
+        const followUp = serve(interview, {
           text,
           competencies: pending.competencies,
           isIntro: true, // still background: unscored, and out of the report
           isFollowUp: true,
           expectedPoints: [],
           rationale: 'Follow-up on the background answer.',
-        };
+        });
         interview.engineState.phase = 'follow_up';
-        interview.engineState.pendingQuestion = followUp;
         interview.transcript.push({ role: 'ai', text: followUp.text, intro: true });
         await interview.save();
-        return { done: false, question: publicQuestion(followUp), progress: progressOf(interview) };
+        return { done: false, question: publicQuestion(followUp), progress: progressOf(interview), turn: interview.engineState.turnCount };
       }
     } catch (err) {
       // A background follow-up is a nicety; never fail the interview for it.
@@ -326,19 +377,18 @@ export async function answer(interview, payload) {
   // (already computed above) rather than spending a second AI call, and never
   // chain a follow-up off a follow-up.
   if (interview.config.followUps && evaluation.followUpSuggested && !pending.isFollowUp) {
-    const followUp = {
+    const followUp = serve(interview, {
       text: evaluation.followUpSuggested,
       competencies: pending.competencies,
       // Probe exactly what they missed; fall back to the parent question's key.
       expectedPoints: evaluation.keywordsMissed?.length ? evaluation.keywordsMissed : pending.expectedPoints,
       rationale: 'Follow-up on an incomplete or notable answer.',
       isFollowUp: true,
-    };
+    });
     interview.engineState.phase = 'follow_up';
-    interview.engineState.pendingQuestion = followUp;
     interview.transcript.push({ role: 'ai', text: followUp.text });
     await interview.save();
-    return { done: false, question: publicQuestion(followUp), progress: progressOf(interview) };
+    return { done: false, question: publicQuestion(followUp), progress: progressOf(interview), turn: interview.engineState.turnCount };
   }
 
   // Next question.
@@ -348,25 +398,40 @@ export async function answer(interview, payload) {
   // question rather than a turn of its own. "Gradually move" is a sentence, not
   // something the candidate should have to answer.
   if (isIntro && !next.isIntro) next.text = `${bridge({ jobTitle: job?.title, language: interview.config.language })} ${next.text}`;
-  interview.engineState.pendingQuestion = next;
+  serve(interview, next);
   interview.transcript.push({ role: 'ai', text: next.text, intro: Boolean(next.isIntro) });
   await interview.save();
 
-  return { done: false, question: publicQuestion(next), progress: progressOf(interview) };
+  return { done: false, question: publicQuestion(next), progress: progressOf(interview), turn: interview.engineState.turnCount };
 }
 
 /**
  * Skip / "ask another" — the candidate declines the current question. Enforces
  * the company's skip limit, records the skip, and serves the next question.
  */
-export async function skip(interview) {
+export async function skip(interview, { turn } = {}) {
   if (interview.status !== 'in_progress') throw ApiError.badRequest('Interview is not in progress');
   if (!interview.config.allowSkip) throw ApiError.forbidden('Skipping is disabled for this interview');
+  const pending = interview.engineState.pendingQuestion;
+
+  // Same story as answer(): a timed-out skip usually succeeded. Replaying it
+  // would spend a second skip from an allowance of two and drop another question.
+  if (isReplay(interview, turn)) {
+    if (!pending?.text) return { done: true, message: CLOSING, progress: progressOf(interview) };
+    return {
+      done: false,
+      question: publicQuestion(pending),
+      progress: progressOf(interview),
+      turn: interview.engineState.turnCount,
+      skipsRemaining: Math.max(0, interview.config.maxSkips - (interview.engineState.skipsUsed || 0)),
+      replayed: true,
+    };
+  }
+
   const used = interview.engineState.skipsUsed || 0;
   if (used >= interview.config.maxSkips) {
     throw ApiError.forbidden('No skips remaining', { code: 'NO_SKIPS_LEFT' });
   }
-  const pending = interview.engineState.pendingQuestion;
   if (!pending?.text) throw ApiError.badRequest('No question to skip');
 
   const job = interview.job ? await Job.findById(interview.job).lean() : null;
@@ -406,7 +471,7 @@ export async function skip(interview) {
   if (!isIntro && engine.isComplete(interview)) {
     interview.engineState.phase = 'closing';
     interview.engineState.pendingQuestion = undefined;
-    const closing = 'Thank you — that completes the interview. We are generating your evaluation now.';
+    const closing = CLOSING;
     interview.transcript.push({ role: 'ai', text: closing });
     await interview.save();
     return { done: true, message: closing, progress: progressOf(interview) };
@@ -414,13 +479,14 @@ export async function skip(interview) {
 
   const next = await generateQuestion(interview, job, null);
   if (isIntro && !next.isIntro) next.text = `${bridge({ jobTitle: job?.title, language: interview.config.language })} ${next.text}`;
-  interview.engineState.pendingQuestion = next;
+  serve(interview, next);
   interview.transcript.push({ role: 'ai', text: next.text, intro: Boolean(next.isIntro) });
   await interview.save();
   return {
     done: false,
     question: publicQuestion(next),
     progress: progressOf(interview),
+    turn: interview.engineState.turnCount,
     skipsRemaining: Math.max(0, interview.config.maxSkips - interview.engineState.skipsUsed),
   };
 }

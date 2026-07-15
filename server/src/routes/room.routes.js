@@ -4,7 +4,7 @@ import { validate } from '../middleware/validate.js';
 import { uploadMedia, uploadRecordingChunk } from '../middleware/upload.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as room from '../services/room.service.js';
-import { answerSchema, proctoringSchema, startSchema, languageSchema, deviceSchema, evidenceSchema } from '../validators/room.validators.js';
+import { answerSchema, skipSchema, proctoringSchema, startSchema, languageSchema, deviceSchema, evidenceSchema } from '../validators/room.validators.js';
 
 /**
  * Public interview room. Authorization is by the unguessable accessToken in the
@@ -30,7 +30,7 @@ const resolveRoomToken = asyncHandler(async (req, _res, next) => {
 router.get('/:token', roomCtrl.getRoom);
 router.post('/:token/start', validate(startSchema), roomCtrl.start);
 router.post('/:token/answer', validate(answerSchema), roomCtrl.answer);
-router.post('/:token/skip', roomCtrl.skip);
+router.post('/:token/skip', validate(skipSchema), roomCtrl.skip);
 router.post('/:token/language', validate(languageSchema), roomCtrl.language);
 router.post('/:token/tts', roomCtrl.tts);
 router.post('/:token/complete', roomCtrl.complete);

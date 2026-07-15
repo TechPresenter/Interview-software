@@ -31,7 +31,7 @@ export const answer = asyncHandler(async (req, res) => {
 /** POST /interview-room/:token/skip — skip / ask another (limited). */
 export const skip = asyncHandler(async (req, res) => {
   const interview = await room.loadByToken(req.params.token);
-  return ok(res, await room.skip(interview));
+  return ok(res, await room.skip(interview, req.body));
 });
 
 /** POST /interview-room/:token/language — switch EN/HI mid-interview. */

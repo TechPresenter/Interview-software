@@ -4,6 +4,24 @@ export const answerSchema = z.object({
   answer: z.string().max(20000).default(''),
   durationSeconds: z.number().int().nonnegative().optional(),
   audioUrl: z.string().optional(),
+  /**
+   * Which question this answers. The room echoes back the token it was served;
+   * the server uses it to tell a genuine answer from the retry of a submit that
+   * timed out client-side but succeeded here.
+   *
+   * It has to be declared: zod strips unknown keys, so an undeclared `turn`
+   * would be dropped before the controller ever saw it and the guard would look
+   * like it was working while never firing once.
+   *
+   * Optional on purpose — a room loaded before this shipped sends none, and must
+   * keep working.
+   */
+  turn: z.number().int().nonnegative().optional(),
+});
+
+/** Skip carries the same turn token, for the same reason. */
+export const skipSchema = z.object({
+  turn: z.number().int().nonnegative().optional(),
 });
 
 /** A single proctoring event. `type` is open (validated by weight table server-side). */

@@ -17,6 +17,32 @@ import { cn } from '@/lib/utils';
 type Phase = 'starting' | 'active' | 'submitting' | 'finishing' | 'done';
 interface Turn { role: 'ai' | 'candidate'; text: string }
 
+/**
+ * Say what actually went wrong.
+ *
+ * Every failed submit used to report "check your connection and try again" from
+ * a bare `catch {}` — a guess the code had no evidence for. A candidate whose
+ * answer was rejected by the server, or who waited out a slow one, was told to
+ * check a connection that was fine, and the real cause never reached anyone.
+ */
+function submitErrorMessage(e: any, lang: 'en' | 'hi'): string {
+  const hi = lang === 'hi';
+  // The server explained itself — pass that on rather than inventing a reason.
+  const serverMessage = e?.response?.data?.message;
+  if (serverMessage) return serverMessage;
+  if (e?.code === 'ECONNABORTED') {
+    return hi
+      ? 'उत्तर भेजने में सामान्य से अधिक समय लग रहा है। आपका उत्तर सुरक्षित है — कृपया दोबारा भेजें।'
+      : 'That took longer than expected. Your answer is safe — press Submit again.';
+  }
+  if (e?.response) {
+    return hi ? 'उत्तर सबमिट नहीं हुआ — कृपया दोबारा प्रयास करें।' : 'Couldn’t submit that answer. Please try again.';
+  }
+  return hi
+    ? 'नेटवर्क से संपर्क नहीं हो पा रहा — कनेक्शन जाँचें और दोबारा भेजें।'
+    : 'Couldn’t reach the server — check your connection and try again.';
+}
+
 const RISK_CLASS: Record<string, string> = {
   safe: 'bg-accent/15 text-accent',
   low: 'bg-sky-500/15 text-sky-400',
@@ -43,6 +69,10 @@ export function InterviewRoom({
   const [lang, setLang] = useState<Lang>(initialLanguage);
   const [question, setQuestion] = useState<RoomQuestion | null>(null);
   const [progress, setProgress] = useState<RoomProgress>({ current: 0, total: 8 });
+  // Which question we are answering. Echoed back on submit so that retrying a
+  // request that timed out (but actually succeeded) is recognised as a replay
+  // rather than filed as the answer to the NEXT question.
+  const turn = useRef<number | undefined>(undefined);
   const [transcript, setTranscript] = useState<Turn[]>([]);
   const [committed, setCommitted] = useState('');
   const [interim, setInterim] = useState('');
@@ -220,6 +250,7 @@ export function InterviewRoom({
         setTranscript([interviewer?.intro && { role: 'ai', text: interviewer.intro }, res.greeting && { role: 'ai', text: res.greeting }, res.question && { role: 'ai', text: res.question.text }].filter(Boolean) as Turn[]);
         setQuestion(res.question);
         setProgress(res.progress);
+        turn.current = res.turn;
         const saved = localStorage.getItem(`iv:${token}:0`);
         if (saved) setCommitted(saved);
         speakText(intro, lang);
@@ -268,7 +299,11 @@ export function InterviewRoom({
     setTranscript((t) => [...t, { role: 'candidate', text: text || '(no answer)' }]);
     localStorage.removeItem(`iv:${token}:${progress.current}`);
     try {
-      const res = await roomApi.answer(token, { answer: text, durationSeconds: Math.round((Date.now() - answerStart.current) / 1000) });
+      const res = await roomApi.answer(token, {
+        answer: text,
+        durationSeconds: Math.round((Date.now() - answerStart.current) / 1000),
+        turn: turn.current,
+      });
       trackFeature('ai_interview_answer', { chars: text.length });
       setCommitted(''); setInterim('');
       if (res.done) { pushAi(res.message, lang); await finish(); return; }
@@ -280,15 +315,21 @@ export function InterviewRoom({
         toast.info(lang === 'hi' ? 'अगला प्रश्न लोड हो रहा है…' : 'Loading the next question…');
         return;
       }
-      setQuestion(res.question); setProgress(res.progress); pushAi(res.question.text, lang);
+      setQuestion(res.question); setProgress(res.progress); turn.current = res.turn;
+      // `replayed` means this submit had already landed — the earlier attempt
+      // timed out on our side while the server finished it. The answer is safe;
+      // res.question is simply where they actually are, so don't re-announce it
+      // as if it were new.
+      if (!res.replayed) pushAi(res.question.text, lang);
       answerStart.current = Date.now(); setPhase('active');
-    } catch {
-      // Never leave the room frozen on "submitting" (e.g. a dropped mobile
-      // connection): restore the answer, drop the optimistic turn, and let them retry.
+    } catch (e) {
+      // Never leave the room frozen on "submitting": restore the answer, drop
+      // the optimistic turn, and let them retry — a retry is safe now, because
+      // `turn` lets the server recognise it.
       setCommitted(text);
       setTranscript((t) => (t[t.length - 1]?.role === 'candidate' ? t.slice(0, -1) : t));
       setPhase('active');
-      toast.error(lang === 'hi' ? 'उत्तर सबमिट नहीं हुआ — कृपया दोबारा प्रयास करें।' : 'Couldn’t submit — check your connection and try again.');
+      toast.error(submitErrorMessage(e, lang));
     }
   }
 
@@ -298,12 +339,15 @@ export function InterviewRoom({
     stopListening();
     setTranscript((t) => [...t, { role: 'candidate', text: '(skipped)' }]);
     try {
-      const res = await roomApi.skip(token);
+      const res = await roomApi.skip(token, turn.current);
       setCommitted(''); setInterim('');
       if (typeof res.skipsRemaining === 'number') setSkipsLeft(res.skipsRemaining);
       else setSkipsLeft((s) => Math.max(0, s - 1));
       if (res.done) { pushAi(res.message, lang); await finish(); return; }
-      if (res.question) { setQuestion(res.question); setProgress(res.progress); pushAi(res.question.text, lang); }
+      if (res.question) {
+        setQuestion(res.question); setProgress(res.progress); turn.current = res.turn;
+        if (!res.replayed) pushAi(res.question.text, lang);
+      }
       answerStart.current = Date.now(); setPhase('active');
     } catch {
       setTranscript((t) => (t[t.length - 1]?.role === 'candidate' ? t.slice(0, -1) : t));

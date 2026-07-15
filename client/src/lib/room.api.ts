@@ -6,9 +6,22 @@ const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
  * Interview-room client. These endpoints are token-gated (no auth header), so we
  * use a bare axios instance keyed by the interview accessToken in the URL.
  */
-// 30s timeout so a hung request (flaky mobile network) can't freeze the room
-// on "submitting" — the caller recovers and lets the candidate retry.
-const http = axios.create({ baseURL: `${BASE}/interview-room`, timeout: 30000 });
+/**
+ * 90s, not 30s.
+ *
+ * A timeout has to be longer than the work, and answering is two sequential LLM
+ * calls on the server — scoring, then generating the next question. Measured on
+ * real traffic: p50 1.4s, p90 7.1s, worst observed pair 23.5s, with individual
+ * calls already seen above 30s. So the old 30s budget was a coin flip against
+ * the tail: usually fine, and "sometimes" not — which is exactly how it was
+ * reported. Aborting there did not save the candidate anything either, because
+ * the request kept running on the server regardless.
+ *
+ * Retries are safe now (each answer carries the turn token it belongs to), so
+ * the remaining job of this timeout is only to stop a truly dead socket from
+ * wedging the room forever.
+ */
+const http = axios.create({ baseURL: `${BASE}/interview-room`, timeout: 90000 });
 
 export interface RoomQuestion {
   text: string;
@@ -23,9 +36,11 @@ export interface RoomProgress {
 export const roomApi = {
   get: (token: string) => http.get(`/${token}`).then((r) => r.data.data),
   start: (token: string, language?: 'en' | 'hi') => http.post(`/${token}/start`, { language }).then((r) => r.data.data),
-  answer: (token: string, body: { answer: string; durationSeconds?: number }) =>
+  // `turn` identifies the question being answered, so a retry after a timeout is
+  // recognised as a replay instead of being filed against the NEXT question.
+  answer: (token: string, body: { answer: string; durationSeconds?: number; turn?: number }) =>
     http.post(`/${token}/answer`, body).then((r) => r.data.data),
-  skip: (token: string) => http.post(`/${token}/skip`).then((r) => r.data.data),
+  skip: (token: string, turn?: number) => http.post(`/${token}/skip`, { turn }).then((r) => r.data.data),
   setLanguage: (token: string, language: 'en' | 'hi') => http.post(`/${token}/language`, { language }).then((r) => r.data.data),
   tts: (token: string, text: string, language: 'en' | 'hi', gender: 'female' | 'male' | 'auto' = 'female') =>
     http

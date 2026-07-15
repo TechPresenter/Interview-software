@@ -117,6 +117,22 @@ const interviewSchema = new Schema(
       /** How many background STAGES have been answered (follow-ups don't count). */
       introAsked: { type: Number, default: 0 },
       /**
+       * Increments every time a question is served. The room echoes it back when
+       * answering, which makes a submit idempotent.
+       *
+       * The room aborts a request at 30s and one answer() is two sequential LLM
+       * calls (measured on real traffic: p50 1.4s, p90 7.1s, worst pair 23.5s) —
+       * so the abort fires rarely, and the request keeps running when it does.
+       * The server records the answer and moves on; the candidate, seeing an
+       * error, presses Submit again and their answer to Q1 lands against Q2. One
+       * question is silently never asked. This counter is what lets the server
+       * tell a new answer from a replay.
+       *
+       * It cannot be derived from progress: a follow-up advances neither
+       * currentIndex nor introAsked, so two consecutive turns would collide.
+       */
+      turnCount: { type: Number, default: 0 },
+      /**
        * Whether the background questions address an early-career candidate.
        * Resolved once in start() (the only place the candidate doc is loaded)
        * so the wording stays stable for the whole interview.
