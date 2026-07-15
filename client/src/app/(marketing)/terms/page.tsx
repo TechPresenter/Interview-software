@@ -62,7 +62,7 @@ export default function TermsPage() {
             <ul>
               <li>Paid plans are billed in advance on a recurring basis until cancelled.</li>
               <li>Interview quotas and limits are defined by your selected plan.</li>
-              <li>Fees are non-refundable except where required by law. Changes are prorated.</li>
+              <li>Fees are non-refundable except where required by law. Cancelling takes effect immediately and returns the workspace to Free Trial limits for the remainder of the paid period.</li>
               <li>See the <a href="/pricing">pricing page</a> for current plans.</li>
             </ul>
           ),

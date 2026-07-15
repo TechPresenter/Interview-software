@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Bot, BarChart3, ShieldCheck, FileSearch, Video, Sparkles, ArrowRight, Check,
@@ -17,6 +18,9 @@ import { AiDemo, Eyebrow } from '@/components/landing/AiDemo';
 import { Testimonials } from '@/components/landing/Testimonials';
 import { Faq } from '@/components/landing/Faq';
 import { HeroVisual } from '@/components/landing/HeroVisual';
+import { contentApi } from '@/lib/content.api';
+import { money } from '@/lib/format';
+import type { PublicPlan } from '@/components/public/PlanLimitsTable';
 import { Reveal, Parallax } from '@/components/ui/motion';
 import { cn } from '@/lib/utils';
 
@@ -43,15 +47,14 @@ const stats = [
   { value: 98, suffix: '%', label: 'Recruiter satisfaction' },
 ];
 
-const plans = [
-  { name: 'Free Trial', monthly: 0, yearly: 0, features: ['3 AI Interviews (one-time)', '1 Active Job', 'Resume Upload', 'Basic Dashboard', 'Email Support', 'Valid 7 Days'], popular: false },
-  { name: 'Starter', monthly: 9999, yearly: 99990, features: ['100 AI Interviews / mo', '10 Active Jobs', 'Resume Analysis & Scoring', 'AI Candidate Ranking', 'Interview Reports', '5 Team Members'], popular: false },
-  { name: 'Professional', monthly: 24999, yearly: 249990, features: ['2,500 AI Interviews / mo', 'Unlimited Active Jobs', 'Anti-Cheat Monitoring', 'Video Recording', 'Custom Templates', 'Analytics Dashboard', 'Priority Support', '25 Team Members'], popular: true },
-  { name: 'Enterprise', monthly: null, yearly: null, features: ['Unlimited AI Interviews', 'Unlimited Jobs', 'Custom AI Weightage', 'SSO & Security', 'API Access', 'ATS/HRMS Integrations', 'White Label', 'Dedicated Manager'], popular: false },
-];
 
 export default function LandingPage() {
   const [yearly, setYearly] = useState(false);
+  // Served from the same endpoint as /pricing. This section used to hardcode its
+  // own copy of the tiers, which drifted: it invented feature gates the product
+  // does not enforce and priced in rupees against the API's paise.
+  const { data, isLoading } = useQuery({ queryKey: ['public-plans'], queryFn: contentApi.plans });
+  const plans: PublicPlan[] = Array.isArray(data) ? data : data?.plans ?? [];
 
   return (
     <main className="relative overflow-x-clip">
@@ -194,22 +197,30 @@ export default function LandingPage() {
             ))}
           </div>
         </Reveal>
+        <Reveal className="mx-auto mt-6 max-w-2xl text-center">
+          <p className="text-muted-foreground">
+            Every plan includes every feature. You only choose how much you need.
+          </p>
+        </Reveal>
         <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {isLoading && Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-96 rounded-2xl" />)}
           {plans.map((p, i) => {
-            const price = yearly ? p.yearly : p.monthly;
+            const price = yearly ? p.pricing.yearly : p.pricing.monthly;
+            // Free and Enterprise both price at 0; only the key tells them apart.
+            const isFree = p.key === 'free';
             return (
-              <GlassCard key={p.name} delay={i * 0.05} className={cn('flex flex-col', p.popular && 'gradient-border-spin ring-1 ring-primary/40 lg:-mt-3 lg:mb-3')}>
-                {p.popular && <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full bg-primary/15 px-3 py-0.5 text-xs font-medium text-primary"><Sparkles className="h-3 w-3" /> Most popular</span>}
+              <GlassCard key={p._id} delay={i * 0.05} className={cn('flex flex-col', p.isPopular && 'gradient-border-spin ring-1 ring-primary/40 lg:-mt-3 lg:mb-3')}>
+                {p.isPopular && <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full bg-primary/15 px-3 py-0.5 text-xs font-medium text-primary"><Sparkles className="h-3 w-3" /> Most popular</span>}
                 <h3 className="text-lg font-semibold">{p.name}</h3>
                 <p className="mt-3 text-4xl font-bold text-gradient">
-                  {price === null ? 'Custom' : price === 0 ? 'Free' : `₹${price.toLocaleString('en-IN')}`}
-                  {price ? <span className="text-base text-muted-foreground">/{yearly ? 'yr' : 'mo'}</span> : null}
+                  {isFree ? 'Free' : price ? money(price, p.pricing.currency) : 'Custom'}
+                  {!isFree && price ? <span className="text-base text-muted-foreground">/{yearly ? 'yr' : 'mo'}</span> : null}
                 </p>
                 <ul className="mt-5 space-y-2.5 text-sm text-muted-foreground">
-                  {p.features.map((f) => <li key={f} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" /> {f}</li>)}
+                  {(p.features ?? []).map((f) => <li key={f} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" /> {f}</li>)}
                 </ul>
                 <Link href="/register" className="mt-6 block pt-2">
-                  <Button className="w-full" variant={p.popular ? 'primary' : 'glass'} magnetic={false} data-cta={price === null ? 'contact_sales' : 'subscribe'} data-plan={p.name}>{price === null ? 'Contact sales' : 'Get started'}</Button>
+                  <Button className="w-full" variant={p.isPopular ? 'primary' : 'glass'} magnetic={false} data-cta={!isFree && !price ? 'contact_sales' : 'subscribe'} data-plan={p.name}>{!isFree && !price ? 'Contact sales' : 'Get started'}</Button>
                 </Link>
               </GlassCard>
             );

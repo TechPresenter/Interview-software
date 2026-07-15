@@ -20,7 +20,9 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Reveal } from '@/components/ui/motion';
 import { cn } from '@/lib/utils';
 
-type BadgeKind = 'ai' | 'new' | 'popular' | 'enterprise';
+// No plan-tier badge: every capability ships on every plan, so a tier label here
+// would imply a gate the product does not have. These are descriptive only.
+type BadgeKind = 'ai' | 'new' | 'popular';
 type FeatureItem = { icon: LucideIcon; title: string; desc: string; badge?: BadgeKind };
 type Category = { key: string; label: string; icon: LucideIcon; features: FeatureItem[] };
 
@@ -28,7 +30,6 @@ const BADGES: Record<BadgeKind, { label: string; cls: string }> = {
   ai: { label: 'AI Powered', cls: 'bg-primary/15 text-primary ring-primary/30' },
   new: { label: 'New', cls: 'bg-accent/15 text-accent ring-accent/30' },
   popular: { label: 'Popular', cls: 'bg-amber-500/15 text-amber-500 ring-amber-500/30' },
-  enterprise: { label: 'Enterprise', cls: 'bg-sky-500/15 text-sky-500 ring-sky-500/30' },
 };
 
 const CATEGORIES: Category[] = [
@@ -66,7 +67,7 @@ const CATEGORIES: Category[] = [
     key: 'video-room', label: 'Video Interview Room', icon: Video,
     features: [
       { icon: Bot, title: 'Live AI Avatar', desc: 'A friendly AI interviewer guides candidates through every question.', badge: 'ai' },
-      { icon: Video, title: '1080p HD Recording', desc: 'Every interview is recorded in full HD for later review and audit.', badge: 'new' },
+      { icon: Video, title: 'HD Recording', desc: 'Full-length capture at up to 1080p, depending on the candidate’s webcam, for later review and audit.', badge: 'new' },
       { icon: Captions, title: 'Live Transcript', desc: 'Real-time speech-to-text transcript of every answer as it happens.' },
       { icon: Save, title: 'Autosave & Resume', desc: 'Progress is saved continuously — candidates can reconnect and continue.' },
       { icon: Webcam, title: 'Device Pre-Checks', desc: 'Camera and mic checks ensure a smooth start with no surprises.' },
@@ -111,17 +112,17 @@ const CATEGORIES: Category[] = [
   {
     key: 'admin-dashboard', label: 'Admin Dashboard', icon: ShieldCheck,
     features: [
-      { icon: LayoutDashboard, title: 'Platform Overview', desc: 'Companies, revenue, and AI usage across the whole platform.', badge: 'enterprise' },
-      { icon: Building2, title: 'Company Management', desc: 'Manage tenants, plans, and access from one console.', badge: 'enterprise' },
-      { icon: HeartPulse, title: 'System Health', desc: 'Live database, cache, and service health monitoring.', badge: 'enterprise' },
-      { icon: ScrollText, title: 'Audit Logs', desc: 'Every configuration change tracked, searchable, and exportable.', badge: 'enterprise' },
+      { icon: LayoutDashboard, title: 'Platform Overview', desc: 'Companies, revenue, and AI usage across the whole platform.' },
+      { icon: Building2, title: 'Company Management', desc: 'Manage tenants, plans, and access from one console.' },
+      { icon: HeartPulse, title: 'System Health', desc: 'Live database, cache, and service health monitoring.' },
+      { icon: ScrollText, title: 'Audit Logs', desc: 'Every configuration change tracked, searchable, and exportable.' },
     ],
   },
   {
     key: 'staff-roles', label: 'Staff & Role Management', icon: UserCog,
     features: [
       { icon: KeyRound, title: 'Role-based Access', desc: 'Five built-in roles from super-admin to candidate.' },
-      { icon: ShieldCheck, title: 'Custom Roles & Permissions', desc: 'Define granular, least-privilege permissions per role.', badge: 'enterprise' },
+      { icon: ShieldCheck, title: 'Custom Roles & Permissions', desc: 'Define granular, least-privilege permissions per role.' },
       { icon: UserCog, title: 'Staff Management', desc: 'Invite, activate, deactivate, and edit team members with ease.' },
     ],
   },
@@ -164,12 +165,12 @@ const CATEGORIES: Category[] = [
   {
     key: 'security', label: 'Security & Compliance', icon: Lock,
     features: [
-      { icon: Lock, title: 'Encrypted Data', desc: 'Data encrypted in transit and at rest, with least-privilege access.', badge: 'enterprise' },
+      { icon: Lock, title: 'Encrypted Data', desc: 'Data encrypted in transit and at rest, with least-privilege access.' },
       { icon: ShieldAlert, title: 'Anti-cheat Proctoring', desc: 'Tab, blur, paste, and face-presence signals form a live integrity score.', badge: 'ai' },
       { icon: ScrollText, title: 'Audit Logs', desc: 'A full audit trail of sensitive actions across the platform.' },
       { icon: BadgeCheck, title: 'GDPR-friendly', desc: 'Data subject rights, a DPA, and privacy-first data handling.' },
       { icon: KeyRound, title: 'Two-Factor Auth', desc: 'Optional 2FA for an extra layer of account security.' },
-      { icon: DatabaseBackup, title: 'Backup & Recovery', desc: 'Automated backups keep your data safe and recoverable.', badge: 'enterprise' },
+      { icon: DatabaseBackup, title: 'Backup & Recovery', desc: 'Automated backups keep your data safe and recoverable.' },
     ],
   },
   {
@@ -177,7 +178,7 @@ const CATEGORIES: Category[] = [
     features: [
       { icon: Cable, title: '40+ Tracking Integrations', desc: 'GA4, GTM, Meta Pixel, Clarity, Hotjar, PostHog, and many more.', badge: 'new' },
       { icon: Webhook, title: 'Webhooks', desc: 'Push events to Slack, Discord, Zapier, Make, or your own endpoint.' },
-      { icon: KeyRound, title: 'REST API & Keys', desc: 'Automate anything with a secure, key-based REST API.', badge: 'enterprise' },
+      { icon: KeyRound, title: 'REST API & Keys', desc: 'Automate anything with a secure, key-based REST API.' },
       { icon: Code2, title: 'Custom Scripts', desc: 'Inject custom header and footer scripts safely from the admin panel.' },
     ],
   },
@@ -188,7 +189,7 @@ const CATEGORIES: Category[] = [
       { icon: Ticket, title: 'Coupons & Discounts', desc: 'Percentage or fixed-amount promo codes with usage limits.' },
       { icon: ReceiptText, title: 'GST Invoices', desc: 'GST-compliant, downloadable PDF invoices for every payment.' },
       { icon: Sparkles, title: 'Free Trial', desc: 'Start free with no credit card required — upgrade when ready.', badge: 'popular' },
-      { icon: Layers, title: 'Plan Management', desc: 'Upgrade, downgrade, or cancel anytime with prorated changes.' },
+      { icon: Layers, title: 'Plan Management', desc: 'Upgrade or cancel anytime from your billing dashboard, with invoices and payment history.' },
     ],
   },
   {
@@ -340,7 +341,7 @@ export default function FeaturesClient() {
           <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-40 aurora opacity-40" />
           <h2 className="text-2xl font-bold tracking-tight md:text-3xl">See the complete platform in action</h2>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            Start free in minutes, or talk to our team about an enterprise rollout with SSO, custom AI weighting, and onboarding support.
+            Start free in minutes, or talk to our team about an enterprise rollout with procurement support, a dedicated account manager, and onboarding.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link href="/register"><Button size="lg"><Rocket className="h-4 w-4" /> Start Free Trial</Button></Link>

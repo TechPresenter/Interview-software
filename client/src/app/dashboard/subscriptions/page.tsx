@@ -103,7 +103,10 @@ function Plans() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Customize pricing, limits, and features for each tier.</p>
+        <p className="text-sm text-muted-foreground">
+          Set pricing and usage limits per tier. Every platform feature is included in every plan —
+          tiers differ by how much, never by what.
+        </p>
         {(data?.length ?? 0) === 0 && !isLoading && (
           <Button size="sm" magnetic={false} loading={seed.isPending} onClick={() => seed.mutate()}>
             <Sparkles className="h-4 w-4" /> Seed default tiers
@@ -165,7 +168,20 @@ function Plans() {
             <Field label="Interviews / month" type="number" value={String(form.interviewsPerMonth)} onChange={(v) => setForm((f) => ({ ...f, interviewsPerMonth: Number(v) }))} />
             <Field label="AI tokens / month" type="number" value={String(form.aiTokensPerMonth)} onChange={(v) => setForm((f) => ({ ...f, aiTokensPerMonth: Number(v) }))} />
           </div>
-          <Textarea label="Features (one per line)" value={form.features} onChange={(v) => setForm((f) => ({ ...f, features: v }))} rows={5} />
+          <Textarea
+            label="Plan highlights (one per line)"
+            value={form.features}
+            onChange={(v) => setForm((f) => ({ ...f, features: v }))}
+            rows={5}
+            placeholder={'100 AI interviews / month\n10 active jobs\n5 team members\nEvery platform feature included'}
+          />
+          {/* Labelled "Features" before, which read as a capability list and is how
+              the pricing page ended up implying gates nothing enforces. These are
+              the tier's quotas — capability is universal. */}
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Shown on the pricing and billing cards. Describe this tier&apos;s quotas — not what it can do.
+            Listing a capability here implies other tiers lack it, and nothing in the product enforces that.
+          </p>
           <div className="flex gap-6 text-sm">
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.isPopular} onChange={(e) => setForm((f) => ({ ...f, isPopular: e.target.checked }))} className="accent-[hsl(var(--primary))]" /> Mark as popular</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="accent-[hsl(var(--primary))]" /> Active</label>

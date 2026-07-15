@@ -6,6 +6,7 @@ import { AuditLog } from '../../models/AuditLog.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok, created } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { assertWithinLimit } from '../../services/limits.service.js';
 import { config } from '../../config/index.js';
 import { logActivity } from '../../services/audit.service.js';
 import { safeSendTemplated } from '../../services/email.service.js';
@@ -34,6 +35,7 @@ export const list = asyncHandler(async (req, res) => {
 export const create = asyncHandler(async (req, res) => {
   const { name, email, role, customRole } = req.body;
   if (!STAFF_ROLES.includes(role)) throw ApiError.badRequest('Invalid staff role');
+  await assertWithinLimit(req.companyId, 'seats');
   const lower = String(email).toLowerCase();
   if (await User.exists({ email: lower })) throw ApiError.conflict('That email is already in use');
   if (customRole && !(await Role.exists({ _id: customRole, company: req.companyId }))) {

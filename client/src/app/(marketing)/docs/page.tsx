@@ -70,7 +70,7 @@ const sections = [
       <>
         <p>Manage your subscription from <strong>Dashboard → Billing</strong>:</p>
         <ul>
-          <li>Upgrade, downgrade, or cancel anytime — changes are prorated.</li>
+          <li>Upgrade or cancel anytime. Cancelling takes effect immediately and returns the workspace to the Free Trial limits.</li>
           <li>Each completed interview counts once against your monthly quota.</li>
           <li>Download invoices for your records.</li>
         </ul>

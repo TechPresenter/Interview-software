@@ -12,6 +12,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { parseListQuery, paginateQuery } from '../utils/query.js';
 import { getPublicCaptchaConfig } from '../services/captcha.service.js';
 import { INTEGRATIONS, renderTemplate } from '../config/integrations.catalog.js';
+import { PLATFORM_FEATURES } from '../constants/platformFeatures.js';
 import { redis } from '../config/redis.js';
 
 /**
@@ -73,10 +74,23 @@ export const announcements = asyncHandler(async (_req, res) => {
   return ok(res, items);
 });
 
-/** GET /content/plans — public pricing. */
+/**
+ * GET /content/plans — public pricing.
+ *
+ * Returns the capability catalog alongside the tiers because it belongs to no
+ * single tier: every plan includes all of it, and plans differ only by their
+ * `limits`. Serving both together keeps the marketing site from hardcoding its
+ * own copy of either and drifting from what the product actually does.
+ */
 export const plans = asyncHandler(async (_req, res) => {
   const items = await Plan.find({ isActive: true }).sort('sortOrder').lean();
-  return ok(res, items);
+  return ok(res, {
+    plans: items,
+    // `category` is the internal field name; the wire calls it `label` because
+    // that is what it is to a reader. Mapping here keeps the constant readable
+    // and the payload self-describing.
+    platformFeatures: PLATFORM_FEATURES.map((c) => ({ key: c.key, label: c.category, items: c.items })),
+  });
 });
 
 /** GET /content/captcha — public CAPTCHA config for the site forms (no secret). */

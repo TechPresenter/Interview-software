@@ -10,7 +10,7 @@ const faqs = [
   { q: 'Is it fair and unbiased?', a: 'Every answer is scored against role competencies with transparent reasoning, and the same rubric is applied to all candidates. You control the weighting of each competency.' },
   { q: 'Can candidates cheat?', a: 'Built-in proctoring detects tab switches, window blur, paste, and fullscreen exits, computing a live integrity score that flags suspicious sessions.' },
   { q: 'Which roles does it support?', a: 'Technical, HR, behavioral, aptitude, and coding interviews — fully configurable per job, including question count and duration.' },
-  { q: 'Do you offer a free plan?', a: 'Yes. Start free with limited interviews per month, then upgrade to Starter, Professional, or Enterprise as you scale.' },
+  { q: 'Do you offer a free plan?', a: 'Yes. Start free and upgrade as you scale. Every plan includes every feature — plans differ only in how much you can use: interviews, active jobs, team members, and AI usage.' },
 ];
 
 export function Faq() {

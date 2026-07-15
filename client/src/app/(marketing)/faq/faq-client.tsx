@@ -40,7 +40,7 @@ const FALLBACK_GROUPS: Group[] = [
     items: [
       { q: 'Is there a free plan?', a: 'Yes. The Free Trial lets you run AI interviews without a credit card so you can evaluate the platform before upgrading.' },
       { q: 'What counts as one interview?', a: 'One completed candidate session — questions, scoring, and the generated report — counts as a single interview against your monthly quota.' },
-      { q: 'Can I cancel anytime?', a: 'Absolutely. Upgrade, downgrade, or cancel at any time from your billing dashboard; changes are prorated automatically.' },
+      { q: 'Can I cancel anytime?', a: 'Yes — upgrade or cancel at any time from your billing dashboard. Cancelling takes effect immediately and returns your workspace to the Free Trial limits; fees already paid are not refunded except where required by law.' },
     ],
   },
   {

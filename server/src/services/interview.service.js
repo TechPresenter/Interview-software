@@ -16,6 +16,9 @@ import { ApiError } from '../utils/ApiError.js';
  */
 export async function scheduleInterview({ companyId, candidate, job, types, round, config: cfg = {}, scheduledAt, expiresAt, invitedBy, knowledgeBase, questionSet }) {
   await assertWithinLimit(companyId, 'interviews');
+  // Budget is checked here rather than in the room: an interview that has begun
+  // must always be able to finish.
+  await assertWithinLimit(companyId, 'aiTokens');
 
   const bp = job?.interviewConfig || {};
   // Merge precedence: request config > job blueprint > sensible default.
