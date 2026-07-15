@@ -35,7 +35,7 @@ const COMPANY_ROLES = ['company_admin', 'recruiter', 'hr_manager'];
 export default function DashboardPage() {
   const user = useAuth((s) => s.user);
   if (user?.role === 'super_admin') return <SuperAdminOverview name={user.name} />;
-  if (user && COMPANY_ROLES.includes(user.role)) return <CompanyOverview name={user.name} />;
+  if (user && COMPANY_ROLES.includes(user.role)) return <CompanyOverview name={user.name} role={user.role} />;
   if (user?.role === 'candidate') return <CandidateOverview name={user.name} />;
   return <PlaceholderOverview role={user?.role} name={user?.name} />;
 }
@@ -102,7 +102,7 @@ const STAGE_COLORS: Record<string, string> = {
   rejected: 'hsl(0 84% 60%)',
 };
 
-function CompanyOverview({ name }: { name: string }) {
+function CompanyOverview({ name, role }: { name: string; role: string }) {
   const { data, isLoading } = useQuery({ queryKey: ['company-overview'], queryFn: companyApi.overview });
   const k = data?.kpis;
   const funnel: any[] = data?.funnel ?? [];
@@ -208,9 +208,14 @@ function CompanyOverview({ name }: { name: string }) {
             <Usage label="Active jobs" used={data?.usage?.usage?.activeJobs} limit={data?.usage?.limits?.activeJobs} />
             <Usage label="Interviews (mo)" used={data?.usage?.usage?.interviewsThisMonth} limit={data?.usage?.limits?.interviewsPerMonth} />
           </div>
-          <Link href="/dashboard/billing" className="mt-5 block">
-            <Button size="sm" variant="glass" className="w-full" magnetic={false}>Manage plan</Button>
-          </Link>
+          {/* Usage is everyone's business; the plan behind it is the admin's.
+              Billing is company_admin-only, so anyone else following this lands
+              on a 403. */}
+          {role === 'company_admin' && (
+            <Link href="/dashboard/billing" className="mt-5 block">
+              <Button size="sm" variant="glass" className="w-full" magnetic={false}>Manage plan</Button>
+            </Link>
+          )}
         </GlassCard>
       </div>
     </div>

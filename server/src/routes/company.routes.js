@@ -195,11 +195,18 @@ router.post(
 );
 
 /* ── Billing ───────────────────────────────────────────── */
-router.get('/billing', billing.summary);
-router.get('/billing/invoices', billing.invoices);
-router.get('/billing/invoices/:id/pdf', billing.invoicePdf);
-router.post('/billing/checkout', billing.checkout);
-router.post('/billing/razorpay/verify', billing.verifyRazorpay);
-router.post('/billing/cancel', billing.cancel);
+// These carried NO guard at all: any recruiter or HR manager could read the
+// workspace's plan, usage and invoices, and POST /billing/checkout reached the
+// payment controller — it only failed because no provider happened to be
+// configured, which is luck, not authorisation. DEFAULT_PERMISSIONS has always
+// granted those roles nothing on `billing`; the routes simply never asked.
+// Money movement is company_admin's alone, matching /company/account and
+// /company/api-keys.
+router.get('/billing', requirePermission('billing', 'read'), billing.summary);
+router.get('/billing/invoices', requirePermission('billing', 'read'), billing.invoices);
+router.get('/billing/invoices/:id/pdf', requirePermission('billing', 'read'), billing.invoicePdf);
+router.post('/billing/checkout', rbac(ROLES.COMPANY_ADMIN), billing.checkout);
+router.post('/billing/razorpay/verify', rbac(ROLES.COMPANY_ADMIN), billing.verifyRazorpay);
+router.post('/billing/cancel', rbac(ROLES.COMPANY_ADMIN), billing.cancel);
 
 export default router;
