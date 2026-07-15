@@ -47,6 +47,7 @@ import {
   questionReviewSchema,
   bulkReviewSchema,
   generateQuestionsSchema,
+  generateFromKnowledgeBaseSchema,
 } from '../validators/admin.validators.js';
 import { requirePermission } from '../services/permission.service.js';
 
@@ -184,6 +185,14 @@ router.patch('/knowledge-bases/:id', kb.update);
 router.post('/knowledge-bases/:id/sources', uploadKnowledge, kb.addSources);
 router.post('/knowledge-bases/:id/toggle', kb.toggle);
 router.delete('/knowledge-bases/:id', kb.remove);
+// Writes into the question bank, so it takes the bank's create permission rather
+// than the knowledge module's.
+router.post(
+  '/knowledge-bases/:id/generate-questions',
+  requirePermission('questions', 'create'),
+  validate(generateFromKnowledgeBaseSchema),
+  kb.generateQuestions,
+);
 
 /* ── Billing ───────────────────────────────────────────── */
 router.get('/billing', billing.summary);

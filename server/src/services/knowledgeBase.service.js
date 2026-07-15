@@ -112,13 +112,17 @@ export function deriveTopics(content, limit = 12) {
 }
 
 /**
- * Build a grounding context string for the interview/report prompts. Returns the
- * most relevant chunks for `query` (simple keyword overlap) up to maxChars, or the
- * start of the content when there's no query.
+ * Pick the most relevant slice of an ALREADY-LOADED knowledge base.
+ *
+ * Split out of contextFor for callers that hold the document already: content can
+ * run to MAX_CHARS, so re-fetching it just to select 6000 of those chars reads a
+ * third of a megabyte off the wire for nothing. Assumes `+content +chunks` were
+ * selected; the status/emptiness checks stay with the loader.
+ *
+ * @param {object} kb hydrated KnowledgeBase doc
+ * @param {{ query?: string, maxChars?: number }} [opts]
  */
-export async function contextFor(kbId, { query = '', maxChars = 6000 } = {}) {
-  const kb = await KnowledgeBase.findById(kbId).select('+content +chunks');
-  if (!kb || kb.status !== 'active' || !kb.content) return null;
+export function selectContext(kb, { query = '', maxChars = 6000 } = {}) {
   const chunks = (kb.chunks || []).map((c) => c.text).filter(Boolean);
   if (!chunks.length) return { name: kb.name, topics: kb.topics, text: kb.content.slice(0, maxChars) };
 
@@ -139,4 +143,16 @@ export async function contextFor(kbId, { query = '', maxChars = 6000 } = {}) {
   return { name: kb.name, topics: kb.topics, text: (out || kb.content.slice(0, maxChars)).trim() };
 }
 
-export default { ingestSources, applySources, contextFor, chunkText, deriveTopics };
+/**
+ * Build a grounding context string for the interview/report prompts. Returns the
+ * most relevant chunks for `query` (simple keyword overlap) up to maxChars, or the
+ * start of the content when there's no query. Null when the KB cannot ground
+ * anything — missing, disabled, or empty.
+ */
+export async function contextFor(kbId, opts = {}) {
+  const kb = await KnowledgeBase.findById(kbId).select('+content +chunks');
+  if (!kb || kb.status !== 'active' || !kb.content) return null;
+  return selectContext(kb, opts);
+}
+
+export default { ingestSources, applySources, contextFor, selectContext, chunkText, deriveTopics };

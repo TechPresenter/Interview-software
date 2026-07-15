@@ -15,6 +15,7 @@
     "check:db": "node src/scripts/check-db.js",
     "migrate:questions": "node src/scripts/migrate-question-taxonomy.js",
     "seed:prompts": "node src/scripts/seed-prompts.js",
+    "migrate:text-indexes": "node src/scripts/migrate-text-indexes.js",
     "lint": "eslint src",
     "test": "vitest run"
   },

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Plus, Send, Link2, XCircle, Activity, Languages } from 'lucide-react';
 import { companyApi } from '@/lib/company.api';
 import { knowledgeApi } from '@/lib/knowledge.api';
+import { questionSetsApi, questionCountOf, INTERVIEW_ROUNDS } from '@/lib/questionSets.api';
 import { useAuth } from '@/store/auth.store';
 import { dateTime, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -45,6 +46,10 @@ export default function InterviewsPage() {
   const [sendInvite, setSendInvite] = useState(true);
   const [cfg, setCfg] = useState<Cfg>({ ...DEFAULT_CFG });
   const [knowledgeBase, setKnowledgeBase] = useState('');
+  // A fixed set makes every candidate face the same questions, which is what
+  // makes comparing two of them fair. room.service serves it ahead of the bank.
+  const [questionSet, setQuestionSet] = useState('');
+  const [round, setRound] = useState('');
   const [customDuration, setCustomDuration] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
@@ -53,12 +58,15 @@ export default function InterviewsPage() {
   const { data, isLoading } = useQuery({ queryKey: ['interviews', page], queryFn: () => companyApi.interviews({ page, limit: 10 }) });
   const { data: candidates } = useQuery({ queryKey: ['candidates-mini'], queryFn: () => companyApi.candidates({ limit: 100 }) });
   const { data: kbs } = useQuery({ queryKey: ['kb-mini'], queryFn: () => knowledgeApi.list(role) });
+  const { data: sets } = useQuery({ queryKey: ['question-sets-mini'], queryFn: () => questionSetsApi.list({ limit: 100 }) });
 
-  const openModal = () => { setCfg({ ...DEFAULT_CFG }); setCandidate(''); setTypes(['hr']); setKnowledgeBase(''); setScheduledAt(''); setExpiresAt(''); setCustomDuration(false); setOpen(true); };
+  const openModal = () => { setCfg({ ...DEFAULT_CFG }); setCandidate(''); setTypes(['hr']); setKnowledgeBase(''); setQuestionSet(''); setRound(''); setScheduledAt(''); setExpiresAt(''); setCustomDuration(false); setOpen(true); };
 
   const schedule = useMutation({
     mutationFn: () => companyApi.schedule({
       candidate, types, sendInvite, config: cfg, knowledgeBase: knowledgeBase || undefined,
+      questionSet: questionSet || undefined,
+      round: round || undefined,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
     }),
@@ -146,10 +154,38 @@ export default function InterviewsPage() {
             <p className="mt-1 text-xs text-muted-foreground">Select multiple for a mixed interview.</p>
           </div>
 
-          <Section title="Knowledge Base" />
+          <Section title="Questions" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Select
+              label="Question set (fixed)"
+              value={questionSet}
+              onChange={setQuestionSet}
+              options={[
+                { label: 'None — pick questions automatically', value: '' },
+                ...(sets?.items ?? []).map((s: any) => ({
+                  label: `${s.name} · ${questionCountOf(s)} question${questionCountOf(s) === 1 ? '' : 's'}`,
+                  value: s._id,
+                })),
+              ]}
+            />
+            <Select
+              label="Round"
+              value={round}
+              onChange={setRound}
+              options={[
+                { label: 'Not specified', value: '' },
+                ...INTERVIEW_ROUNDS.map((r) => ({ label: titleCase(r), value: r })),
+              ]}
+            />
+          </div>
+          <p className="-mt-2 text-xs text-muted-foreground">
+            A set asks every candidate the same questions in the same order — the only way to compare two people fairly.
+            Leave it empty and the AI picks from your approved question bank, then writes its own if nothing fits.
+          </p>
+
           <div>
             <Select
-              label="Generate questions from a Knowledge Base"
+              label="Ground questions in a Knowledge Base"
               value={knowledgeBase}
               onChange={setKnowledgeBase}
               options={[
@@ -169,7 +205,7 @@ export default function InterviewsPage() {
               {customDuration && <input type="number" min={5} max={600} value={cfg.durationMinutes} onChange={(e) => setC('durationMinutes', Number(e.target.value) || 30)} placeholder="Minutes" className="mt-2 h-10 w-full rounded-xl border border-input bg-background/60 px-3 text-sm outline-none focus:border-primary" />}
             </div>
             <NumField label="Number of questions" value={cfg.questionCount} onChange={(v) => setC('questionCount', v)} min={1} max={50} />
-            <Select label="Difficulty" value={cfg.difficulty} onChange={(v) => setC('difficulty', v)} options={[['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => ({ label: l, value: v }))} />
+            <Select label="Difficulty" value={cfg.difficulty} onChange={(v) => setC('difficulty', v)} options={[['easy', 'Beginner'], ['medium', 'Intermediate'], ['hard', 'Advanced'], ['expert', 'Expert']].map(([v, l]) => ({ label: l, value: v }))} />
             <Select label="Experience level" value={cfg.experienceLevel} onChange={(v) => setC('experienceLevel', v)} options={[['', 'Any'], ['fresher', 'Fresher'], ['mid', 'Mid-level'], ['senior', 'Senior'], ['lead', 'Lead']].map(([v, l]) => ({ label: l, value: v }))} />
             <NumField label="Passing score (%)" value={cfg.passingScore} onChange={(v) => setC('passingScore', v)} min={0} max={100} />
             <NumField label="Time / question (sec, 0 = none)" value={cfg.timePerQuestionSeconds} onChange={(v) => setC('timePerQuestionSeconds', v)} min={0} max={3600} />

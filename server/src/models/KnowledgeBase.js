@@ -20,6 +20,13 @@ const sourceSchema = new Schema(
     mime: { type: String },
     bytes: { type: Number },
     chars: { type: Number, default: 0 },
+    /**
+     * Why this source contributed nothing, when it did — a scan with no text
+     * layer, a legacy .doc, a corrupt export. Without it a failed upload is
+     * indistinguishable from an empty one, and "question generation is broken"
+     * is what the user reports instead of "my PDF was a photo".
+     */
+    error: { type: String, default: null },
     addedAt: { type: Date, default: Date.now },
   },
   { _id: true },

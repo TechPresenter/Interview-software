@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Inbox,
+  ListChecks,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/store/auth.store';
@@ -62,6 +63,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Candidates', href: '/dashboard/candidates', icon: Users },
     { label: 'Interviews', href: '/dashboard/interviews', icon: CalendarClock },
     { label: 'Question Bank', href: '/dashboard/questions', icon: Database },
+    { label: 'Question Sets', href: '/dashboard/question-sets', icon: ListChecks },
     { label: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
     { label: 'Reports', href: '/dashboard/reports', icon: FileBarChart },
     { label: 'Proctoring', href: '/dashboard/proctoring', icon: ShieldAlert },
@@ -79,6 +81,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Candidates', href: '/dashboard/candidates', icon: Users },
     { label: 'Interviews', href: '/dashboard/interviews', icon: CalendarClock },
     { label: 'Question Bank', href: '/dashboard/questions', icon: Database },
+    { label: 'Question Sets', href: '/dashboard/question-sets', icon: ListChecks },
     { label: 'Pipeline', href: '/dashboard/pipeline', icon: GitBranch },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'Proctoring', href: '/dashboard/proctoring', icon: ShieldAlert },
@@ -88,6 +91,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Interviews', href: '/dashboard/interviews', icon: CalendarClock },
     { label: 'Question Bank', href: '/dashboard/questions', icon: Database },
+    { label: 'Question Sets', href: '/dashboard/question-sets', icon: ListChecks },
     { label: 'Reports', href: '/dashboard/reports', icon: FileBarChart },
     { label: 'Recordings', href: '/dashboard/recordings', icon: Film },
     { label: 'Proctoring', href: '/dashboard/proctoring', icon: ShieldAlert },

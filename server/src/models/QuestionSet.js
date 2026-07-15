@@ -42,7 +42,12 @@ const questionSetSchema = new Schema(
 );
 
 questionSetSchema.index({ company: 1, isActive: 1 });
-questionSetSchema.index({ name: 'text', tags: 'text' });
+// See Question.js: the `language` field would otherwise be read as the text
+// index's own language and reject 'hi'/'bilingual'.
+questionSetSchema.index(
+  { name: 'text', tags: 'text' },
+  { language_override: 'textSearchLanguage', default_language: 'english' },
+);
 
 /** Convenience for list views — avoids populating just to show a count. */
 questionSetSchema.virtual('questionCount').get(function count() {

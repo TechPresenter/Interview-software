@@ -80,6 +80,12 @@ const questionSchema = new Schema(
     /* ── Moderation / provenance ── */
     status: { type: String, enum: QUESTION_STATUS, default: 'approved', index: true },
     source: { type: String, enum: QUESTION_SOURCES, default: 'manual', index: true },
+    /**
+     * The knowledge base this question was generated from, when it was. Lets a
+     * reviewer judge a question against the material it came from, and lets a
+     * whole batch be found again after the source document changes.
+     */
+    knowledgeBase: { type: Schema.Types.ObjectId, ref: 'KnowledgeBase', default: null, index: true },
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reviewedAt: { type: Date },
 
@@ -100,7 +106,20 @@ const questionSchema = new Schema(
 // Selection path: type + difficulty + status + active.
 questionSchema.index({ type: 1, difficulty: 1, status: 1, isActive: 1 });
 questionSchema.index({ company: 1, status: 1, isActive: 1 });
-questionSchema.index({ text: 'text', skills: 'text', topic: 'text' });
+/**
+ * `language_override` is load-bearing, not decoration.
+ *
+ * A text index treats the document's `language` field as ITS OWN language
+ * setting, and MongoDB only knows its own list — so `language: 'hi'` or
+ * 'bilingual' made the insert fail outright with "language override unsupported"
+ * (code 17262). Every Hindi and bilingual question was therefore impossible to
+ * save. Pointing the override at a field nobody writes leaves `language` as
+ * plain data.
+ */
+questionSchema.index(
+  { text: 'text', skills: 'text', topic: 'text' },
+  { language_override: 'textSearchLanguage', default_language: 'english' },
+);
 
 /** Keep the legacy scoring anchor in sync with the richer answer key. */
 questionSchema.pre('save', function syncExpectedPoints(next) {

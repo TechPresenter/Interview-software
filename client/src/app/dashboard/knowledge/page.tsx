@@ -1,9 +1,11 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Plus, Trash2, Power, Eye, FilePlus, FileText, Lightbulb, Search, Upload, Sparkles, Target } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Power, Eye, FilePlus, FileText, Lightbulb, Search, Upload, Sparkles, Target, AlertTriangle } from 'lucide-react';
 import { knowledgeApi } from '@/lib/knowledge.api';
+import { GenerateFromKbModal } from '@/components/knowledge/GenerateFromKbModal';
 import { useAuth } from '@/store/auth.store';
 import { number, relativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -51,6 +53,7 @@ export default function KnowledgePage() {
   const [open, setOpen] = useState(false);
   const [appendTo, setAppendTo] = useState<any>(null); // KB being appended to (else create)
   const [viewing, setViewing] = useState<any>(null);
+  const [generating, setGenerating] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [filter, setFilter] = useState({ q: '', category: '', experienceLevel: '', difficulty: '', language: '' });
   const fileRef = useRef<HTMLInputElement>(null);
@@ -108,8 +111,13 @@ export default function KnowledgePage() {
     <div className="space-y-8">
       <PageHeader
         title="Knowledge Base"
-        description="Upload reference material that grounds AI interviews. PDF, DOCX, TXT, CSV, XLSX, PPTX, ZIP, URLs, or text."
-        action={<Button magnetic={false} onClick={openCreate}><Plus className="h-4 w-4" /> New knowledge base</Button>}
+        description="Upload reference material that grounds AI interviews and generates questions. PDF, DOCX, TXT, CSV, XLSX, PPTX, ZIP, URLs, or text."
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Link href="/dashboard/questions"><Button variant="glass" magnetic={false}>Question Bank</Button></Link>
+            <Button magnetic={false} onClick={openCreate}><Plus className="h-4 w-4" /> New knowledge base</Button>
+          </div>
+        }
       />
 
       {/* How to use the Knowledge Base */}
@@ -122,7 +130,7 @@ export default function KnowledgePage() {
           {[
             { icon: Upload, title: '1. Build a Knowledge Base', body: 'Create a collection and add material — upload PDF/DOCX/TXT/CSV/PPTX/ZIP, paste text, or add URLs. Tag it with category, skills, experience, difficulty & language.' },
             { icon: Target, title: '2. Organize & assign', body: 'Filter and organize by job role, department, skills, experience and category so the right questions reach the right candidates.' },
-            { icon: Sparkles, title: '3. Generate the interview', body: 'When scheduling an interview, questions are generated from the assigned Knowledge Base — set the number of questions and difficulty.' },
+            { icon: Sparkles, title: '3. Generate questions', body: 'Hit Generate on any knowledge base to draft questions from its content — MCQ, true/false, short & long answer, scenario or coding. Review them, then they land in the Question Bank as pending review.' },
             { icon: BookOpen, title: '4. Run the interview', body: 'The AI asks questions grounded in your content and adds dynamic follow-ups based on the candidate’s answers.' },
           ].map((s) => (
             <div key={s.title} className="rounded-xl border border-border bg-card/40 p-4">
@@ -178,15 +186,17 @@ export default function KnowledgePage() {
             )}
             <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
               <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">{kb.sources?.length ?? 0} sources</span>
-              <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">{number(kb.charCount || 0)} chars</span>
+              <span className={cn('rounded-md px-1.5 py-0.5', (kb.charCount || 0) === 0 ? 'bg-destructive/15 font-medium text-destructive' : 'bg-muted text-muted-foreground')}>{number(kb.charCount || 0)} chars</span>
               <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">~{number(kb.tokensApprox || 0)} tokens</span>
             </div>
+            <SourceHealth kb={kb} />
             {(kb.topics?.length ?? 0) > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {kb.topics.slice(0, 6).map((t: string) => <span key={t} className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">{t}</span>)}
               </div>
             )}
-            <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3">
+            <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+              <Button size="sm" magnetic={false} disabled={(kb.charCount || 0) === 0} title={(kb.charCount || 0) === 0 ? 'Nothing was extracted from this knowledge base — there is no material to generate from' : undefined} onClick={() => setGenerating(kb)}><Sparkles className="h-3.5 w-3.5" /> Generate</Button>
               <Button size="sm" variant="glass" magnetic={false} loading={view.isPending && view.variables === kb._id} onClick={() => view.mutate(kb._id)}><Eye className="h-3.5 w-3.5" /> View</Button>
               <Button size="sm" variant="ghost" magnetic={false} onClick={() => openAppend(kb)}><FilePlus className="h-3.5 w-3.5" /> Add</Button>
               <button onClick={() => toggle.mutate(kb._id)} title={kb.status === 'active' ? 'Disable' : 'Enable'} className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"><Power className="h-4 w-4" /></button>
@@ -248,8 +258,19 @@ export default function KnowledgePage() {
             </div>
             <div>
               <p className="mb-1 font-medium">Sources</p>
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                {(viewing.sources ?? []).map((s: any, i: number) => <li key={i}>• <span className="capitalize">{s.kind}</span> — {s.label} ({number(s.chars || 0)} chars)</li>)}
+              <ul className="space-y-1.5 text-xs text-muted-foreground">
+                {(viewing.sources ?? []).map((s: any, i: number) => (
+                  <li key={i} className="break-words">
+                    • <span className="capitalize">{s.kind}</span> — {s.label}{' '}
+                    <span className={cn((s.chars || 0) === 0 && 'font-medium text-destructive')}>({number(s.chars || 0)} chars)</span>
+                    {s.error && (
+                      <span className="mt-0.5 flex items-start gap-1 pl-3 text-destructive">
+                        <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {s.error}
+                      </span>
+                    )}
+                  </li>
+                ))}
+                {(viewing.sources?.length ?? 0) === 0 && <li>No sources yet.</li>}
               </ul>
             </div>
             {(viewing.topics?.length ?? 0) > 0 && (
@@ -265,6 +286,43 @@ export default function KnowledgePage() {
           </div>
         )}
       </Modal>
+
+      {/* Mounted per KB so the form always starts from that KB's own taxonomy. */}
+      {generating && (
+        <GenerateFromKbModal
+          kb={generating}
+          onClose={() => setGenerating(null)}
+          onSaved={() => setGenerating(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Ingestion problems, on the card. A source that could not be read is still
+ * listed with its filename, so without this a KB looks fully populated while
+ * holding no text at all — which reads as "AI generation is broken" when the
+ * real fault is that nothing was ever extracted.
+ */
+function SourceHealth({ kb }: { kb: any }) {
+  const unreadable = (kb.sources ?? []).filter((s: any) => s.error);
+  const empty = (kb.charCount || 0) === 0;
+  if (!unreadable.length && !empty) return null;
+
+  return (
+    <div className={cn('mt-2 rounded-lg border p-2 text-[11px]', empty ? 'border-destructive/30 bg-destructive/10' : 'border-yellow-500/30 bg-yellow-500/10')}>
+      <p className={cn('flex items-center gap-1 font-medium', empty ? 'text-destructive' : 'text-yellow-500')}>
+        <AlertTriangle className="h-3 w-3 shrink-0" />
+        {empty ? 'No readable text — nothing to generate from' : `${unreadable.length} source${unreadable.length === 1 ? '' : 's'} could not be read`}
+      </p>
+      <ul className="mt-1 space-y-0.5 text-muted-foreground">
+        {unreadable.slice(0, 3).map((s: any, i: number) => (
+          <li key={i} className="break-words">• {s.label} — {s.error}</li>
+        ))}
+        {unreadable.length > 3 && <li>• +{unreadable.length - 3} more — open View for the full list</li>}
+        {empty && !unreadable.length && <li>Add material with selectable text, or paste it directly.</li>}
+      </ul>
     </div>
   );
 }

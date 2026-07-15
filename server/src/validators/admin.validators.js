@@ -173,6 +173,38 @@ export const generateQuestionsSchema = z
     message: 'Provide a job, a job title, a description, or skills — the AI needs something to make the questions relevant to',
   });
 
+/**
+ * Generating from a knowledge base. Deliberately NOT generateQuestionsSchema:
+ * that one demands a job/title/description/skills anchor, and here the knowledge
+ * base IS the anchor — reusing it would reject the ordinary call.
+ *
+ * `jobRole` is accepted alongside `jobTitle` because it is the KB model's own
+ * field name, and zod strips undeclared keys — omitting it would silently drop
+ * the alias rather than fail loudly.
+ */
+export const generateFromKnowledgeBaseSchema = z.object({
+  jobTitle: z.string().max(160).optional(),
+  jobRole: z.string().max(160).optional(),
+  department: z.string().max(120).optional(),
+  industry: z.enum(INDUSTRIES).optional(),
+  skills: z.array(z.string()).optional(),
+  experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
+  round: z.enum(INTERVIEW_ROUNDS).optional(),
+  difficulty: z.enum(DIFFICULTY).optional(),
+  count: z.number().int().min(1).max(50).optional(),
+  // The QUESTION taxonomy, not the KB's: a KB is 'both', a question is 'bilingual'.
+  language: z.enum(['en', 'hi', 'bilingual']).optional(),
+  types: z.array(z.enum(QUESTION_TYPES)).optional(),
+  save: z.boolean().optional(),
+  /**
+   * The previewed questions the reviewer actually approved. Without this, saving
+   * would re-run the model and insert a DIFFERENT set than the one on screen —
+   * the deselections silently discarded. Sent back verbatim so what was reviewed
+   * is what is stored.
+   */
+  questions: z.array(upsertQuestionSchema.innerType().partial().passthrough()).max(50).optional(),
+});
+
 /* ── AI management ─────────────────────────────────────── */
 export const aiSettingsSchema = z.object({
   model: z.string().optional(),
