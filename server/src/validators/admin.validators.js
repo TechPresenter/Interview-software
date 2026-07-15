@@ -1,12 +1,29 @@
 import { z } from 'zod';
 import {
   PLAN_VALUES,
-  QUESTION_CATEGORIES,
+  QUESTION_TYPES,
+  INDUSTRIES,
+  QUESTION_STATUS,
+  EXPERIENCE_LEVELS,
   DIFFICULTY,
   COMPETENCIES,
 } from '../constants/enums.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
+
+/** Shared by the question bank and the AI answer-key generator. */
+export const answerKeySchema = z.object({
+  idealAnswer: z.string().optional(),
+  keyPoints: z.array(z.string()).optional(),
+  expectedSkills: z.array(z.string()).optional(),
+  strongIndicators: z.array(z.string()).optional(),
+  weakIndicators: z.array(z.string()).optional(),
+  followUps: z.array(z.string()).optional(),
+  rubric: z
+    .array(z.object({ band: z.string(), min: z.number(), max: z.number(), descriptor: z.string().optional() }))
+    .optional(),
+  interviewerNotes: z.string().optional(),
+});
 
 /* ── Companies ─────────────────────────────────────────── */
 export const createCompanySchema = z.object({
@@ -71,8 +88,15 @@ export const createCouponSchema = z.object({
 
 /* ── Questions ─────────────────────────────────────────── */
 export const upsertQuestionSchema = z.object({
-  category: z.enum(QUESTION_CATEGORIES),
+  // `type` is the format; `category` is the industry. See Question.js.
+  type: z.enum(QUESTION_TYPES).default('technical'),
+  category: z.enum(INDUSTRIES).nullish(),
+  topic: z.string().optional(),
+  jobRole: z.string().optional(),
+  department: z.string().optional(),
+  experienceLevel: z.enum(EXPERIENCE_LEVELS).nullish(),
   difficulty: z.enum(DIFFICULTY).optional(),
+  language: z.enum(['en', 'hi', 'bilingual']).optional(),
   text: z.string().min(5),
   skills: z.array(z.string()).optional(),
   expectedPoints: z.array(z.string()).optional(),
@@ -86,10 +110,32 @@ export const upsertQuestionSchema = z.object({
         .optional(),
     })
     .optional(),
+  mcq: z
+    .object({
+      options: z.array(z.object({ text: z.string().min(1), isCorrect: z.boolean().optional() })).optional(),
+      multiSelect: z.boolean().optional(),
+    })
+    .optional(),
+  answerKey: answerKeySchema.optional(),
+  isPublic: z.boolean().optional(),
+  status: z.enum(QUESTION_STATUS).optional(),
   isActive: z.boolean().optional(),
-});
+})
+  // An MCQ with no correct option can never be scored — catch it at the edge.
+  .refine((q) => !(['mcq', 'true_false'].includes(q.type) && q.mcq?.options?.length && !q.mcq.options.some((o) => o.isCorrect)), {
+    message: 'Multiple-choice questions need at least one option marked correct',
+    path: ['mcq', 'options'],
+  });
+
+/** PATCH is a partial update — the full schema would force a whole replace. */
+export const updateQuestionSchema = upsertQuestionSchema.innerType().partial();
 
 export const bulkQuestionsSchema = z.object({ questions: z.array(upsertQuestionSchema).min(1).max(200) });
+
+export const questionReviewSchema = z.object({
+  status: z.enum(['approved', 'rejected']),
+  note: z.string().max(500).optional(),
+});
 
 /* ── AI management ─────────────────────────────────────── */
 export const aiSettingsSchema = z.object({

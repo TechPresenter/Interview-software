@@ -12,6 +12,7 @@ import { scoreAnswer } from './ai/scoring.engine.js';
 import { generateReport } from './ai/report.engine.js';
 import { getAiWeightage } from './settings.service.js';
 import { contextFor } from './knowledgeBase.service.js';
+import { selectNextQuestion, markUsed } from './question.selector.js';
 import { logActivity } from './audit.service.js';
 import { notify } from './notification.service.js';
 import { safeSendTemplated } from './email.service.js';
@@ -169,7 +170,13 @@ export async function answer(interview, payload) {
 
   await Answer.create({
     interview: interview._id,
+    // Links the answer back to the bank question when there was one, so per-question
+    // analytics can aggregate across interviews.
+    question: pending.questionId,
     questionText: pending.text,
+    competencies: pending.competencies,
+    expectedPoints: pending.expectedPoints,
+    isFollowUp: pending.isFollowUp,
     response: payload.answer || '',
     audioUrl: payload.audioUrl,
     durationSeconds: payload.durationSeconds,
@@ -180,6 +187,7 @@ export async function answer(interview, payload) {
   interview.transcript.push({ role: 'candidate', text: payload.answer || '' });
   interview.engineState.currentIndex += 1;
   interview.engineState.askedTexts.push(pending.text);
+  if (pending.questionId) interview.engineState.askedQuestionIds.push(pending.questionId);
   // Respect the toggle — this used to adapt unconditionally, so turning
   // adaptive difficulty OFF had no effect.
   if (interview.config.adaptiveDifficulty) {
@@ -253,7 +261,11 @@ export async function skip(interview) {
   // Record the skip as a zero-scored answer for the report trail.
   await Answer.create({
     interview: interview._id,
+    question: pending.questionId,
     questionText: pending.text,
+    competencies: pending.competencies,
+    expectedPoints: pending.expectedPoints,
+    skipped: true,
     response: '(skipped)',
     order: interview.engineState.currentIndex,
     evaluation: { score: 0, competencyScores: {}, reasoning: 'Candidate skipped this question.' },
@@ -263,6 +275,7 @@ export async function skip(interview) {
   interview.engineState.currentIndex += 1;
   interview.engineState.skipsUsed = used + 1;
   interview.engineState.askedTexts.push(pending.text);
+  if (pending.questionId) interview.engineState.askedQuestionIds.push(pending.questionId);
 
   if (engine.isComplete(interview)) {
     interview.engineState.phase = 'closing';
@@ -472,8 +485,51 @@ export async function recordEvidence(interview, { imageBase64, type = 'screensho
 
 /* ── helpers ───────────────────────────────────────────── */
 
-/** Generate the next question via the engine, with a safe fallback. */
+/**
+ * Produce the next question, in descending order of relevance:
+ *
+ *   1. the curated Question bank  — recruiter-approved, carries a real answer key
+ *   2. the LLM                    — adaptive, grounded in the JD + knowledge base
+ *   3. a generic hardcoded prompt — last resort only
+ *
+ * Tier 3 is the one that must stay rare: those questions are, by definition, the
+ * "irrelevant, generic" ones the product promises never to ask. Before the bank
+ * was wired in, a single AI hiccup silently dropped every interview to tier 3.
+ */
 async function generateQuestion(interview, job, lastAnswer) {
+  // ── Tier 1: the bank ──
+  if (interview.config.useQuestionBank !== false) {
+    try {
+      const picked = await selectNextQuestion({
+        companyId: interview.company,
+        excludeIds: interview.engineState.askedQuestionIds || [],
+        excludeTexts: interview.engineState.askedTexts || [],
+        skills: job?.skills || [],
+        difficulty: interview.engineState.difficulty || interview.config.difficulty,
+        type: interview.types?.[0],
+        industry: job?.industry || interview.company?.industry,
+        jobRole: job?.title,
+        experienceLevel: interview.config.experienceLevel,
+        language: interview.config.language,
+        randomOrder: interview.config.randomOrder,
+      });
+      if (picked) {
+        markUsed(picked._id);
+        return {
+          text: picked.text,
+          questionId: picked._id,
+          competencies: picked.competencies?.length ? picked.competencies : ['technical', 'communication'],
+          expectedPoints: picked.expectedPoints?.length ? picked.expectedPoints : (picked.answerKey?.keyPoints || []),
+          rationale: picked.answerKey?.interviewerNotes || 'Selected from the curated question bank.',
+          isFollowUp: false,
+        };
+      }
+    } catch (err) {
+      logger.warn({ err: err.message }, 'question bank selection failed; falling through to AI');
+    }
+  }
+
+  // ── Tier 2: the LLM ──
   if (config.ai.enabled) {
     try {
       // Ground questions in the assigned knowledge base (interview overrides job).
@@ -504,6 +560,9 @@ async function generateQuestion(interview, job, lastAnswer) {
       logger.warn({ err: err.message }, 'question generation fallback');
     }
   }
+
+  // ── Tier 3: generic ──
+  logger.warn({ interview: String(interview._id) }, 'falling back to a generic question — bank and AI both unavailable');
   return { text: fallbackQuestion(interview), competencies: ['communication'], expectedPoints: [], isFollowUp: false };
 }
 

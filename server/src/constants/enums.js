@@ -37,6 +37,11 @@ export const INTERVIEW_STATUS = [
   'flagged',
 ];
 
+/**
+ * LEGACY. Despite the name these values are question *formats*, not domains.
+ * Kept verbatim so existing docs stay valid; the migration copies them into
+ * `Question.type` and `category` is repurposed for INDUSTRIES below.
+ */
 export const QUESTION_CATEGORIES = [
   'technical',
   'hr',
@@ -46,7 +51,73 @@ export const QUESTION_CATEGORIES = [
   'custom',
 ];
 
+/** What KIND of question it is (format/style). Superset of the legacy values. */
+export const QUESTION_TYPES = [
+  'technical',
+  'hr',
+  'behavioral',
+  'situational',
+  'scenario',
+  'problem_solving',
+  'coding',
+  'mcq',
+  'aptitude',
+  'logical_reasoning',
+  'communication',
+  'domain',
+  'leadership',
+  'role_specific',
+  'true_false',
+  'short_answer',
+  'long_answer',
+  'custom',
+];
+
+/** The industry/domain a question belongs to (`category` after migration). */
+export const INDUSTRIES = [
+  'software_development',
+  'data_science',
+  'ai_ml',
+  'cyber_security',
+  'cloud_computing',
+  'devops',
+  'digital_marketing',
+  'sales',
+  'hr',
+  'finance',
+  'accounting',
+  'healthcare',
+  'education',
+  'manufacturing',
+  'banking',
+  'retail',
+  'customer_support',
+  'government',
+  'hospitality',
+  'logistics',
+  'legal',
+  'custom',
+];
+
+/** Moderation state — AI-generated questions land in `pending_review`. */
+export const QUESTION_STATUS = ['draft', 'pending_review', 'approved', 'rejected'];
+
+/** Where a question came from (lets admins track AI-generated content). */
+export const QUESTION_SOURCES = ['manual', 'ai', 'import'];
+
+/** Interview rounds (spec: HR, Technical, Managerial, Final). */
+export const INTERVIEW_ROUNDS = ['screening', 'hr', 'technical', 'managerial', 'final'];
+
+/**
+ * NOTE: these are the DB values and are load-bearing (adaptDifficulty's
+ * DIFFICULTY_ORDER, existing Report docs, export.service). The spec's
+ * Beginner/Intermediate/Advanced/Expert are a DISPLAY concern — map at the UI
+ * layer, never rename here.
+ */
 export const DIFFICULTY = ['easy', 'medium', 'hard', 'expert'];
+export const DIFFICULTY_LABELS = { easy: 'Beginner', medium: 'Intermediate', hard: 'Advanced', expert: 'Expert' };
+
+export const EXPERIENCE_LEVELS = ['fresher', 'junior', 'mid', 'senior', 'lead'];
 
 export const PIPELINE_STAGES = [
   'applied',

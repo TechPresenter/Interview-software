@@ -62,6 +62,8 @@ const interviewSchema = new Schema(
       // Question generation grounding.
       resumeBased: { type: Boolean, default: false },
       jdBased: { type: Boolean, default: true },
+      // Prefer curated bank questions over LLM-invented ones. Off => pure AI.
+      useQuestionBank: { type: Boolean, default: true },
 
       allowSkip: { type: Boolean, default: true },
       maxSkips: { type: Number, default: 2 },

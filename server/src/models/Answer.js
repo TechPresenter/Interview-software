@@ -9,6 +9,13 @@ const answerSchema = new Schema(
     question: { type: Schema.Types.ObjectId, ref: 'Question' },
     // Snapshot of the prompt actually asked (it may be AI-generated / adapted).
     questionText: { type: String, required: true },
+    // Snapshotted alongside the text so the report can explain what was being
+    // probed and what a strong answer needed — even if the bank question is
+    // later edited or archived.
+    competencies: [String],
+    expectedPoints: [String],
+    isFollowUp: { type: Boolean, default: false },
+    skipped: { type: Boolean, default: false },
 
     response: { type: String, default: '' }, // transcribed/typed answer
     audioUrl: String,

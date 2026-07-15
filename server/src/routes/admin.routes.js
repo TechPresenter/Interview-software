@@ -8,7 +8,9 @@ import {
   upsertPlanSchema,
   createCouponSchema,
   upsertQuestionSchema,
+  updateQuestionSchema,
   bulkQuestionsSchema,
+  questionReviewSchema,
   aiSettingsSchema,
   aiWeightageSchema,
   aiPromptSchema,
@@ -101,7 +103,12 @@ router.get('/questions', questions.list);
 router.get('/questions/stats', questions.stats);
 router.post('/questions', validate(upsertQuestionSchema), questions.create);
 router.post('/questions/bulk', validate(bulkQuestionsSchema), questions.bulkCreate);
-router.patch('/questions/:id', validate(upsertQuestionSchema), questions.update);
+router.post('/questions/bulk-review', questions.bulkReview);
+router.patch('/questions/:id', validate(updateQuestionSchema), questions.update);
+router.post('/questions/:id/duplicate', questions.duplicate);
+router.post('/questions/:id/archive', questions.archive);
+router.post('/questions/:id/restore', questions.restore);
+router.post('/questions/:id/review', validate(questionReviewSchema), questions.review);
 router.delete('/questions/:id', questions.remove);
 
 /* ── AI management ─────────────────────────────────────── */
