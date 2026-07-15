@@ -42,6 +42,8 @@ export const create = asyncHandler(async (req, res) => {
 export const bulkCreate = asyncHandler(async (req, res) => {
   const docs = req.body.questions.map((q) => ({ ...q, company: null, createdBy: req.user._id }));
   const result = await Question.insertMany(docs, { ordered: false });
+  // The highest-volume write path was the only unaudited one.
+  await audit({ req, action: 'question.bulk_create', entityType: 'Question', meta: { submitted: docs.length, inserted: result.length } });
   return created(res, { inserted: result.length }, `${result.length} questions added`);
 });
 

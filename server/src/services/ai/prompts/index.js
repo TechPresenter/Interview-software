@@ -1,9 +1,12 @@
 /**
  * Versioned prompt templates. These are the defaults; the super-admin "AI
- * Management" panel (Phase 2) can override any of them by storing a replacement
- * in SystemSetting (group: 'ai'). Keep each prompt a pure function of its inputs
- * so it stays testable and overrideable.
+ * Management" panel can override any of them by storing a replacement in
+ * SystemSetting (group: 'ai'). Keep each prompt a pure function of its inputs
+ * so it stays testable and overrideable — then run the result through
+ * `applyPromptOverride` at the call site to honour any stored override.
  */
+
+import { getSetting } from '../../settings.service.js';
 
 const langLine = (language) =>
   language === 'hi'
@@ -33,7 +36,10 @@ export const prompts = {
     messages: [
       {
         role: 'user',
-        content: `Role: ${jobTitle}\nKey skills: ${(skills || []).join(', ') || 'general'}\nDesired difficulty: ${difficulty}\nAlready asked: ${(askedQuestions || []).join(' | ') || 'none'}\nConversation so far: ${transcriptSummary || 'just started'}\n${lastAnswer ? `Candidate's last answer: "${lastAnswer}"` : ''}${knowledge ? `\n\nKNOWLEDGE BASE — you MUST base your question ONLY on the following material. Do not ask about anything outside it:\n"""${String(knowledge).slice(0, 6000)}"""` : ''}\n\nProduce the single best next ${interviewType} question${knowledge ? ', grounded strictly in the knowledge base above' : ''}. Do not repeat asked topics. ${language === 'hi' ? 'The "question" text MUST be written in Hindi (Devanagari). ' : ''}Return JSON: {"question": string, "competencies": string[], "rationale": string}`,
+        content: `Role: ${jobTitle}\nKey skills: ${(skills || []).join(', ') || 'general'}\nDesired difficulty: ${difficulty}\nAlready asked: ${(askedQuestions || []).join(' | ') || 'none'}\nConversation so far: ${transcriptSummary || 'just started'}\n${lastAnswer ? `Candidate's last answer: "${lastAnswer}"` : ''}${knowledge ? `\n\nKNOWLEDGE BASE — you MUST base your question ONLY on the following material. Do not ask about anything outside it:\n"""${String(knowledge).slice(0, 6000)}"""` : ''}\n\nProduce the single best next ${interviewType} question${knowledge ? ', grounded strictly in the knowledge base above' : ''}. Do not repeat asked topics. It MUST be directly relevant to the role and skills above — never generic filler.
+
+Also produce "expectedPoints": the 3-6 concrete points a strong answer must cover (the ideal-answer key). These anchor scoring, so make them specific and checkable, not vague.
+${language === 'hi' ? 'The "question" text MUST be written in Hindi (Devanagari). Keep "expectedPoints" in English so they remain stable scoring anchors. ' : ''}Return JSON: {"question": string, "competencies": string[], "expectedPoints": string[], "rationale": string}`,
       },
     ],
   }),
@@ -82,5 +88,26 @@ export const prompts = {
     ],
   }),
 };
+
+/**
+ * Apply a stored super-admin prompt override to a built prompt.
+ *
+ * The AI Management panel writes `ai.prompt.<key>` = { system, template }. Until
+ * this existed the panel saved happily and changed nothing at runtime, which
+ * failed silently — worse than not offering the feature. Never throws: a
+ * settings read must not be able to break question generation or scoring.
+ *
+ * @param {string} key one of the keys in `prompts`
+ * @param {{system: string, messages: object[]}} built the default built prompt
+ */
+export async function applyPromptOverride(key, built) {
+  try {
+    const override = await getSetting(`ai.prompt.${key}`, null);
+    if (override?.system) return { ...built, system: override.system };
+  } catch {
+    /* fall back to the default prompt */
+  }
+  return built;
+}
 
 export default prompts;

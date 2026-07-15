@@ -41,7 +41,8 @@ const interviewSchema = new Schema(
       allowLanguageChange: { type: Boolean, default: false },
       durationMinutes: { type: Number, default: 30 },
       questionCount: { type: Number, default: 8 },
-      difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
+      // 'expert' completes the ladder that engine.adaptDifficulty already steps along.
+      difficulty: { type: String, enum: ['easy', 'medium', 'hard', 'expert'], default: 'medium' },
       experienceLevel: { type: String }, // e.g. fresher | mid | senior
       adaptiveDifficulty: { type: Boolean, default: true },
       followUps: { type: Boolean, default: true }, // AI follow-up questions
@@ -88,6 +89,14 @@ const interviewSchema = new Schema(
         text: String,
         competencies: [String],
         isFollowUp: { type: Boolean, default: false },
+        // Set when the question came from the Question bank (enables usage
+        // analytics + joining answers back to bank questions).
+        questionId: { type: Schema.Types.ObjectId, ref: 'Question' },
+        // Key points a strong answer should cover. Anchors scoring so the
+        // evaluator compares against an ideal answer instead of guessing.
+        expectedPoints: [String],
+        // Why the interviewer chose this question — surfaced as interviewer notes.
+        rationale: String,
       },
     },
 

@@ -1,5 +1,5 @@
 import { completeJson } from './claude.client.js';
-import { prompts } from './prompts/index.js';
+import { prompts, applyPromptOverride } from './prompts/index.js';
 import { COMPETENCIES } from '../../constants/enums.js';
 
 /**
@@ -11,15 +11,16 @@ import { COMPETENCIES } from '../../constants/enums.js';
 
 /** Score one answer. Returns the evaluation object stored on the Answer doc. */
 export async function scoreAnswer({ job, question, expectedPoints, answer, competencies, company, interview, language }) {
+  const built = await applyPromptOverride('scoreAnswer', prompts.scoreAnswer({
+    jobTitle: job?.title || 'the role',
+    question,
+    expectedPoints,
+    answer,
+    competencies,
+    language,
+  }));
   const { data } = await completeJson({
-    ...prompts.scoreAnswer({
-      jobTitle: job?.title || 'the role',
-      question,
-      expectedPoints,
-      answer,
-      competencies,
-      language,
-    }),
+    ...built,
     feature: 'scoring',
     company,
     interview,

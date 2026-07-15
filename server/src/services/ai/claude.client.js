@@ -24,11 +24,23 @@ function getClient() {
   return client;
 }
 
+/**
+ * Newer Claude models REMOVED the sampling parameters: sending temperature,
+ * top_p or top_k returns 400 "`temperature` is deprecated for this model".
+ * Older models (and non-Claude providers) still accept them, so strip per-model
+ * rather than dropping the option entirely.
+ */
+const NO_SAMPLING_PARAMS = /^claude-(opus-4-(7|8)|sonnet-5|fable-5|mythos-5)/;
+const acceptsSampling = (model) => !NO_SAMPLING_PARAMS.test(String(model || ''));
+
 // Approx USD per 1M tokens. Tune to current pricing; used for analytics only.
 const PRICING = {
-  'claude-opus-4-8': { in: 15, out: 75 },
+  'claude-opus-4-8': { in: 5, out: 25 },
+  'claude-opus-4-7': { in: 5, out: 25 },
+  'claude-sonnet-5': { in: 3, out: 15 },
   'claude-sonnet-4-6': { in: 3, out: 15 },
-  'claude-haiku-4-5-20251001': { in: 0.8, out: 4 },
+  'claude-haiku-4-5': { in: 1, out: 5 },
+  'claude-haiku-4-5-20251001': { in: 1, out: 5 },
 };
 
 function estimateCost(model, usage) {
@@ -102,7 +114,8 @@ export async function complete({
       const resp = await c.messages.create({
         model,
         max_tokens: maxTokens,
-        temperature,
+        // Omitted entirely on models that removed sampling params (400 otherwise).
+        ...(acceptsSampling(model) ? { temperature } : {}),
         system,
         messages,
       });

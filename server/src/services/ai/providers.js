@@ -118,9 +118,20 @@ async function geminiChat(cfg, { system, messages, maxTokens, temperature }) {
 }
 
 /* ── Anthropic Claude (REST, no SDK) ── */
+
+/**
+ * Newer Claude models REMOVED the sampling parameters — sending temperature,
+ * top_p or top_k returns 400 "`temperature` is deprecated for this model".
+ * Duplicated from claude.client.js rather than imported: that module pulls in
+ * registry.js, which imports this one (import cycle).
+ */
+const NO_SAMPLING_PARAMS = /^claude-(opus-4-(7|8)|sonnet-5|fable-5|mythos-5)/;
+const acceptsSampling = (model) => !NO_SAMPLING_PARAMS.test(String(model || ''));
+
 async function anthropicChat(cfg, { system, messages, maxTokens, temperature }) {
   const meta = providerMeta('claude');
   const base = trimSlash(cfg.baseUrl || meta.baseUrl);
+  const model = cfg.model || meta.defaultModel;
   const t = timeout(cfg.timeoutMs);
   try {
     const res = await fetch(`${base}/v1/messages`, {
@@ -128,9 +139,10 @@ async function anthropicChat(cfg, { system, messages, maxTokens, temperature }) 
       headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.apiKey, 'anthropic-version': cfg.apiVersion || '2023-06-01' },
       signal: t.signal,
       body: JSON.stringify({
-        model: cfg.model || meta.defaultModel,
+        model,
         max_tokens: maxTokens || 1024,
-        temperature,
+        // Omitted entirely on models that removed sampling params (400 otherwise).
+        ...(acceptsSampling(model) ? { temperature } : {}),
         system,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
       }),

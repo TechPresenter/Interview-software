@@ -1,5 +1,5 @@
 import { complete, completeJson } from './claude.client.js';
-import { prompts } from './prompts/index.js';
+import { prompts, applyPromptOverride } from './prompts/index.js';
 
 /**
  * AI Interview Engine
@@ -22,15 +22,16 @@ export function adaptDifficulty(current, lastScore) {
 
 /** Produce the opening greeting message. */
 export async function greet({ interview, candidate, job }) {
+  const built = await applyPromptOverride('greeting', prompts.greeting({
+    candidateName: candidate.name,
+    jobTitle: job?.title || 'the role',
+    interviewType: interview.types?.[0] || 'general',
+    durationMinutes: interview.config.durationMinutes,
+    questionCount: interview.config.questionCount,
+    language: interview.config.language,
+  }));
   const { text } = await complete({
-    ...prompts.greeting({
-      candidateName: candidate.name,
-      jobTitle: job?.title || 'the role',
-      interviewType: interview.types?.[0] || 'general',
-      durationMinutes: interview.config.durationMinutes,
-      questionCount: interview.config.questionCount,
-      language: interview.config.language,
-    }),
+    ...built,
     feature: 'interview',
     company: interview.company,
     interview: interview._id,
@@ -41,23 +42,24 @@ export async function greet({ interview, candidate, job }) {
 
 /** Generate the next adaptive question (optionally grounded in a knowledge base). */
 export async function nextQuestion({ interview, job, askedQuestions, lastAnswer, transcriptSummary, knowledge }) {
+  const built = await applyPromptOverride('nextQuestion', prompts.nextQuestion({
+    jobTitle: job?.title,
+    skills: (job?.skills || []).map((s) => s.name),
+    interviewType: interview.types?.[0] || 'general',
+    difficulty: interview.engineState.difficulty,
+    askedQuestions,
+    lastAnswer,
+    transcriptSummary,
+    language: interview.config.language,
+    knowledge,
+  }));
   const { data } = await completeJson({
-    ...prompts.nextQuestion({
-      jobTitle: job?.title,
-      skills: (job?.skills || []).map((s) => s.name),
-      interviewType: interview.types?.[0] || 'general',
-      difficulty: interview.engineState.difficulty,
-      askedQuestions,
-      lastAnswer,
-      transcriptSummary,
-      language: interview.config.language,
-      knowledge,
-    }),
+    ...built,
     feature: 'interview',
     company: interview.company,
     interview: interview._id,
   });
-  return data; // { question, competencies, rationale }
+  return data; // { question, competencies, expectedPoints, rationale }
 }
 
 /** Decide on a follow-up question for the last answer (or null). */

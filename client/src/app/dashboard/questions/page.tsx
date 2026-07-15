@@ -55,6 +55,9 @@ export default function QuestionsPage() {
     onSuccess: () => {
       toast.success('Deleted');
       qc.invalidateQueries({ queryKey: ['questions'] });
+      // The header count is driven by question-stats — without this it goes
+      // stale after every delete.
+      qc.invalidateQueries({ queryKey: ['question-stats'] });
     },
   });
 

@@ -86,7 +86,11 @@ function progressOf(interview) {
 
 /** Begin the interview: greeting + first question. Idempotent-ish. */
 export async function start(interview, { language } = {}) {
-  if (language === 'en' || language === 'hi') interview.config.language = language;
+  // Honour the same lock setLanguage() enforces — otherwise the scheduled
+  // language is bypassable simply by passing one at the door.
+  if ((language === 'en' || language === 'hi') && interview.config.allowLanguageChange) {
+    interview.config.language = language;
+  }
   if (interview.status === 'completed') throw ApiError.badRequest('Interview already completed');
   if (interview.status === 'in_progress' && interview.engineState.pendingQuestion?.text) {
     // Resume: return current state instead of regenerating.
@@ -106,6 +110,9 @@ export async function start(interview, { language } = {}) {
   interview.startedAt = new Date();
   interview.engineState.phase = 'questioning';
   interview.engineState.currentIndex = 0;
+  // Start at the difficulty the recruiter actually chose. Without this the
+  // engineState default ('medium') silently won every interview.
+  interview.engineState.difficulty = interview.config.difficulty || 'medium';
 
   let greeting = `Hi ${candidate?.name?.split(' ')[0] || 'there'}, welcome to your interview for ${job?.title || 'the role'}. I'll ask a few questions — answer naturally. Ready when you are.`;
   try {
@@ -147,6 +154,9 @@ export async function answer(interview, payload) {
         job,
         question: pending.text,
         competencies: pending.competencies,
+        // The ideal-answer key for THIS question. Anchors the score and makes
+        // keywordsMissed a real "missing concepts" signal rather than a guess.
+        expectedPoints: pending.expectedPoints,
         answer: payload.answer,
         company: interview.company,
         interview: interview._id,
@@ -170,9 +180,19 @@ export async function answer(interview, payload) {
   interview.transcript.push({ role: 'candidate', text: payload.answer || '' });
   interview.engineState.currentIndex += 1;
   interview.engineState.askedTexts.push(pending.text);
-  interview.engineState.difficulty = engine.adaptDifficulty(interview.engineState.difficulty, evaluation.score);
+  // Respect the toggle — this used to adapt unconditionally, so turning
+  // adaptive difficulty OFF had no effect.
+  if (interview.config.adaptiveDifficulty) {
+    interview.engineState.difficulty = engine.adaptDifficulty(interview.engineState.difficulty, evaluation.score);
+  }
 
-  emitToInterview(interview._id, 'interview:answer:received', { order: interview.engineState.currentIndex });
+  // Real-time insight for the watching recruiter (the evaluation is in scope).
+  emitToInterview(interview._id, 'interview:answer:received', {
+    order: interview.engineState.currentIndex,
+    score: evaluation.score,
+    competencyScores: evaluation.competencyScores,
+    keywordsMissed: evaluation.keywordsMissed,
+  });
 
   // Done?
   if (engine.isComplete(interview)) {
@@ -184,7 +204,28 @@ export async function answer(interview, payload) {
     return { done: true, message: closing, progress: progressOf(interview) };
   }
 
+  // Follow-up: dig into the answer we just scored when the evaluator flagged
+  // one and the company enabled follow-ups. We reuse the scorer's suggestion
+  // (already computed above) rather than spending a second AI call, and never
+  // chain a follow-up off a follow-up.
+  if (interview.config.followUps && evaluation.followUpSuggested && !pending.isFollowUp) {
+    const followUp = {
+      text: evaluation.followUpSuggested,
+      competencies: pending.competencies,
+      // Probe exactly what they missed; fall back to the parent question's key.
+      expectedPoints: evaluation.keywordsMissed?.length ? evaluation.keywordsMissed : pending.expectedPoints,
+      rationale: 'Follow-up on an incomplete or notable answer.',
+      isFollowUp: true,
+    };
+    interview.engineState.phase = 'follow_up';
+    interview.engineState.pendingQuestion = followUp;
+    interview.transcript.push({ role: 'ai', text: followUp.text });
+    await interview.save();
+    return { done: false, question: followUp, progress: progressOf(interview) };
+  }
+
   // Next question.
+  interview.engineState.phase = 'questioning';
   const next = await generateQuestion(interview, job, payload.answer);
   interview.engineState.pendingQuestion = next;
   interview.transcript.push({ role: 'ai', text: next.text });
@@ -451,13 +492,19 @@ async function generateQuestion(interview, job, lastAnswer) {
         knowledge,
       });
       if (data?.question) {
-        return { text: data.question, competencies: data.competencies || ['technical', 'communication'], isFollowUp: false };
+        return {
+          text: data.question,
+          competencies: data.competencies || ['technical', 'communication'],
+          expectedPoints: Array.isArray(data.expectedPoints) ? data.expectedPoints : [],
+          rationale: data.rationale || '',
+          isFollowUp: false,
+        };
       }
     } catch (err) {
       logger.warn({ err: err.message }, 'question generation fallback');
     }
   }
-  return { text: fallbackQuestion(interview), competencies: ['communication'], isFollowUp: false };
+  return { text: fallbackQuestion(interview), competencies: ['communication'], expectedPoints: [], isFollowUp: false };
 }
 
 const FALLBACKS = [
