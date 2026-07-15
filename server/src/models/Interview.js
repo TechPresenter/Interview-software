@@ -94,6 +94,9 @@ const interviewSchema = new Schema(
       },
       askedQuestionIds: [{ type: Schema.Types.ObjectId, ref: 'Question' }],
       askedTexts: [String], // de-dupe topics across turns
+      // Running ledger of what has been probed, so the engine can see coverage
+      // rather than only the last couple of turns.
+      competenciesCovered: [String],
       skipsUsed: { type: Number, default: 0 },
       // The question currently awaiting an answer.
       pendingQuestion: {

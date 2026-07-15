@@ -25,7 +25,7 @@ export async function greet({ interview, candidate, job }) {
   const built = await applyPromptOverride('greeting', prompts.greeting({
     candidateName: candidate.name,
     jobTitle: job?.title || 'the role',
-    interviewType: interview.types?.[0] || 'general',
+    interviewType: interviewTypeLabel(interview.types),
     durationMinutes: interview.config.durationMinutes,
     questionCount: interview.config.questionCount,
     language: interview.config.language,
@@ -40,17 +40,48 @@ export async function greet({ interview, candidate, job }) {
   return text;
 }
 
+/**
+ * Describe the interview type. `types` is an array (e.g. ['hr','technical']) but
+ * only types[0] was ever used, silently discarding every type after the first —
+ * a "technical + behavioral" interview ran as technical only.
+ */
+export const interviewTypeLabel = (types) => {
+  const list = (types || []).filter(Boolean);
+  if (!list.length) return 'general';
+  if (list.length === 1) return list[0];
+  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+};
+
 /** Generate the next adaptive question (optionally grounded in a knowledge base). */
-export async function nextQuestion({ interview, job, askedQuestions, lastAnswer, transcriptSummary, knowledge }) {
+export async function nextQuestion({ interview, job, candidate, askedQuestions, lastAnswer, transcriptSummary, knowledge, minutesRemaining }) {
+  const cfg = interview.config || {};
+  // The toggles finally mean something: only send the JD / resume when asked to.
+  const resumeSummary = cfg.resumeBased
+    ? [candidate?.resumeAnalysis?.summary, (candidate?.resumeAnalysis?.extractedSkills || []).join(', ')]
+      .filter(Boolean)
+      .join('\nSkills found on resume: ')
+    : null;
+
   const built = await applyPromptOverride('nextQuestion', prompts.nextQuestion({
     jobTitle: job?.title,
-    skills: (job?.skills || []).map((s) => s.name),
-    interviewType: interview.types?.[0] || 'general',
+    jobDescription: cfg.jdBased ? job?.description : null,
+    department: job?.department,
+    industry: job?.industry,
+    // Full skill objects, so weight/required actually influence the question.
+    skills: job?.skills || [],
+    experienceLevel: cfg.experienceLevel,
+    yearsExperience: job?.experience?.min,
+    interviewType: interviewTypeLabel(interview.types),
+    round: interview.round,
     difficulty: interview.engineState.difficulty,
     askedQuestions,
     lastAnswer,
     transcriptSummary,
-    language: interview.config.language,
+    questionNumber: (interview.engineState.currentIndex || 0) + 1,
+    questionCount: cfg.questionCount,
+    minutesRemaining,
+    resumeSummary: resumeSummary || null,
+    language: cfg.language,
     knowledge,
   }));
   const { data } = await completeJson({
@@ -65,7 +96,7 @@ export async function nextQuestion({ interview, job, askedQuestions, lastAnswer,
 /** Decide on a follow-up question for the last answer (or null). */
 export async function maybeFollowUp({ interview, question, answer }) {
   const { data } = await completeJson({
-    ...prompts.followUp({ question, answer, interviewType: interview.types?.[0] || 'general' }),
+    ...prompts.followUp({ question, answer, interviewType: interviewTypeLabel(interview.types), language: interview.config?.language }),
     feature: 'interview',
     company: interview.company,
     interview: interview._id,

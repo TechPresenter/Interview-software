@@ -30,13 +30,32 @@ export const prompts = {
     ],
   }),
 
-  /** Generate the next question, adapting to difficulty and history. */
-  nextQuestion: ({ jobTitle, skills, interviewType, difficulty, askedQuestions, lastAnswer, transcriptSummary, language, knowledge }) => ({
+  /**
+   * Generate the next question, adapting to difficulty and history.
+   *
+   * Takes the full role context — description, department, industry, experience,
+   * weighted skills, round, and the candidate's own resume. The `jdBased` and
+   * `resumeBased` toggles were previously read by nothing: only the job TITLE
+   * and bare skill names ever reached the model, so "base questions on the JD"
+   * did nothing at all.
+   */
+  nextQuestion: ({
+    jobTitle, jobDescription, department, industry, skills, experienceLevel, yearsExperience,
+    interviewType, round, difficulty, askedQuestions, lastAnswer, transcriptSummary,
+    questionNumber, questionCount, minutesRemaining, resumeSummary, language, knowledge,
+  }) => ({
     system: personaSystem(interviewType, language),
     messages: [
       {
         role: 'user',
-        content: `Role: ${jobTitle}\nKey skills: ${(skills || []).join(', ') || 'general'}\nDesired difficulty: ${difficulty}\nAlready asked: ${(askedQuestions || []).join(' | ') || 'none'}\nConversation so far: ${transcriptSummary || 'just started'}\n${lastAnswer ? `Candidate's last answer: "${lastAnswer}"` : ''}${knowledge ? `\n\nKNOWLEDGE BASE — you MUST base your question ONLY on the following material. Do not ask about anything outside it:\n"""${String(knowledge).slice(0, 6000)}"""` : ''}\n\nProduce the single best next ${interviewType} question${knowledge ? ', grounded strictly in the knowledge base above' : ''}. Do not repeat asked topics. It MUST be directly relevant to the role and skills above — never generic filler.
+        content: `Role: ${jobTitle || 'n/a'}${department ? `\nDepartment: ${department}` : ''}${industry ? `\nIndustry: ${industry}` : ''}${round ? `\nInterview round: ${round}` : ''}
+Key skills${skills?.some((s) => s.weight) ? ' (higher weight = more important)' : ''}: ${(skills || []).map((s) => (typeof s === 'string' ? s : `${s.name}${s.weight && s.weight !== 1 ? ` (${s.weight})` : ''}${s.required === false ? ' [nice-to-have]' : ''}`)).join(', ') || 'general'}
+${experienceLevel || yearsExperience ? `Target experience: ${experienceLevel || ''}${yearsExperience ? ` (~${yearsExperience} years)` : ''}\n` : ''}Desired difficulty: ${difficulty}
+${questionCount ? `Progress: question ${questionNumber ?? '?'} of about ${questionCount}${minutesRemaining != null ? `, roughly ${minutesRemaining} minutes left` : ''}. Pace accordingly — do not start something that cannot be answered in the time left.\n` : ''}Already asked: ${(askedQuestions || []).join(' | ') || 'none'}
+Conversation so far: ${transcriptSummary || 'just started'}
+${lastAnswer ? `Candidate's last answer: "${lastAnswer}"` : ''}${jobDescription ? `\n\nJOB DESCRIPTION — the question should probe something this role actually requires:\n"""${String(jobDescription).slice(0, 4000)}"""` : ''}${resumeSummary ? `\n\nCANDIDATE BACKGROUND — you may probe their ACTUAL claimed experience. Never invent details they did not state:\n"""${String(resumeSummary).slice(0, 3000)}"""` : ''}${knowledge ? `\n\nKNOWLEDGE BASE — you MUST base your question ONLY on the following material. Do not ask about anything outside it:\n"""${String(knowledge).slice(0, 6000)}"""` : ''}
+
+Produce the single best next ${interviewType} question${knowledge ? ', grounded strictly in the knowledge base above' : ''}. Do not repeat asked topics. It MUST be directly relevant to the role and skills above — never generic filler.
 
 Also produce "expectedPoints": the 3-6 concrete points a strong answer must cover (the ideal-answer key). These anchor scoring, so make them specific and checkable, not vague.
 ${language === 'hi' ? 'The "question" text MUST be written in Hindi (Devanagari). Keep "expectedPoints" in English so they remain stable scoring anchors. ' : ''}Return JSON: {"question": string, "competencies": string[], "expectedPoints": string[], "rationale": string}`,

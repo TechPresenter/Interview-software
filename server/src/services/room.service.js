@@ -189,6 +189,9 @@ export async function answer(interview, payload) {
   interview.engineState.currentIndex += 1;
   interview.engineState.askedTexts.push(pending.text);
   if (pending.questionId) interview.engineState.askedQuestionIds.push(pending.questionId);
+  for (const c of pending.competencies || []) {
+    if (!interview.engineState.competenciesCovered.includes(c)) interview.engineState.competenciesCovered.push(c);
+  }
   // Respect the toggle — this used to adapt unconditionally, so turning
   // adaptive difficulty OFF had no effect.
   if (interview.config.adaptiveDifficulty) {
@@ -571,9 +574,14 @@ async function generateQuestion(interview, job, lastAnswer) {
       const data = await engine.nextQuestion({
         interview,
         job,
+        // Only loaded when the interview is actually resume-based.
+        candidate: interview.config.resumeBased
+          ? await Candidate.findById(interview.candidate).select('resumeAnalysis').lean()
+          : null,
         askedQuestions: interview.engineState.askedTexts,
         lastAnswer,
-        transcriptSummary: interview.transcript.slice(-4).map((t) => `${t.role}: ${t.text}`).join(' | '),
+        transcriptSummary: buildTranscriptSummary(interview),
+        minutesRemaining: minutesRemaining(interview),
         knowledge,
       });
       if (data?.question) {
@@ -593,6 +601,43 @@ async function generateQuestion(interview, job, lastAnswer) {
   // ── Tier 3: generic ──
   logger.warn({ interview: String(interview._id) }, 'falling back to a generic question — bank and AI both unavailable');
   return { text: fallbackQuestion(interview), competencies: ['communication'], expectedPoints: [], isFollowUp: false };
+}
+
+/**
+ * A running picture of the interview so far.
+ *
+ * This was `transcript.slice(-4)` joined with pipes — a raw tail of the last two
+ * exchanges, labelled "summary". Anything earlier was invisible to the model, so
+ * it had no idea which competencies it had already probed and would happily
+ * circle the same ground. Still cheap and deterministic (no extra AI call), but
+ * it now carries coverage, not just recency.
+ */
+export function buildTranscriptSummary(interview) {
+  const state = interview.engineState || {};
+  const turns = (interview.transcript || []).filter((t) => t.role !== 'system');
+
+  const covered = [...new Set((state.competenciesCovered || []).filter(Boolean))];
+  const asked = state.askedTexts || [];
+
+  const parts = [];
+  if (asked.length) parts.push(`Questions asked so far: ${asked.length}.`);
+  if (covered.length) parts.push(`Competencies already probed: ${covered.join(', ')}.`);
+
+  const recent = turns
+    .slice(-6)
+    .map((t) => `${t.role}: ${String(t.text || '').slice(0, 400)}`)
+    .join('\n');
+  if (recent) parts.push(`Recent exchange:\n${recent}`);
+
+  return parts.join('\n') || 'just started';
+}
+
+/** Whole minutes left against the scheduled duration, or null when untimed. */
+function minutesRemaining(interview) {
+  const total = interview.config?.durationMinutes;
+  if (!total || !interview.startedAt) return null;
+  const elapsed = (Date.now() - new Date(interview.startedAt).getTime()) / 60000;
+  return Math.max(0, Math.round(total - elapsed));
 }
 
 const FALLBACKS = [
