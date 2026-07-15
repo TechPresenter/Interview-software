@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   Inbox,
   ListChecks,
+  ClipboardList,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '@/store/auth.store';
@@ -42,6 +43,9 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Analytics', href: '/dashboard/analytics', icon: LineChart },
     { label: 'Companies', href: '/dashboard/companies', icon: Building2 },
     { label: 'Candidates', href: '/dashboard/candidates', icon: Users },
+    // Platform-level, so it appears for the super admin only — an application is
+    // not a company's to review.
+    { label: 'Applications', href: '/dashboard/applications', icon: ClipboardList },
     { label: 'Subscriptions', href: '/dashboard/subscriptions', icon: CreditCard },
     { label: 'Question Bank', href: '/dashboard/questions', icon: Database },
     { label: 'AI Management', href: '/dashboard/ai', icon: Bot },

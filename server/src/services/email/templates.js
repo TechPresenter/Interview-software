@@ -11,6 +11,7 @@ import {
   securityNotice,
   credentialsCard,
 } from './components.js';
+import { APPLICATION_TEMPLATES } from './templates.application.js';
 
 /**
  * Built-in default email templates. Each can be overridden per-platform via the
@@ -669,6 +670,12 @@ export const DEFAULT_TEMPLATES = {
       p('Our team will review and confirm your slot by email shortly. If you need to change anything, just reply to this message.') +
       button('{{link}}', 'Visit {{platformName}}'),
   },
+
+  // The public Apply-for-Interview module. Kept in its own file because it is a
+  // self-contained module, but merged HERE because resolveTemplate() only ever
+  // looks in DEFAULT_TEMPLATES — an unmerged template is not a missing template,
+  // it is an email sent with an empty body and the raw key as its subject.
+  ...APPLICATION_TEMPLATES,
 };
 
 export const TEMPLATE_KEYS = Object.keys(DEFAULT_TEMPLATES);

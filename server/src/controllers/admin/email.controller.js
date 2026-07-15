@@ -28,6 +28,17 @@ export const SAMPLE = {
   previousAt: 'Fri, 21 Jun · 11:00 AM', timeSlot: 'Tue, 25 Jun · 10:30 AM IST',
   salary: '₹24,00,000 per annum', startDate: 'Mon, 1 Sep 2026',
   unsubscribeUrl: 'https://app.example.com/unsubscribe?t=sample',
+
+  // Public interview applications. `paymentStatus` previews as the CLAIMED
+  // wording on purpose: it is the state a real applicant lands in the moment
+  // they submit, and the one whose copy most needs checking — an admin
+  // previewing "Verified" would never notice the template implying we had been
+  // paid when all we have is a stranger's typed reference.
+  applicationId: 'AIPL-2026-000042', submittedAt: 'Mon, 24 Jun 2026 · 3:04 PM',
+  preferredJobRole: 'Backend Engineer', mobile: '+91 98765 43210',
+  fee: '499', currency: 'INR',
+  paymentStatus: 'Pending verification', paymentReference: 'UTR8829301746',
+  adminUrl: 'https://app.example.com/dashboard/applications/6a57781f96400a6b83419034',
 };
 
 /** GET /admin/email/templates — catalog merged with overrides. */

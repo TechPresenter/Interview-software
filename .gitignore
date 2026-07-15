@@ -29,6 +29,9 @@ coverage/
 .claude/
 *.pem
 uploads/
+# Applicant resumes and passport photos. Kept out of the static mount so they
+# need a login to read — which counts for nothing if they get committed instead.
+private-uploads/
 
 # runtime / generated artifacts
 *.rdb

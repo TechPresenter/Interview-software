@@ -162,6 +162,28 @@ export const COMPETENCIES = [
  * `aggregate()` renormalises over the competencies that have data, so a stored
  * admin override missing a newer key stays valid.
  */
+/* ── Interview applications (public "Apply for Interview" module) ─────────── */
+
+/** Where an application sits in the review funnel. */
+export const APPLICATION_STATUS = ['pending', 'under_review', 'shortlisted', 'rejected', 'selected'];
+
+/**
+ * What we actually know about an application fee.
+ *
+ * Distinct from PAYMENT_STATUS above, which is the billing Payment model's
+ * gateway-driven lifecycle (created → paid). This one is claim-driven, because
+ * the Pay Now button is a redirect to a URL the admin configures — a one-way
+ * trip with nothing coming back to tell us the money arrived. So the applicant's
+ * word and a verified fact are deliberately different states: `claimed` means
+ * they pasted a reference, `verified` means a human checked it against the
+ * provider. Collapsing the two would let an application print a PDF saying
+ * "Paid" on nothing but the applicant's say-so.
+ */
+export const APPLICATION_PAYMENT_STATUS = ['unpaid', 'claimed', 'verified', 'failed', 'waived'];
+
+/** Fresher vs experienced — drives which professional fields are required. */
+export const EXPERIENCE_TYPE = ['fresher', 'experienced'];
+
 export const DEFAULT_AI_WEIGHTAGE = Object.freeze({
   technical: 0.25,
   domain: 0.15,

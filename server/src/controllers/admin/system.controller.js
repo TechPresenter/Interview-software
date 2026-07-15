@@ -9,7 +9,12 @@ import { sendEmail, refreshSmtp } from '../../services/email.service.js';
 import * as ttsService from '../../services/tts.service.js';
 import { config } from '../../config/index.js';
 
-const ALLOWED_GROUPS = ['smtp', 'sms', 'payment', 'security', 'general', 'feature_flag', 'voice', 'proctoring', 'captcha'];
+// 'applications' backs the public Apply-for-Interview form (payment link, fee,
+// declaration text). It has a typed endpoint of its own —
+// controllers/admin/applicationConfig.controller.js — but the generic settings
+// screen lists groups from here, so an omission would leave the group invisible
+// and every write to it rejected as "Unknown settings group".
+const ALLOWED_GROUPS = ['smtp', 'sms', 'payment', 'security', 'general', 'feature_flag', 'voice', 'proctoring', 'captcha', 'applications'];
 
 /** GET /admin/system/:group — settings for a group (secrets masked). */
 export const getSettingsGroup = asyncHandler(async (req, res) => {

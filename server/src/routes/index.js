@@ -11,6 +11,7 @@ import { router as demoRoutes } from './demo.routes.js';
 import { router as integrationsRoutes } from './integrations.routes.js';
 import { router as trackingRoutes } from './tracking.routes.js';
 import { router as notificationRoutes } from './notification.routes.js';
+import { router as applicationRoutes } from './application.routes.js';
 
 export const router = Router();
 
@@ -47,6 +48,10 @@ router.use('/demo', demoRoutes);
 router.use('/integrations', integrationsRoutes);
 router.use('/track', trackingRoutes);
 router.use('/notifications', notificationRoutes);
+// Public, unauthenticated: the Apply-for-Interview form. Must be mounted ABOVE
+// companyRoutes, which takes '/' and would otherwise answer /apply with its own
+// authenticate + rbac stack and 401 every applicant.
+router.use('/apply', applicationRoutes);
 router.use('/', companyRoutes);
 
 export default router;

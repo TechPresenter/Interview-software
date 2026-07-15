@@ -13,18 +13,86 @@ import { logger } from '../config/logger.js';
 
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 
-async function ensureDir() {
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
+/**
+ * Files that must NOT be reachable without a login.
+ *
+ * `uploads/` is mounted with express.static at app.js:69 — no auth, no expiry —
+ * so anything written there is fetchable forever by whoever ends up holding the
+ * link, and links travel (browser history, a forwarded PDF, a proxy log, a
+ * Referer header). That is an acceptable trade for a company logo. It is not one
+ * for a job applicant's passport photo and CV, submitted by a stranger who never
+ * agreed to publish them.
+ *
+ * A sibling directory outside the static mount is the whole mechanism: nothing
+ * serves this path, so the only way out is a route that checks who is asking.
+ */
+const PRIVATE_DIR = path.resolve(process.cwd(), 'private-uploads');
+
+async function ensureDir(dir = UPLOAD_DIR) {
+  await fs.mkdir(dir, { recursive: true });
 }
+
+const storedName = (originalName) =>
+  `${crypto.randomBytes(12).toString('hex')}${path.extname(originalName || '').toLowerCase()}`;
 
 /** Persist a buffer and return a public-ish path + stored filename. */
 export async function saveBuffer(buffer, originalName) {
   await ensureDir();
-  const ext = path.extname(originalName || '').toLowerCase();
-  const filename = `${crypto.randomBytes(12).toString('hex')}${ext}`;
+  const filename = storedName(originalName);
   await fs.writeFile(path.join(UPLOAD_DIR, filename), buffer);
   return { url: `/uploads/${filename}`, filename };
 }
+
+/**
+ * Persist a buffer somewhere nothing serves.
+ *
+ * Returns no url on purpose: there is no address for this file, and a caller
+ * that wants one has to go through a route that authenticates first. Storing a
+ * url would be the bug — see Application's fileSchema, which omits it for the
+ * same reason.
+ */
+export async function savePrivateBuffer(buffer, originalName) {
+  await ensureDir(PRIVATE_DIR);
+  const filename = storedName(originalName);
+  await fs.writeFile(path.join(PRIVATE_DIR, filename), buffer);
+  return { filename };
+}
+
+/**
+ * Resolve a stored private filename to a real path, or null.
+ *
+ * The name comes from our own database, but this still refuses anything that
+ * escapes the directory: "it came from the DB" is an argument about today's
+ * writers, and the check has to hold for tomorrow's. `..%2f..%2fetc/passwd`
+ * arriving through some future import path must read a file it is not allowed to
+ * read, and the containment test is what makes that structurally impossible
+ * rather than merely unlikely.
+ */
+export function privateFilePath(filename) {
+  if (!filename || typeof filename !== 'string') return null;
+  // path.resolve collapses '..' and absolutises BEFORE the comparison, so a
+  // stored '../../../.env' and an absolute '/etc/passwd' both land outside and
+  // return null. The trailing separator is load-bearing: without it a sibling
+  // '/app/private-uploads-backup/x' passes a bare startsWith(). Containment
+  // rather than a basename test, so a future layout that files uploads under a
+  // subdirectory keeps working — containment is the property that matters.
+  const resolved = path.resolve(PRIVATE_DIR, filename);
+  return resolved.startsWith(PRIVATE_DIR + path.sep) ? resolved : null;
+}
+
+/** Remove a private file. Never throws — a missing file is already the goal. */
+export async function deletePrivateFile(filename) {
+  const p = privateFilePath(filename);
+  if (!p) return false;
+  try {
+    await fs.unlink(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export { PRIVATE_DIR };
 
 /**
  * A file we could not read, with a reason worth showing the person who uploaded it.

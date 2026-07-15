@@ -44,6 +44,9 @@ import { updateCandidateAdminSchema, createAiProviderSchema, updateAiProviderSch
 import { brandingSchema } from '../validators/branding.validators.js';
 import { leadUpdateSchema } from '../validators/lead.validators.js';
 import { uploadImage, uploadKnowledge, uploadEditorImage } from '../middleware/upload.js';
+import * as applications from '../controllers/admin/application.controller.js';
+import * as applicationConfig from '../controllers/admin/applicationConfig.controller.js';
+import { applicationConfigSchema } from '../validators/applicationConfig.validators.js';
 import * as knowledgeBase from '../controllers/knowledgeBase.controller.js';
 import * as email from '../controllers/admin/email.controller.js';
 import {
@@ -248,5 +251,26 @@ router.get('/leads/stats', leads.stats);
 router.get('/leads/export', leads.exportLeads);
 router.patch('/leads/:id', validate(leadUpdateSchema), leads.update);
 router.delete('/leads/:id', leads.remove);
+
+/* ── Interview applications (public "Apply" module) ─────── */
+// Everything here inherits the authenticate + rbac() at the top of this file, so
+// it is super_admin only. That gate is the ONLY thing standing between the open
+// internet and an applicant's resume, passport photo and full address — the
+// files deliberately have no public URL, and this router is how they are read.
+//
+// `/config` before `/:id`, or Express matches "config" as an application id.
+router.get('/applications/config', applicationConfig.get);
+router.put('/applications/config', validate(applicationConfigSchema), applicationConfig.update);
+
+router.get('/applications', applications.list);
+router.get('/applications/export', applications.exportCsv);
+router.get('/applications/:id', applications.getOne);
+router.get('/applications/:id/pdf', applications.pdf);
+router.get('/applications/:id/file/:kind', applications.file);
+router.patch('/applications/:id/status', applications.setStatus);
+router.patch('/applications/:id/payment', applications.verifyPay);
+router.post('/applications/:id/notes', applications.addNote);
+router.delete('/applications/:id/notes/:noteId', applications.removeNote);
+router.delete('/applications/:id', applications.remove);
 
 export default router;
