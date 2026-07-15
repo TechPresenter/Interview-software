@@ -93,9 +93,9 @@ planSchema.statics.defaults = function defaults() {
       name: 'Professional',
       description: 'Most Popular',
       pricing: { monthly: 2499900, yearly: 24999000, currency: 'INR' },
-      limits: { seats: 25, activeJobs: 999_999, interviewsPerMonth: 2500, aiTokensPerMonth: 20_000_000 },
+      limits: { seats: 25, activeJobs: 999_999, interviewsPerMonth: 250, aiTokensPerMonth: 20_000_000 },
       features: [
-        '2,500 AI interviews / month',
+        '250 AI interviews / month',
         'Unlimited active jobs',
         '25 team members',
         '20M AI tokens / month',
