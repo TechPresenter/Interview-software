@@ -58,12 +58,19 @@ export const router = Router();
 router.use(authenticate, rbac(ROLES.COMPANY_ADMIN, ROLES.RECRUITER, ROLES.HR_MANAGER), requireTenant);
 
 /* ── Overview ──────────────────────────────────────────── */
+// Deliberately ungated: the dashboard landing page, a summary of the caller's
+// own workspace. Every staff role reaches it, and there is no module to hang it
+// on that wouldn't lock someone out of their own home screen.
 router.get('/company/overview', overview.overview);
 
 /* ── Custom AI interviewer ─────────────────────────────── */
-router.get('/company/ai-interviewer', overview.getInterviewer);
-router.put('/company/ai-interviewer', overview.updateInterviewer);
-router.post('/company/ai-interviewer/avatar', uploadImage, overview.uploadInterviewerAvatar);
+// The persona (name, voice, intro) that speaks to every candidate. The nav has
+// always listed this page under company_admin only, but the routes never asked:
+// recruiter and hr_manager both got a 200 from PUT and could rewrite the script.
+// `settings` is false across the board for both in DEFAULT_PERMISSIONS.
+router.get('/company/ai-interviewer', requirePermission('settings', 'read'), overview.getInterviewer);
+router.put('/company/ai-interviewer', requirePermission('settings', 'update'), overview.updateInterviewer);
+router.post('/company/ai-interviewer/avatar', requirePermission('settings', 'update'), uploadImage, overview.uploadInterviewerAvatar);
 
 /* ── Account (company_admin: delete the whole workspace) ── */
 router.delete('/company/account', rbac(ROLES.COMPANY_ADMIN), validate(deleteAccountSchema), account.deleteAccount);
@@ -74,38 +81,43 @@ router.post('/company/api-keys', rbac(ROLES.COMPANY_ADMIN), validate(createApiKe
 router.delete('/company/api-keys/:id', rbac(ROLES.COMPANY_ADMIN), apiKeys.revoke);
 
 /* ── Jobs ──────────────────────────────────────────────── */
-router.get('/jobs', jobs.list);
-router.post('/jobs', validate(createJobSchema), jobs.create);
-router.get('/jobs/:id', jobs.getOne);
-router.patch('/jobs/:id', validate(updateJobSchema), jobs.update);
-router.delete('/jobs/:id', jobs.remove);
-router.post('/jobs/:id/clone', jobs.clone);
+router.get('/jobs', requirePermission('jobs', 'read'), jobs.list);
+router.post('/jobs', requirePermission('jobs', 'create'), validate(createJobSchema), jobs.create);
+router.get('/jobs/:id', requirePermission('jobs', 'read'), jobs.getOne);
+router.patch('/jobs/:id', requirePermission('jobs', 'update'), validate(updateJobSchema), jobs.update);
+// findOneAndDelete — a hard delete, and `delete` is false for every built-in
+// role except company_admin.
+router.delete('/jobs/:id', requirePermission('jobs', 'delete'), jobs.remove);
+router.post('/jobs/:id/clone', requirePermission('jobs', 'create'), jobs.clone);
 
 /* ── Candidates ────────────────────────────────────────── */
-router.get('/candidates', candidates.list);
-router.post('/candidates', validate(createCandidateSchema), candidates.create);
-router.post('/candidates/import', uploadCsv, candidates.importCsv);
-router.post('/candidates/parse-resume', uploadResume, candidates.parseResume);
-router.get('/candidates/:id', candidates.getOne);
-router.patch('/candidates/:id', validate(updateCandidateSchema), candidates.update);
-router.delete('/candidates/:id', candidates.remove);
-router.post('/candidates/:id/notes', validate(addNoteSchema), candidates.addNote);
-router.post('/candidates/:id/resume', uploadResume, candidates.uploadResumeFile);
-router.get('/candidates/:id/resume-analysis', candidates.reanalyzeResume);
-router.patch('/candidates/:id/stage', validate(stageSchema), pipeline.moveStage);
+router.get('/candidates', requirePermission('candidates', 'read'), candidates.list);
+router.post('/candidates', requirePermission('candidates', 'create'), validate(createCandidateSchema), candidates.create);
+router.post('/candidates/import', requirePermission('candidates', 'create'), uploadCsv, candidates.importCsv);
+router.post('/candidates/parse-resume', requirePermission('candidates', 'create'), uploadResume, candidates.parseResume);
+router.get('/candidates/:id', requirePermission('candidates', 'read'), candidates.getOne);
+router.patch('/candidates/:id', requirePermission('candidates', 'update'), validate(updateCandidateSchema), candidates.update);
+router.delete('/candidates/:id', requirePermission('candidates', 'delete'), candidates.remove);
+router.post('/candidates/:id/notes', requirePermission('candidates', 'update'), validate(addNoteSchema), candidates.addNote);
+router.post('/candidates/:id/resume', requirePermission('candidates', 'update'), uploadResume, candidates.uploadResumeFile);
+// A GET, but it re-runs the AI analysis and saves the result — it mutates and it
+// bills. Gated on `update`, not `read`, so a read-only role cannot spend tokens.
+router.get('/candidates/:id/resume-analysis', requirePermission('candidates', 'update'), candidates.reanalyzeResume);
+// Moving a candidate between stages is a pipeline action, not a candidate edit.
+router.patch('/candidates/:id/stage', requirePermission('pipeline', 'update'), validate(stageSchema), pipeline.moveStage);
 
 /* ── Interviews ────────────────────────────────────────── */
-router.get('/interviews', interviews.list);
-router.get('/recordings', interviews.recordings);
-router.post('/interviews', validate(scheduleInterviewSchema), interviews.schedule);
-router.post('/interviews/auto', validate(autoInterviewSchema), interviews.autoSchedule);
-router.get('/interviews/:id', interviews.getOne);
-router.get('/interviews/:id/monitor', interviews.monitor);
-router.post('/interviews/:id/invite', interviews.invite);
-router.post('/interviews/:id/pause', interviews.pause);
-router.post('/interviews/:id/resume', interviews.resume);
-router.post('/interviews/:id/terminate', interviews.terminate);
-router.post('/interviews/:id/cancel', interviews.cancel);
+router.get('/interviews', requirePermission('interviews', 'read'), interviews.list);
+router.get('/recordings', requirePermission('recordings', 'read'), interviews.recordings);
+router.post('/interviews', requirePermission('interviews', 'create'), validate(scheduleInterviewSchema), interviews.schedule);
+router.post('/interviews/auto', requirePermission('interviews', 'create'), validate(autoInterviewSchema), interviews.autoSchedule);
+router.get('/interviews/:id', requirePermission('interviews', 'read'), interviews.getOne);
+router.get('/interviews/:id/monitor', requirePermission('interviews', 'read'), interviews.monitor);
+router.post('/interviews/:id/invite', requirePermission('interviews', 'update'), interviews.invite);
+router.post('/interviews/:id/pause', requirePermission('interviews', 'update'), interviews.pause);
+router.post('/interviews/:id/resume', requirePermission('interviews', 'update'), interviews.resume);
+router.post('/interviews/:id/terminate', requirePermission('interviews', 'update'), interviews.terminate);
+router.post('/interviews/:id/cancel', requirePermission('interviews', 'update'), interviews.cancel);
 
 /* ── Staff & RBAC (company admin only; permissions readable by all staff) ── */
 router.get('/company/me/permissions', staffCtrl.myPermissions);
@@ -133,13 +145,17 @@ router.get('/company/email/gmail/authorize', rbac(ROLES.COMPANY_ADMIN), gmailCtr
 router.post('/company/email/gmail/disconnect', rbac(ROLES.COMPANY_ADMIN), gmailCtrl.disconnect);
 
 /* ── Pipeline ──────────────────────────────────────────── */
-router.get('/pipeline', pipeline.board);
+router.get('/pipeline', requirePermission('pipeline', 'read'), pipeline.board);
 
 /* ── Proctoring audit (company-scoped) ─────────────────── */
-router.get('/proctoring', proctoring.list);
-router.get('/proctoring/stats', proctoring.stats);
-router.get('/proctoring/export', proctoring.exportCsv);
-router.get('/proctoring/:id', proctoring.detail);
+// Filed under `recordings`: this is per-session integrity evidence, the same
+// audience as the recordings themselves. The `interviewer` role template grants
+// recordings:read and no reports at all — someone running interviews should see
+// the integrity evidence for them without unlocking the analytics suite.
+router.get('/proctoring', requirePermission('recordings', 'read'), proctoring.list);
+router.get('/proctoring/stats', requirePermission('recordings', 'read'), proctoring.stats);
+router.get('/proctoring/export', requirePermission('recordings', 'read'), proctoring.exportCsv);
+router.get('/proctoring/:id', requirePermission('recordings', 'read'), proctoring.detail);
 
 /* ── Reports (specific routes before :id) ──────────────── */
 /* ── Question bank ─────────────────────────────────────── */
@@ -167,24 +183,30 @@ router.patch('/question-sets/:id', requirePermission('questions', 'update'), val
 router.post('/question-sets/:id/duplicate', requirePermission('questions', 'create'), questionSets.duplicate);
 router.delete('/question-sets/:id', requirePermission('questions', 'delete'), questionSets.remove);
 
-router.get('/reports', reports.list);
-router.get('/reports/analytics', reports.analytics);
-router.get('/reports/ranking', reports.ranking);
-router.get('/reports/ranking/export', reports.exportRanking);
-router.get('/reports/:id', reports.getOne);
-router.get('/reports/:id/export', reports.exportReport);
-router.post('/reports/:id/regenerate', reports.regenerate);
-router.post('/reports/:id/notes', reports.addNote);
-router.delete('/reports/:id/notes/:noteId', reports.removeNote);
+router.get('/reports', requirePermission('reports', 'read'), reports.list);
+router.get('/reports/analytics', requirePermission('reports', 'read'), reports.analytics);
+router.get('/reports/ranking', requirePermission('reports', 'read'), reports.ranking);
+router.get('/reports/ranking/export', requirePermission('reports', 'read'), reports.exportRanking);
+router.get('/reports/:id', requirePermission('reports', 'read'), reports.getOne);
+router.get('/reports/:id/export', requirePermission('reports', 'read'), reports.exportReport);
+// Re-runs the whole AI report and overwrites the existing one — billable, and
+// destructive to a finished evaluation.
+router.post('/reports/:id/regenerate', requirePermission('reports', 'update'), reports.regenerate);
+router.post('/reports/:id/notes', requirePermission('reports', 'create'), reports.addNote);
+router.delete('/reports/:id/notes/:noteId', requirePermission('reports', 'delete'), reports.removeNote);
 
 /* ── Knowledge bases ───────────────────────────────────── */
-router.get('/knowledge-bases', kb.list);
-router.post('/knowledge-bases', uploadKnowledge, kb.create);
-router.get('/knowledge-bases/:id', kb.getOne);
-router.patch('/knowledge-bases/:id', kb.update);
-router.post('/knowledge-bases/:id/sources', uploadKnowledge, kb.addSources);
-router.post('/knowledge-bases/:id/toggle', kb.toggle);
-router.delete('/knowledge-bases/:id', kb.remove);
+// Every built-in role but company_admin is knowledge:read-only, yet all of these
+// were open: a recruiter could create a KB (a real 201), replace a corpus via
+// ?mode=replace, disable the KB every AI interview draws on, or delete it and
+// its ingested chunks outright.
+router.get('/knowledge-bases', requirePermission('knowledge', 'read'), kb.list);
+router.post('/knowledge-bases', requirePermission('knowledge', 'create'), uploadKnowledge, kb.create);
+router.get('/knowledge-bases/:id', requirePermission('knowledge', 'read'), kb.getOne);
+router.patch('/knowledge-bases/:id', requirePermission('knowledge', 'update'), kb.update);
+router.post('/knowledge-bases/:id/sources', requirePermission('knowledge', 'update'), uploadKnowledge, kb.addSources);
+router.post('/knowledge-bases/:id/toggle', requirePermission('knowledge', 'update'), kb.toggle);
+router.delete('/knowledge-bases/:id', requirePermission('knowledge', 'delete'), kb.remove);
 // Writes into the question bank, so it takes the bank's create permission rather
 // than the knowledge module's.
 router.post(

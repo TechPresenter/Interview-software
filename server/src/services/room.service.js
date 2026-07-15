@@ -48,6 +48,24 @@ export async function loadByToken(token, { lean = false } = {}) {
   return interview;
 }
 
+/**
+ * The subset of a pendingQuestion a candidate may see.
+ *
+ * The engine's question object carries the mark scheme with it: `expectedPoints`
+ * is the ideal-answer key that scoreAnswer() marks the reply against, and
+ * `rationale` is the interviewer's private note on why the question is asked.
+ * Every room response used to return that object as-is, so anyone holding an
+ * interview link could read the answer key for the question they were being
+ * scored on — before answering it — straight out of the network tab.
+ *
+ * The client only ever renders `text`; its own RoomQuestion type has always
+ * declared exactly these three fields. The server was simply over-serving.
+ * Keep the engine's full object in engineState — the scorer needs it — and let
+ * nothing but this through to the candidate.
+ */
+const publicQuestion = (q) =>
+  (q ? { text: q.text, competencies: q.competencies, isFollowUp: q.isFollowUp } : q);
+
 /** Candidate-facing room view (never leaks scores/evaluations). */
 export async function roomView(interview) {
   const [candidate, job, company] = await Promise.all([
@@ -71,7 +89,7 @@ export async function roomView(interview) {
     },
     phase: interview.engineState.phase,
     progress: progressOf(interview),
-    pendingQuestion: interview.status === 'in_progress' ? interview.engineState.pendingQuestion : undefined,
+    pendingQuestion: interview.status === 'in_progress' ? publicQuestion(interview.engineState.pendingQuestion) : undefined,
     transcript: interview.transcript,
     skips: {
       allowed: interview.config.allowSkip,
@@ -99,7 +117,7 @@ export async function start(interview, { language } = {}) {
     // Resume: return current state instead of regenerating.
     return {
       greeting: interview.transcript.find((t) => t.role === 'ai')?.text,
-      question: interview.engineState.pendingQuestion,
+      question: publicQuestion(interview.engineState.pendingQuestion),
       progress: progressOf(interview),
     };
   }
@@ -133,7 +151,7 @@ export async function start(interview, { language } = {}) {
   emitToCompany(interview.company, 'interview:started', { id: interview._id });
   await logActivity({ company: interview.company, action: 'interview.started', entityType: 'Interview', entityId: interview._id, summary: `${candidate?.name} started their interview` });
 
-  return { greeting, question, progress: progressOf(interview) };
+  return { greeting, question: publicQuestion(question), progress: progressOf(interview) };
 }
 
 /**
@@ -234,7 +252,7 @@ export async function answer(interview, payload) {
     interview.engineState.pendingQuestion = followUp;
     interview.transcript.push({ role: 'ai', text: followUp.text });
     await interview.save();
-    return { done: false, question: followUp, progress: progressOf(interview) };
+    return { done: false, question: publicQuestion(followUp), progress: progressOf(interview) };
   }
 
   // Next question.
@@ -244,7 +262,7 @@ export async function answer(interview, payload) {
   interview.transcript.push({ role: 'ai', text: next.text });
   await interview.save();
 
-  return { done: false, question: next, progress: progressOf(interview) };
+  return { done: false, question: publicQuestion(next), progress: progressOf(interview) };
 }
 
 /**
@@ -297,7 +315,7 @@ export async function skip(interview) {
   await interview.save();
   return {
     done: false,
-    question: next,
+    question: publicQuestion(next),
     progress: progressOf(interview),
     skipsRemaining: Math.max(0, interview.config.maxSkips - interview.engineState.skipsUsed),
   };
@@ -444,14 +462,29 @@ async function proctoringThresholds() {
  */
 export async function recordProctoring(interview, body = {}) {
   const events = Array.isArray(body.events) ? body.events : body.type ? [body] : [];
-  if (!events.length) return { fraudScore: interview.proctoring.fraudScore || 0 };
+  if (!events.length) return { recorded: false };
   const thresholds = await proctoringThresholds();
-  return proctor.recordEvents(interview, events, thresholds);
+  const result = await proctor.recordEvents(interview, events, thresholds);
+  // recordEvents reports the authoritative fraudScore/riskLevel/integrityScore
+  // and the flagged bit — for the RECRUITER, who gets them over the socket it
+  // just emitted. Handing the same numbers back to the candidate lets them post
+  // an event, read the real score, and tune their behaviour against the real
+  // flag/terminate thresholds until it stops moving. The room UI shows a
+  // separate score the browser computes for itself (a deterrent, by design) and
+  // discards this response entirely, so nothing is lost by withholding it.
+  // `terminated` stays: their interview is over, they are about to find out.
+  return { recorded: true, terminated: Boolean(result?.terminated) };
 }
 
 /** Persist the device + network fingerprint (§10). */
 export async function recordDevice(interview, body = {}) {
-  return proctor.setDeviceNetwork(interview, body);
+  // setDeviceNetwork returns the whole `interview.proctoring` subdocument —
+  // every violation event, the scores, and the evidence[] URLs of the snapshots
+  // taken of this candidate. That is the case file being built about them; it
+  // belongs to the recruiter, not to the subject. The client only needs to know
+  // the fingerprint landed.
+  await proctor.setDeviceNetwork(interview, body);
+  return { recorded: true };
 }
 
 /**

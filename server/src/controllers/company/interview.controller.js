@@ -1,6 +1,8 @@
 import { Interview } from '../../models/Interview.js';
 import { Candidate } from '../../models/Candidate.js';
 import { Job } from '../../models/Job.js';
+import { QuestionSet } from '../../models/QuestionSet.js';
+import { KnowledgeBase } from '../../models/KnowledgeBase.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ok, created } from '../../utils/ApiResponse.js';
 import { ApiError } from '../../utils/ApiError.js';
@@ -73,6 +75,32 @@ export const schedule = asyncHandler(async (req, res) => {
       ? await Job.findById(candidate.job)
       : null;
 
+  // `candidate` and `job` above are resolved against the caller's tenant, but
+  // the question set and knowledge base used to be forwarded straight from the
+  // request body. Nothing downstream re-checked them: scheduleInterview writes
+  // the id onto the interview, and the room then loads it with a bare
+  // findById(). So a recruiter could name ANOTHER company's question set here
+  // and have their own candidate served that company's curated, proprietary
+  // questions. Resolve both in-tenant, and 404 exactly like a bad candidate id.
+  // Visibility differs per model, so each mirrors its own controller's read
+  // rule rather than a blanket company match: a question set may legitimately be
+  // a public global one (company: null, isPublic: true) that every tenant may
+  // use — see questionSet.controller getOne — whereas knowledge bases are always
+  // strictly company-owned (company: null means super-admin-only).
+  const [questionSet, knowledgeBase] = await Promise.all([
+    req.body.questionSet
+      ? QuestionSet.findOne({
+        _id: req.body.questionSet,
+        $or: [{ company: req.companyId }, { company: null, isPublic: true }],
+      }).select('_id').lean()
+      : null,
+    req.body.knowledgeBase
+      ? KnowledgeBase.findOne(scope(req, { _id: req.body.knowledgeBase })).select('_id').lean()
+      : null,
+  ]);
+  if (req.body.questionSet && !questionSet) throw ApiError.notFound('Question set not found');
+  if (req.body.knowledgeBase && !knowledgeBase) throw ApiError.notFound('Knowledge base not found');
+
   const interview = await scheduleInterview({
     companyId: req.companyId,
     candidate,
@@ -80,8 +108,8 @@ export const schedule = asyncHandler(async (req, res) => {
     types: req.body.types,
     round: req.body.round,
     config: req.body.config,
-    knowledgeBase: req.body.knowledgeBase,
-    questionSet: req.body.questionSet,
+    knowledgeBase: knowledgeBase?._id,
+    questionSet: questionSet?._id,
     scheduledAt: req.body.scheduledAt,
     expiresAt: req.body.expiresAt,
     invitedBy: req.user._id,

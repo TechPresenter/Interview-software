@@ -41,14 +41,37 @@ router.post('/event', async (req, res) => {
   res.status(204).end();
 });
 
+/**
+ * Only ever bounce back into our own app.
+ *
+ * The old test was `/^https?:\/\//.test(url)` — "starts with http", which every
+ * URL on the internet does. That made this an open redirect on a domain
+ * recipients are told to trust, reachable by anyone:
+ *   /track/click/anything?u=https://evil.example/login
+ * and the link in the email reads as ours right up to the redirect. Tracked
+ * links only ever point back into the product (interview room, dashboard), so
+ * pinning the origin costs nothing and takes the phishing gadget away.
+ */
+function safeRedirect(raw) {
+  try {
+    const target = new URL(String(raw || ''));
+    const home = new URL(config.clientUrl);
+    // Compare parsed origins, not string prefixes: `https://app.example.com.evil.io`
+    // passes a startsWith check and is a different site entirely.
+    if (target.origin === home.origin) return target.href;
+  } catch {
+    /* not a URL at all — fall through */
+  }
+  return config.clientUrl;
+}
+
 router.get('/click/:id', async (req, res) => {
-  const url = String(req.query.u || '');
   try {
     await EmailLog.findByIdAndUpdate(req.params.id, { $inc: { clickCount: 1 }, $set: { status: 'clicked', lastClickAt: new Date() } });
   } catch {
     /* ignore */
   }
-  res.redirect(/^https?:\/\//.test(url) ? url : config.clientUrl);
+  res.redirect(safeRedirect(req.query.u));
 });
 
 export default router;

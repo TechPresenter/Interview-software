@@ -181,7 +181,11 @@ export const exportRanking = asyncHandler(async (req, res) => {
 
   let jobTitle = 'all';
   if (req.query.job) {
-    const job = await Job.findById(req.query.job).select('title').lean();
+    // findById ignored the tenant, so passing another company's job id put THEIR
+    // job title in the spreadsheet header. The rows below it were always scoped
+    // correctly and came back empty, so no report data crossed — but a job title
+    // ("confidential VP replacement search") is itself worth not leaking.
+    const job = await Job.findOne(scope(req, { _id: req.query.job })).select('title').lean();
     jobTitle = job?.title || 'job';
   }
 

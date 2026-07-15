@@ -91,7 +91,9 @@ export const evidence = asyncHandler(async (req, res) => {
 /** POST /interview-room/:token/recording — upload captured media. */
 export const recording = asyncHandler(async (req, res) => {
   if (!req.file) throw ApiError.badRequest('Recording file required (field "recording")');
-  const interview = await room.loadByToken(req.params.token);
+  // Already resolved by resolveRoomToken, which runs ahead of multer so a bad
+  // token is rejected before the body is buffered.
+  const interview = req.interview;
   const { url } = await saveBuffer(req.file.buffer, req.file.originalname || 'recording.webm');
   if (req.file.mimetype.startsWith('video/')) interview.recordings.videoUrl = url;
   else interview.recordings.audioUrl = url;
@@ -106,7 +108,7 @@ export const recording = asyncHandler(async (req, res) => {
  */
 export const recordingChunk = asyncHandler(async (req, res) => {
   if (!req.file) throw ApiError.badRequest('Recording chunk required (field "chunk")');
-  const interview = await room.loadByToken(req.params.token);
+  const interview = req.interview; // resolved before multer — see room.routes.js
   const first = req.query.first === '1' || req.query.first === 'true';
   return ok(res, await room.appendRecordingChunk(interview, req.file.buffer, { first, ext: req.query.ext || 'webm' }));
 });
