@@ -209,7 +209,7 @@ export function ApplyForm() {
       if (!form.currentJobTitle.trim()) next.currentJobTitle = 'Tell us your current (or most recent) job title.';
     }
     if (!resume) next.resume = 'Please attach your resume.';
-    if (!photo) next.photo = 'Please attach a passport-size photo.';
+    // The photo is optional — an applicant without one to hand still applies.
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -217,7 +217,7 @@ export function ApplyForm() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resume || !photo || !validate()) return;
+    if (!resume || !validate()) return;
     setSubmitting(true);
     try {
       const digits = form.mobile.replace(/\D/g, '');
@@ -567,7 +567,7 @@ export function ApplyForm() {
         </div>
       </Section>
 
-      <Section title="Uploads" subtitle="Your resume and a passport-size photo.">
+      <Section title="Uploads" subtitle="Your resume. A photo helps, but is optional.">
         <div className="grid gap-5 sm:grid-cols-2">
           <FilePicker
             id="ap-resume" label="Resume" required icon={FileText} hint="PDF, DOC or DOCX · up to 15 MB"
@@ -575,7 +575,7 @@ export function ApplyForm() {
             file={resume} error={errors.resume} onPick={pickResume} onClear={() => setResume(null)}
           />
           <FilePicker
-            id="ap-photo" label="Passport-size photo" required icon={ImageIcon} hint="JPG, PNG or WebP · up to 3 MB"
+            id="ap-photo" label="Passport-size photo" icon={ImageIcon} hint="Optional · JPG, PNG or WebP · up to 3 MB"
             accept="image/*" file={photo} error={errors.photo} onPick={pickPhoto} onClear={() => setPhoto(null)}
           />
         </div>

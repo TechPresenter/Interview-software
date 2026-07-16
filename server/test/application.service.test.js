@@ -228,6 +228,24 @@ describe('createApplication', () => {
     expect(app.resume.url).toBeUndefined();
     expect(app.photo.url).toBeUndefined();
   });
+
+  it('files an application with no photo', async () => {
+    // The photo is optional. Turning away a qualified applicant because they had
+    // no passport photo to hand is a worse outcome than a blank avatar in the
+    // review panel — and everything downstream already handles its absence (the
+    // model never required it, the PDF prints an empty reference, the admin panel
+    // renders an empty row).
+    const app = await svc.createApplication(DATA, { resume: FILES.resume }, {});
+    expect(app.resume.filename).toBe('a1b2.pdf');
+    expect(app.photo).toBeUndefined();
+  });
+
+  it('still requires the resume', async () => {
+    // Optional photo must not have made the CV optional by accident — the resume
+    // is the one thing a reviewer cannot do without.
+    const app = await svc.createApplication(DATA, { resume: FILES.resume }, {});
+    expect(app.resume).toBeTruthy();
+  });
 });
 
 describe('findLiveApplication', () => {

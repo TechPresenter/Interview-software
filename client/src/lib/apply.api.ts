@@ -136,7 +136,7 @@ export interface ApplyResult {
  *    shows up for the least experienced applicants. The validator normalises all
  *    three legal spellings, but this one is an array at every length.
  */
-function toFormData(payload: ApplyPayload, files: { resume: File; photo: File }): FormData {
+function toFormData(payload: ApplyPayload, files: { resume: File; photo?: File | null }): FormData {
   const fd = new FormData();
   const { skills, declarationAccepted, ...scalars } = payload;
 
@@ -156,7 +156,10 @@ function toFormData(payload: ApplyPayload, files: { resume: File; photo: File })
   fd.append('declaration', String(declarationAccepted));
 
   fd.append('resume', files.resume);
-  fd.append('photo', files.photo);
+  // Only when there is one: appending an absent photo sends the string
+  // "undefined" as a text field, and multer's fileFilter would reject the
+  // submission over a file the applicant never chose.
+  if (files.photo) fd.append('photo', files.photo);
   return fd;
 }
 
@@ -189,7 +192,7 @@ export const applyApi = {
   // 15s: this is a settings read. Failing fast is the point — the form renders a
   // retry once this rejects, and an applicant staring at a spinner learns nothing.
   config: (): Promise<ApplyConfig> => http.get('/apply/config', { timeout: 15_000 }).then((r) => r.data.data),
-  submit: (payload: ApplyPayload, files: { resume: File; photo: File }): Promise<ApplyResult> =>
+  submit: (payload: ApplyPayload, files: { resume: File; photo?: File | null }): Promise<ApplyResult> =>
     http.post('/apply', toFormData(payload, files)).then((r) => r.data.data),
 };
 

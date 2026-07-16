@@ -98,9 +98,14 @@ export const getConfig = asyncHandler(async (_req, res) => {
 /**
  * POST /apply — submit an application.
  *
- * Both files are required per the spec, and each is named in its own error: "one
+ * The resume is required; the photo is not. Each error names its own file — "one
  * or more files are missing" makes the applicant re-pick both attachments to find
  * out which one the browser dropped.
+ *
+ * A missing photo costs nothing downstream: the model never marked it required,
+ * the PDF prints an empty reference for it, and the admin panel renders an empty
+ * row. Turning away a qualified applicant because they had no passport photo to
+ * hand is a worse outcome than a review panel with a blank avatar.
  */
 export const submit = asyncHandler(async (req, res) => {
   const resumeFile = req.files?.resume?.[0];
@@ -109,10 +114,8 @@ export const submit = asyncHandler(async (req, res) => {
   if (!resumeFile) {
     throw ApiError.badRequest('Please attach your resume.', { code: 'RESUME_REQUIRED', details: { resume: 'Attach your resume (PDF, DOCX, or a clear photo of it).' } });
   }
-  if (!photoFile) {
-    throw ApiError.badRequest('Please attach a passport-size photo.', { code: 'PHOTO_REQUIRED', details: { photo: 'Attach a recent passport-size photo (JPG or PNG).' } });
-  }
-  if (photoFile.size > MAX_PHOTO_BYTES) {
+  // Only when one was actually sent: the cap applies to the photo, not to its absence.
+  if (photoFile && photoFile.size > MAX_PHOTO_BYTES) {
     throw ApiError.badRequest('That photo is too large — please upload one under 3 MB.', { code: 'PHOTO_TOO_LARGE', details: { photo: 'Maximum photo size is 3 MB.' } });
   }
 
@@ -142,7 +145,13 @@ export const submit = asyncHandler(async (req, res) => {
     logger.info({ reason: err.code }, 'application resume text unreadable — filing the application without it');
   }
 
-  const [resume, photo] = await Promise.all([storeFile(resumeFile), storeFile(photoFile)]);
+  // The photo is optional, so it may genuinely be absent — storeFile would read
+  // .buffer off undefined. `undefined` rather than null: mongoose omits the
+  // subdocument entirely instead of storing an empty one.
+  const [resume, photo] = await Promise.all([
+    storeFile(resumeFile),
+    photoFile ? storeFile(photoFile) : undefined,
+  ]);
 
   const application = await createApplication(
     { ...req.body, resumeText },
