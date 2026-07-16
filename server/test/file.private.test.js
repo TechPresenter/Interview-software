@@ -60,17 +60,46 @@ describe('private uploads are not in the public directory', () => {
 describe('privateFilePath refuses to leave its directory', () => {
   // The name comes from our own database today. That is an argument about
   // today's writers, not tomorrow's importer, migration, or bug.
+  //
+  // path.join/path.sep rather than literal separators: what counts as traversal
+  // is a property of the PLATFORM, not of the string. A backslash separates
+  // directories on Windows and is an ordinary filename character on Linux, so
+  // '..\\..\\secret' is an escape on one and a single contained file on the
+  // other — and asserting it is rejected everywhere fails on the Linux box CI
+  // actually runs, for a resolver that is behaving correctly. These express the
+  // intent (escape the directory) in the terms of whatever platform is running.
   it.each([
-    ['posix traversal', path.join('..', '..', '.env')],
-    ['windows traversal', '..\\..\\secret'],
-    ['mixed separators', '..\\../.env'],
-    ['absolute posix', '/etc/passwd'],
-    ['absolute windows', 'C:\\Windows\\System32\\config\\SAM'],
+    ['traversal', path.join('..', '..', '.env')],
+    ['deep traversal', path.join('..', '..', '..', '..', 'etc', 'passwd')],
     ['climbs then returns', path.join('..', 'uploads', 'x.png')],
+    ['a leading separator', `${path.sep}etc${path.sep}passwd`],
     ['empty', ''],
     ['not a string', null],
     ['a number', 42],
+    // Not a string, so it never reaches resolve — an attacker-supplied toString
+    // must not be what decides where we read from.
+    ['an object', { toString: () => '../../.env' }],
   ])('rejects %s', (_label, input) => {
+    expect(privateFilePath(input)).toBeNull();
+  });
+
+  it('is a containment check, not a filename validator', () => {
+    // A daft-but-contained name resolves, and should: the guarantee is that the
+    // path stays inside the directory. Nothing by that name exists, so the
+    // caller 404s — which is the right outcome, reached honestly.
+    const odd = privateFilePath('   ');
+    expect(odd).toBeTruthy();
+    expect(odd.startsWith(PRIVATE_DIR + path.sep)).toBe(true);
+  });
+
+  // Windows treats these as escapes; POSIX reads them as ordinary (if odd)
+  // filenames, which is why they are pinned only where they mean something.
+  const onWindows = process.platform === 'win32' ? it : it.skip;
+  onWindows.each([
+    ['backslash traversal', '..\\..\\secret'],
+    ['mixed separators', '..\\../.env'],
+    ['a drive-absolute path', 'C:\\Windows\\System32\\config\\SAM'],
+  ])('rejects %s (win32 only)', (_label, input) => {
     expect(privateFilePath(input)).toBeNull();
   });
 
