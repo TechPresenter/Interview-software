@@ -8,7 +8,7 @@ import { Sparkles, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useBranding } from '@/store/branding.store';
-import { HEADER_NAV, SITE } from '@/lib/site';
+import { HEADER_NAV, APPLY_LINK, SITE } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
 const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
@@ -91,6 +91,12 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          {/* The candidate's entry point, and the only CTA here not aimed at an
+              employer. `outline` on purpose: it must be findable without
+              outranking "Get started", which is what the marketing site is for. */}
+          <Link href={APPLY_LINK.href} className="hidden sm:block">
+            <Button variant="outline" size="sm" magnetic={false} data-cta="apply">{APPLY_LINK.label}</Button>
+          </Link>
           <Link href="/login" className="hidden sm:block">
             <Button variant="ghost" size="sm" magnetic={false} data-cta="login">Sign in</Button>
           </Link>
@@ -133,6 +139,13 @@ export function SiteHeader() {
                   </Link>
                 );
               })}
+              {/* Full width and on its own row rather than crammed in beside the
+                  two employer CTAs below: a third button in that row leaves all
+                  three too narrow to read on a small phone, which is the device
+                  most candidates apply from. */}
+              <Link href={APPLY_LINK.href} className="mt-2 block">
+                <Button variant="outline" className="w-full" magnetic={false} data-cta="apply">{APPLY_LINK.label}</Button>
+              </Link>
               <div className="mt-2 flex gap-2">
                 <Link href="/login" className="flex-1"><Button variant="outline" className="w-full" magnetic={false} data-cta="login">Sign in</Button></Link>
                 <Link href="/register" className="flex-1"><Button className="w-full" magnetic={false} data-cta="get_started">Get started</Button></Link>

@@ -61,6 +61,17 @@ export const HEADER_NAV: NavLink[] = [
   { label: 'Blog', href: '/blog' },
 ];
 
+/**
+ * The candidate's way in.
+ *
+ * Deliberately not in HEADER_NAV: every link there sells the product to an
+ * employer, and this one is for the person being interviewed — a different
+ * audience, and an action rather than a page to browse. It renders as its own
+ * button beside Sign in / Get started, and is listed here so the header and the
+ * sitemap cannot drift apart.
+ */
+export const APPLY_LINK: NavLink = { label: 'Apply for Interview', href: '/apply' };
+
 /** Footer link columns. */
 export const FOOTER_NAV: NavColumn[] = [
   {
@@ -117,6 +128,10 @@ export const PUBLIC_PATHS: string[] = Array.from(
   new Set<string>([
     '/',
     '/blog',
+    // Named explicitly because it is not in HEADER_NAV. An apply page nobody can
+    // find is a form with no applicants, and this is the one public route that
+    // exists to be arrived at from a search rather than from the marketing site.
+    APPLY_LINK.href,
     ...HEADER_NAV.map((l) => l.href),
     ...FOOTER_NAV.flatMap((c) => c.links.map((l) => l.href)),
   ]),
