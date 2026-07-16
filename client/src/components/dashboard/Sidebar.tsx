@@ -124,20 +124,39 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* ── Desktop sidebar (collapsible) ── */}
-      <motion.aside
-        animate={{ width: collapsed ? 76 : 264 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 30 }}
-        className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-card/50 p-3 backdrop-blur-xl lg:flex"
-      >
-        <div className="mb-6 flex items-center justify-between px-1">
-          <Brand hideLabel={collapsed} />
-        </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto">
-          <NavItems collapsed={collapsed} />
-        </nav>
-        <UserFooter collapsed={collapsed} />
-      </motion.aside>
+      {/*
+        ── Desktop sidebar (collapsible) ──
+
+        The `hidden lg:block` lives on this WRAPPER, and never on the motion
+        element inside it.
+
+        framer-motion cannot measure a `display: none` element, so when asked to
+        animate the width of one it writes `display: block` as an inline style to
+        make it measurable. Inline beats a class, so the `hidden` that used to sit
+        on the aside itself never won, and this sidebar rendered at EVERY width —
+        on a phone it took 264px of a 375px screen and squeezed the dashboard into
+        ~110px of unreadable column. The classes had been right the whole time;
+        they were being overruled by the animation library.
+
+        Moving the visibility to a plain wrapper means framer only ever sees an
+        element that is already `flex`, so it has no reason to touch `display`,
+        and the media query is the only thing deciding whether any of this exists.
+      */}
+      <div className="hidden shrink-0 lg:block">
+        <motion.aside
+          animate={{ width: collapsed ? 76 : 264 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+          className="sticky top-0 flex h-screen flex-col border-r border-border bg-card/50 p-3 backdrop-blur-xl"
+        >
+          <div className="mb-6 flex items-center justify-between px-1">
+            <Brand hideLabel={collapsed} />
+          </div>
+          <nav className="flex-1 space-y-1 overflow-y-auto">
+            <NavItems collapsed={collapsed} />
+          </nav>
+          <UserFooter collapsed={collapsed} />
+        </motion.aside>
+      </div>
 
       {/* ── Mobile / tablet drawer ── */}
       <AnimatePresence>
