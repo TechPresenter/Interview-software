@@ -10,7 +10,20 @@ const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
  * refreshes and then fires the unauthorized handler — which would bounce an
  * applicant who has no account, and never will have one, towards a login screen.
  */
-const http = axios.create({ baseURL: BASE });
+/**
+ * The timeout is load-bearing, not tidiness.
+ *
+ * axios defaults to NO timeout, and a request that hangs never rejects — so the
+ * form's `isError` branch is unreachable and the page sits on "Loading the
+ * application form…" for as long as the tab is open, with no error and no retry.
+ * Seen exactly that against a stalled API. A timeout is what turns a hang into
+ * something the UI can respond to.
+ *
+ * 60s because the submit posts the resume and photo together (up to ~18MB) and a
+ * phone on mobile data is slow; the config read overrides this with something
+ * far shorter, since it is a settings lookup and has no excuse to be slow.
+ */
+const http = axios.create({ baseURL: BASE, timeout: 60_000 });
 
 /** The admin-editable config. Mirrors the server's applicationConfig(). */
 export interface ApplyConfig {
@@ -173,7 +186,9 @@ export function parseDuplicate(err: any): { applicationId: string | null; messag
 }
 
 export const applyApi = {
-  config: (): Promise<ApplyConfig> => http.get('/apply/config').then((r) => r.data.data),
+  // 15s: this is a settings read. Failing fast is the point — the form renders a
+  // retry once this rejects, and an applicant staring at a spinner learns nothing.
+  config: (): Promise<ApplyConfig> => http.get('/apply/config', { timeout: 15_000 }).then((r) => r.data.data),
   submit: (payload: ApplyPayload, files: { resume: File; photo: File }): Promise<ApplyResult> =>
     http.post('/apply', toFormData(payload, files)).then((r) => r.data.data),
 };
