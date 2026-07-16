@@ -1,5 +1,11 @@
 import { apiGet, apiPost, api } from './api';
 import type { Question, QuestionStats, GenerateQuestionsInput, GenerateResult } from '@/types/question';
+// The same object the public form reads, because it IS the same object — both
+// endpoints return the server's applicationConfig(). A second interface here
+// would be free to drift from the form the admin is configuring.
+import type { ApplyConfig } from './apply.api';
+
+export type { ApplyConfig as ApplicationConfig };
 
 /**
  * Typed thin wrappers over the /admin endpoints (Phase 2). Used with React Query
@@ -143,6 +149,21 @@ export const adminApi = {
   settingsGroup: (group: string) => apiGet<any[]>(`/admin/system/${group}`),
   updateSettingsGroup: (group: string, entries: object[]) =>
     api.put(`/admin/system/${group}`, { entries }).then((r) => r.data.data),
+
+  /**
+   * The public Apply-for-Interview form's settings.
+   *
+   * A typed endpoint of its own rather than the generic key/value group editor:
+   * these values have meaning the generic editor cannot express or check. The
+   * payment URL is parsed and restricted to http(s) — it is handed to an
+   * applicant's browser to navigate to, so `javascript:` there would be stored
+   * XSS authored by an admin. `fee: 0` and a blank URL mean "hide the payment
+   * step". The declaration text is frozen onto every application as the wording
+   * that applicant agreed to.
+   */
+  applicationConfig: () => apiGet<ApplyConfig>('/admin/applications/config'),
+  updateApplicationConfig: (patch: Partial<ApplyConfig>) =>
+    api.put('/admin/applications/config', patch).then((r) => r.data.data as ApplyConfig),
   auditLogs: (params?: object) => getPaged<any>('/admin/audit-logs', params),
   clearAuditLogs: (before?: string) =>
     api.delete('/admin/audit-logs', { params: before ? { before } : {} }).then((r) => r.data),

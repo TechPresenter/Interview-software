@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, DatabaseBackup, ShieldCheck, Activity, Mail, Trash2, Volume2, Play, ShieldAlert } from 'lucide-react';
-import { adminApi } from '@/lib/admin.api';
+import { Save, DatabaseBackup, ShieldCheck, Activity, Mail, Trash2, Volume2, Play, ShieldAlert, ClipboardList } from 'lucide-react';
+import { adminApi, type ApplicationConfig } from '@/lib/admin.api';
 import { dateTime, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { playAudios } from '@/lib/voice';
@@ -49,10 +49,121 @@ export default function SystemPage() {
         <TestEmail />
       </div>
       <VoiceSettings />
+      <ApplicationSettings />
       <SpamProtection />
       <SettingsEditor />
       <AuditLogs />
     </div>
+  );
+}
+
+/** A field with a line of explanation under it. Field spreads its rest props
+ *  onto the <input>, so the note cannot live there. */
+function Hint({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <div>
+      {children}
+      <p className="mt-1.5 text-xs text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
+/**
+ * The public Apply-for-Interview form's configuration.
+ *
+ * A typed panel rather than a row in the generic key/value editor below, because
+ * every value here has a consequence the generic editor cannot show or check:
+ * a blank URL or a zero fee hides the payment step entirely, and the declaration
+ * text is frozen onto every application as the wording that applicant agreed to.
+ * "applications.paymentUrl" in a bare text box tells an admin none of that.
+ */
+function ApplicationSettings() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['application-config'], queryFn: () => adminApi.applicationConfig() });
+  const [f, setF] = useState<ApplicationConfig | null>(null);
+
+  useEffect(() => { if (data) setF(data); }, [data]);
+
+  const set = <K extends keyof ApplicationConfig>(k: K, v: ApplicationConfig[K]) =>
+    setF((p) => (p ? { ...p, [k]: v } : p));
+
+  const save = useMutation({
+    mutationFn: () => adminApi.updateApplicationConfig(f ?? {}),
+    onSuccess: (saved) => {
+      setF(saved);
+      toast.success('Application settings saved');
+      qc.invalidateQueries({ queryKey: ['application-config'] });
+    },
+    // The server parses the payment URL and rejects anything that isn't http(s);
+    // show what it said rather than a generic failure.
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Save failed'),
+  });
+
+  if (!f) return null;
+
+  const paymentLive = Boolean(f.paymentUrl) && f.fee > 0;
+
+  return (
+    <GlassCard>
+      <div className="mb-4 flex items-center gap-2">
+        <ClipboardList className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold">Apply for Interview (public form)</h2>
+        <Badge tone={f.enabled ? 'success' : 'muted'}>{f.enabled ? 'Open' : 'Closed'}</Badge>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        The form at{' '}
+        <a href="/apply" target="_blank" rel="noreferrer noopener" className="text-primary underline underline-offset-4">/apply</a>
+        , where candidates apply without an account. Applications land in{' '}
+        <a href="/dashboard/applications" className="text-primary underline underline-offset-4">Applications</a>.
+      </p>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Accepting applications" value={f.enabled ? 'yes' : 'no'}
+          onChange={(v) => set('enabled', v === 'yes')}
+          options={[{ label: 'Yes — the form is live', value: 'yes' }, { label: 'No — show "applications are closed"', value: 'no' }]}
+        />
+        <Hint text="0 hides the payment step entirely.">
+          <Field label="Application fee" value={String(f.fee)} onChange={(v) => set('fee', Number(v) || 0)} placeholder="0" inputMode="decimal" />
+        </Hint>
+        <Hint text="Where “Pay Now” sends the candidate. Must start with https://">
+          <Field
+            label="Payment link" value={f.paymentUrl} onChange={(v) => set('paymentUrl', v)}
+            placeholder="https://razorpay.me/@yourcompany" autoComplete="off"
+          />
+        </Hint>
+        <Field label="Currency" value={f.currency} onChange={(v) => set('currency', v.toUpperCase())} placeholder="INR" />
+      </div>
+
+      <div className="mt-4 grid gap-4">
+        <Hint text="Shown above the Pay Now button. Tell the candidate exactly what to paste back.">
+          <Field
+            label="Payment instructions" value={f.paymentInstructions} onChange={(v) => set('paymentInstructions', v)}
+            placeholder="Pay the fee at the link above, then paste your UPI reference / transaction ID below."
+          />
+        </Hint>
+        <Hint text="The candidate ticks this to submit. Each application stores it exactly as worded when they agreed, so editing it never changes what an existing applicant signed.">
+          <Field label="Declaration" value={f.declarationText} onChange={(v) => set('declarationText', v)} />
+        </Hint>
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Button magnetic={false} loading={save.isPending} onClick={() => save.mutate()}>
+          <Save className="h-4 w-4" /> Save application settings
+        </Button>
+        {f.paymentUrl ? (
+          <Button variant="glass" magnetic={false} onClick={() => window.open(f.paymentUrl, '_blank', 'noopener')}>
+            <Play className="h-4 w-4" /> Open payment link
+          </Button>
+        ) : null}
+      </div>
+
+      <p className="mt-3 text-xs text-muted-foreground">
+        {paymentLive
+          ? `Candidates will see a Pay Now button for ${f.currency} ${f.fee} and a box to paste their reference. A pasted reference is only a CLAIM — every application arrives as "unverified" until you confirm it in the Applications panel.`
+          : 'The payment step is hidden right now. Set a fee above 0 AND a payment link to switch it on.'}
+      </p>
+    </GlassCard>
   );
 }
 
