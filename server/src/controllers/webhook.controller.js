@@ -27,6 +27,34 @@ export const stripe = asyncHandler(async (req, res) => {
   return res.json({ received: true });
 });
 
+/**
+ * POST /webhooks/cashfree
+ * Cashfree signs `${timestamp}${rawBody}` (HMAC-SHA256, base64) and sends it as
+ * `x-webhook-signature` alongside `x-webhook-timestamp`. Falls back to the
+ * secret key when no dedicated webhook secret is configured.
+ */
+export const cashfree = asyncHandler(async (req, res) => {
+  const provider = getProvider('cashfree');
+  let event;
+  try {
+    event = provider.verifyWebhook(
+      req.body,
+      req.headers['x-webhook-signature'],
+      req.headers['x-webhook-timestamp'],
+      config.payments.cashfree.webhookSecret,
+    );
+  } catch (err) {
+    logger.warn({ err: err.message }, 'cashfree webhook verification failed');
+    return res.status(400).send('invalid signature');
+  }
+
+  const parsed = provider.parseEvent(event);
+  if (parsed?.kind === 'payment_succeeded') {
+    await applyPaidPlan({ ...parsed });
+  }
+  return res.json({ received: true });
+});
+
 /** POST /webhooks/razorpay */
 export const razorpay = asyncHandler(async (req, res) => {
   const provider = getProvider('razorpay');

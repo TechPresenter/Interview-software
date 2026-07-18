@@ -10,5 +10,6 @@ export const router = Router();
 
 router.post('/stripe', express.raw({ type: '*/*' }), webhooks.stripe);
 router.post('/razorpay', express.raw({ type: '*/*' }), webhooks.razorpay);
+router.post('/cashfree', express.raw({ type: '*/*' }), webhooks.cashfree);
 
 export default router;
