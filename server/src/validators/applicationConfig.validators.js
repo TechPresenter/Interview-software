@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { emptyToUndefined } from './shared.js';
+import { PAYMENT_MODES } from '../services/application.service.js';
 
 /**
  * The admin-editable configuration behind the public application form.
@@ -36,6 +37,8 @@ const paymentUrl = z.preprocess(
 
 export const applicationConfigSchema = z.object({
   enabled: z.boolean().optional(),
+  // How the fee is collected: gateway (cashfree), manual link, or off.
+  paymentMode: z.enum(PAYMENT_MODES).optional(),
   paymentUrl,
   // 0 is meaningful — it turns the fee off — so this must not be coerced through
   // a truthiness check anywhere downstream.

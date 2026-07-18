@@ -132,6 +132,15 @@ router.get('/config', application.getConfig);
  */
 router.post('/', contactLimiter, ensureApplicationsOpen, receiveFiles, validate(applySchema), application.submit);
 
+/**
+ * Resume/retry the fee payment for an application awaiting it. Rate-limited like
+ * submit because it reaches the payment gateway on every call.
+ */
+router.post('/checkout/:code', contactLimiter, validate(verifyCodeSchema, 'params'), application.checkout);
+
+/** The return-from-gateway status page reads (and reconciles) payment here. */
+router.get('/status/:code', validate(verifyCodeSchema, 'params'), application.status);
+
 router.get('/verify/:code', validate(verifyCodeSchema, 'params'), application.verify);
 
 export default router;

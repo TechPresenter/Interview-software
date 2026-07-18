@@ -29,11 +29,38 @@ const http = axios.create({ baseURL: BASE, timeout: 60_000 });
 export interface ApplyConfig {
   /** Applications can be switched off; the form must not pretend otherwise. */
   enabled: boolean;
+  /**
+   * How the fee is collected: `cashfree` gates submission behind an online
+   * payment, `link` shows the legacy pay-then-paste-reference flow, `off` records
+   * the fee without gating. The server downgrades `cashfree` to `link` in its
+   * response when the gateway has no credentials, so the form can trust this.
+   */
+  paymentMode: 'cashfree' | 'link' | 'off';
+  /** Whether the gateway can actually take money right now. */
+  gatewayReady: boolean;
   paymentUrl: string;
   fee: number;
   currency: string;
   declarationText: string;
   paymentInstructions: string;
+}
+
+/** A Cashfree checkout session for an application fee. */
+export interface ApplyCheckout {
+  paymentSessionId: string;
+  orderId: string;
+  mode: 'sandbox' | 'production';
+  amount: number;
+  currency: string;
+}
+
+/** The public payment/review state for the return-from-gateway status page. */
+export interface ApplyStatus {
+  applicationId: string;
+  name: string;
+  status: string;
+  payment: { status: string; amount?: number; currency?: string };
+  submittedAt?: string;
 }
 
 /**
@@ -113,6 +140,10 @@ export interface ApplyResult {
   applicationId: string;
   status?: string;
   payment?: { status?: string };
+  /** True when the applicant must pay at the gateway before this is submitted. */
+  requiresPayment?: boolean;
+  /** Present with `requiresPayment` — the session to open Cashfree Checkout with. */
+  checkout?: ApplyCheckout;
   verificationCode?: string;
 }
 
@@ -194,6 +225,15 @@ export const applyApi = {
   config: (): Promise<ApplyConfig> => http.get('/apply/config', { timeout: 15_000 }).then((r) => r.data.data),
   submit: (payload: ApplyPayload, files: { resume: File; photo?: File | null }): Promise<ApplyResult> =>
     http.post('/apply', toFormData(payload, files)).then((r) => r.data.data),
+  /**
+   * Re-open the gateway checkout for an application still awaiting its fee.
+   * Returns `{ paid: true }` instead of a session if it was already paid.
+   */
+  checkout: (code: string): Promise<ApplyCheckout & { paid?: boolean }> =>
+    http.post(`/apply/checkout/${encodeURIComponent(code)}`, {}, { timeout: 20_000 }).then((r) => r.data.data),
+  /** Read (and reconcile) the payment/review state after returning from Cashfree. */
+  status: (code: string): Promise<ApplyStatus> =>
+    http.get(`/apply/status/${encodeURIComponent(code)}`, { timeout: 20_000 }).then((r) => r.data.data),
 };
 
 export default applyApi;

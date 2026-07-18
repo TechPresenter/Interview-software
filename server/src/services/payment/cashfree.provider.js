@@ -71,6 +71,58 @@ export const cashfreeProvider = {
   },
 
   /**
+   * Create an order for a public interview-application fee.
+   *
+   * NOTE the units: `amount` here is in MAJOR units (rupees), unlike
+   * createCheckout() above which takes the billing layer's minor units and
+   * divides. The application fee is typed by the admin as "500" meaning ₹500 and
+   * shown to the applicant verbatim, so converting it would charge 100x.
+   *
+   * Tagged `kind: 'application'` so the webhook can tell this apart from a
+   * subscription order — both arrive at the same endpoint.
+   */
+  async createApplicationOrder({ orderId, amount, currency, applicationId, customerId, customerName, customerEmail, customerPhone, returnUrl, note }) {
+    ensureEnabled();
+    const res = await fetch(`${baseUrl()}/orders`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        order_id: orderId,
+        order_amount: Number(Number(amount).toFixed(2)),
+        order_currency: currency || 'INR',
+        customer_details: {
+          customer_id: String(customerId),
+          customer_name: customerName || undefined,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+        },
+        order_meta: { return_url: returnUrl },
+        order_note: note,
+        order_tags: { kind: 'application', applicationId: String(applicationId) },
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw ApiError.badRequest(data?.message || 'Could not start the payment. Please try again.');
+    return {
+      provider: 'cashfree',
+      orderId: data.order_id,
+      paymentSessionId: data.payment_session_id,
+      amount,
+      currency: data.order_currency,
+      mode: config.payments.cashfree.mode,
+    };
+  },
+
+  /** Read an order back from Cashfree — the fallback when a webhook is late. */
+  async fetchOrder(orderId) {
+    ensureEnabled();
+    const res = await fetch(`${baseUrl()}/orders/${encodeURIComponent(orderId)}`, { headers: authHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw ApiError.badRequest(data?.message || 'Could not read the payment status.');
+    return data; // { order_status: 'PAID' | 'ACTIVE' | 'EXPIRED', ... }
+  },
+
+  /**
    * Verify a Cashfree webhook. Cashfree signs `${timestamp}${rawBody}` with the
    * secret key (HMAC-SHA256, base64) and sends it as `x-webhook-signature` with
    * the `x-webhook-timestamp` header.
@@ -90,6 +142,14 @@ export const cashfreeProvider = {
       const tags = order.order_tags || {};
       return {
         kind: 'payment_succeeded',
+        /**
+         * What the money was FOR. Subscription orders carry company/plan tags;
+         * public application-fee orders carry kind:'application'. Both land on
+         * the same webhook endpoint, so without this the handler would try to
+         * activate a subscription for an applicant who has no company.
+         */
+        orderKind: tags.kind === 'application' ? 'application' : 'subscription',
+        applicationId: tags.applicationId,
         company: tags.company,
         plan: tags.plan,
         billingCycle: tags.billingCycle,

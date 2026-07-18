@@ -7,6 +7,7 @@ import {
   Send, ShieldAlert, Upload, X,
 } from 'lucide-react';
 import { applyApi, parseDuplicate, type ApplyConfig, type ApplyPayload } from '@/lib/apply.api';
+import { openCashfreeCheckout } from '@/lib/cashfree';
 import { COUNTRIES, DEFAULT_COUNTRY, formatNational } from '@/lib/countries';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -107,6 +108,9 @@ export function ApplyForm() {
   const [errors, setErrors] = useState<Partial<Record<keyof Form, string>> & { resume?: string; photo?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ applicationId: string } | null>(null);
+  /** Set while we hand the browser to Cashfree, so the whole form is replaced by a
+   *  "redirecting" state and a second submit is impossible during the navigation. */
+  const [redirecting, setRedirecting] = useState(false);
   /** A 409: this person already has an application in play and must not send another. */
   const [duplicate, setDuplicate] = useState<{ applicationId: string | null; message: string } | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -178,9 +182,16 @@ export function ApplyForm() {
     setPhoto(file);
   };
 
-  // Hidden entirely when there is nothing to pay or nowhere to pay it: a Pay Now
-  // button with no destination is worse than no button.
-  const showPayment = !!config && config.fee > 0 && !!config.paymentUrl;
+  // Is there a fee to collect at all?
+  const feeDue = !!config && config.fee > 0 && config.paymentMode !== 'off';
+  // Gateway: submission is gated behind a Cashfree payment. The server already
+  // folds credential-readiness into `gatewayReady`, so this is the single source
+  // of truth for "pay online, then it's submitted".
+  const gatewayMode = !!config && feeDue && config.paymentMode === 'cashfree' && config.gatewayReady;
+  // Legacy manual link: pay externally, paste a reference an admin verifies.
+  // Also the fallback when the gateway is selected but not ready and a link exists.
+  const linkMode = !!config && feeDue && !gatewayMode && !!config.paymentUrl;
+  const fmtFee = (c: ApplyConfig) => `${c.currency} ${c.fee.toLocaleString('en-IN')}`;
 
   const validate = () => {
     const next: typeof errors = {};
@@ -253,13 +264,31 @@ export function ApplyForm() {
         noticePeriod: form.noticePeriod.trim() || undefined,
         linkedin: form.linkedin.trim() || undefined,
         portfolio: form.portfolio.trim() || undefined,
-        // Only meaningful while there is a fee to pay; sending a stale reference
-        // from a hidden section would file a payment claim nobody made.
-        paymentReference: showPayment ? form.paymentReference.trim() || undefined : undefined,
+        // Only meaningful in the manual-link flow; sending a stale reference from
+        // a hidden section would file a payment claim nobody made. The gateway
+        // flow never carries one — the webhook is the proof.
+        paymentReference: linkMode ? form.paymentReference.trim() || undefined : undefined,
         declarationAccepted: accepted,
       };
 
       const created = await applyApi.submit(payload, { resume, photo });
+
+      // Gateway flow: the application is filed but not submitted until paid. Hand
+      // the browser to Cashfree; it returns to /apply/status, which is the only
+      // thing that will mark it submitted (via the webhook it reconciles against).
+      if (created.requiresPayment && created.checkout) {
+        setRedirecting(true);
+        try {
+          await openCashfreeCheckout(created.checkout.paymentSessionId, created.checkout.mode);
+        } catch (err: any) {
+          // The SDK failed to load or open. Don't strand them — send them to the
+          // status page, which can re-open checkout from the verification code.
+          toast.error(err?.message || 'Could not open the payment page. You can retry from the status page.');
+          window.location.assign(`/apply/status?code=${encodeURIComponent(created.verificationCode || '')}`);
+        }
+        return;
+      }
+
       setResult({ applicationId: created.applicationId });
       topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err: any) {
@@ -315,6 +344,19 @@ export function ApplyForm() {
     );
   }
 
+  if (redirecting) {
+    return (
+      <div ref={topRef} className="rounded-2xl border border-border bg-card/40 p-8 text-center">
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+        <h2 className="mt-5 text-xl font-semibold">Taking you to secure payment…</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          Your details are saved. Complete the payment to submit your application — you&apos;ll be brought right back here
+          afterwards. Please don&apos;t close this tab.
+        </p>
+      </div>
+    );
+  }
+
   if (result) {
     return (
       <div ref={topRef} className="rounded-2xl border border-border bg-card/40 p-6 text-center md:p-8">
@@ -337,15 +379,15 @@ export function ApplyForm() {
           <h3 className="text-sm font-semibold">What happens next</h3>
           <ol className="mt-3 space-y-3 text-sm text-muted-foreground">
             <Step n={1}>We have emailed a confirmation to <strong className="text-foreground">{form.email}</strong>.</Step>
-            {showPayment && (
+            {linkMode && (
               <Step n={2}>
                 {form.paymentReference.trim()
                   ? 'Our team checks your payment reference against the payment account by hand. Nothing is marked paid until a person has confirmed it.'
                   : 'Your application fee has not been paid yet. We will email you with how to pay before your application can be reviewed.'}
               </Step>
             )}
-            <Step n={showPayment ? 3 : 2}>A reviewer reads your application and decides whether to shortlist you.</Step>
-            <Step n={showPayment ? 4 : 3}>If you are shortlisted, we email you an interview link. There is nothing else to do in the meantime.</Step>
+            <Step n={linkMode ? 3 : 2}>A reviewer reads your application and decides whether to shortlist you.</Step>
+            <Step n={linkMode ? 4 : 3}>If you are shortlisted, we email you an interview link. There is nothing else to do in the meantime.</Step>
           </ol>
         </div>
       </div>
@@ -584,12 +626,36 @@ export function ApplyForm() {
         </p>
       </Section>
 
-      {showPayment && (
+      {gatewayMode && (
+        <Section title="Application fee" subtitle="Secure payment — your application is submitted once it's paid.">
+          <div className="rounded-xl border border-border bg-card/40 p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-sm text-muted-foreground">Fee</span>
+              <span className="text-2xl font-bold">{fmtFee(config)}</span>
+            </div>
+            {config.paymentInstructions && (
+              <p className="mt-3 whitespace-pre-line border-t border-border pt-3 text-sm text-muted-foreground">
+                {config.paymentInstructions}
+              </p>
+            )}
+            <p className="mt-4 flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
+              <Info className="mt-px h-4 w-4 shrink-0 text-primary" />
+              <span>
+                When you press <strong className="text-foreground">Pay &amp; submit</strong> you&apos;ll be taken to our secure
+                payment provider (Cashfree). Your application is confirmed automatically the moment the payment succeeds — no
+                reference to copy, nothing to email.
+              </span>
+            </p>
+          </div>
+        </Section>
+      )}
+
+      {linkMode && (
         <Section title="Application fee" subtitle="Pay first, then tell us the reference.">
           <div className="rounded-xl border border-border bg-card/40 p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-sm text-muted-foreground">Fee</span>
-              <span className="text-2xl font-bold">{config.currency} {config.fee.toLocaleString('en-IN')}</span>
+              <span className="text-2xl font-bold">{fmtFee(config)}</span>
             </div>
 
             {config.paymentInstructions && (
@@ -651,7 +717,7 @@ export function ApplyForm() {
             gets a "you already applied" error naming their own submission. */}
         <Button type="submit" size="lg" className="w-full sm:w-auto" loading={submitting} magnetic={false}
           disabled={!accepted || submitting}>
-          Submit application <Send className="h-4 w-4" />
+          {gatewayMode ? <>Pay {fmtFee(config)} &amp; submit <Send className="h-4 w-4" /></> : <>Submit application <Send className="h-4 w-4" /></>}
         </Button>
       </div>
     </form>

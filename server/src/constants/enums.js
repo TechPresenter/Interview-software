@@ -170,16 +170,22 @@ export const APPLICATION_STATUS = ['pending', 'under_review', 'shortlisted', 're
 /**
  * What we actually know about an application fee.
  *
- * Distinct from PAYMENT_STATUS above, which is the billing Payment model's
- * gateway-driven lifecycle (created → paid). This one is claim-driven, because
- * the Pay Now button is a redirect to a URL the admin configures — a one-way
- * trip with nothing coming back to tell us the money arrived. So the applicant's
- * word and a verified fact are deliberately different states: `claimed` means
- * they pasted a reference, `verified` means a human checked it against the
- * provider. Collapsing the two would let an application print a PDF saying
- * "Paid" on nothing but the applicant's say-so.
+ * Two payment routes feed this, which is why the states look redundant:
+ *
+ *  - Gateway (`applications.paymentMode = 'cashfree'`): `pending` while the
+ *    applicant is at the checkout, then `verified` — set by the Cashfree
+ *    webhook, never by the browser coming back. A redirect can be forged; a
+ *    signed webhook cannot.
+ *  - Manual link (`= 'link'`): the admin configures a payment URL, a one-way
+ *    trip with nothing coming back. So the applicant's word and a verified fact
+ *    stay deliberately different states — `claimed` means they pasted a
+ *    reference, `verified` means a human checked it. Collapsing the two would
+ *    let an application print a PDF saying "Paid" on the applicant's say-so.
+ *
+ * `pending` is the only state that is NOT a finished submission: an application
+ * sitting there is a half-finished checkout, not something an admin should review.
  */
-export const APPLICATION_PAYMENT_STATUS = ['unpaid', 'claimed', 'verified', 'failed', 'waived'];
+export const APPLICATION_PAYMENT_STATUS = ['unpaid', 'pending', 'claimed', 'verified', 'failed', 'waived'];
 
 /** Fresher vs experienced — drives which professional fields are required. */
 export const EXPERIENCE_TYPE = ['fresher', 'experienced'];

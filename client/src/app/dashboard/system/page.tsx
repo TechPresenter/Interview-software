@@ -101,7 +101,11 @@ function ApplicationSettings() {
 
   if (!f) return null;
 
-  const paymentLive = Boolean(f.paymentUrl) && f.fee > 0;
+  const feeDue = f.fee > 0 && f.paymentMode !== 'off';
+  const gatewayMode = feeDue && f.paymentMode === 'cashfree' && f.gatewayReady;
+  const linkMode = feeDue && (f.paymentMode === 'link' || (f.paymentMode === 'cashfree' && !f.gatewayReady)) && Boolean(f.paymentUrl);
+  // Admin picked the gateway but the server reports no Cashfree credentials.
+  const gatewayMisconfigured = feeDue && f.paymentMode === 'cashfree' && !f.gatewayReady;
 
   return (
     <GlassCard>
@@ -123,17 +127,39 @@ function ApplicationSettings() {
           onChange={(v) => set('enabled', v === 'yes')}
           options={[{ label: 'Yes — the form is live', value: 'yes' }, { label: 'No — show "applications are closed"', value: 'no' }]}
         />
-        <Hint text="0 hides the payment step entirely.">
+        <Hint text="0 hides the payment step entirely, whatever the mode.">
           <Field label="Application fee" value={String(f.fee)} onChange={(v) => set('fee', Number(v) || 0)} placeholder="0" inputMode="decimal" />
         </Hint>
-        <Hint text="Where “Pay Now” sends the candidate. Must start with https://">
-          <Field
-            label="Payment link" value={f.paymentUrl} onChange={(v) => set('paymentUrl', v)}
-            placeholder="https://razorpay.me/@yourcompany" autoComplete="off"
+        <Hint text="Cashfree = pay online, application submitted automatically once paid. Manual link = candidate pays externally and pastes a reference you verify by hand. Off = record the fee but don't gate on it.">
+          <Select
+            label="How the fee is collected" value={f.paymentMode}
+            onChange={(v) => set('paymentMode', v as ApplicationConfig['paymentMode'])}
+            options={[
+              { label: 'Cashfree — pay online to submit', value: 'cashfree' },
+              { label: 'Manual payment link', value: 'link' },
+              { label: 'Off — no payment required', value: 'off' },
+            ]}
           />
         </Hint>
         <Field label="Currency" value={f.currency} onChange={(v) => set('currency', v.toUpperCase())} placeholder="INR" />
+        <Hint text="Only used by the Manual payment link mode. Must start with https://">
+          <Field
+            label="Payment link (manual mode)" value={f.paymentUrl} onChange={(v) => set('paymentUrl', v)}
+            placeholder="https://razorpay.me/@yourcompany" autoComplete="off"
+          />
+        </Hint>
       </div>
+
+      {gatewayMisconfigured && (
+        <p className="mt-3 flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+          <ClipboardList className="mt-px h-4 w-4 shrink-0 text-amber-500" />
+          <span>
+            Cashfree is selected but the server has no Cashfree credentials (<code>CASHFREE_APP_ID</code> /
+            <code> CASHFREE_SECRET_KEY</code>). Until those are set, the form falls back to the manual payment link
+            {f.paymentUrl ? '' : ' — and none is configured, so applicants will submit without paying'}.
+          </span>
+        </p>
+      )}
 
       <div className="mt-4 grid gap-4">
         <Hint text="Shown above the Pay Now button. Tell the candidate exactly what to paste back.">
@@ -159,9 +185,13 @@ function ApplicationSettings() {
       </div>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        {paymentLive
-          ? `Candidates will see a Pay Now button for ${f.currency} ${f.fee} and a box to paste their reference. A pasted reference is only a CLAIM — every application arrives as "unverified" until you confirm it in the Applications panel.`
-          : 'The payment step is hidden right now. Set a fee above 0 AND a payment link to switch it on.'}
+        {gatewayMode
+          ? `Applicants must pay ${f.currency} ${f.fee} through Cashfree to submit. The application is confirmed automatically the moment the payment succeeds — no manual verification, no reference to check.`
+          : linkMode
+            ? `Candidates will see a Pay Now button for ${f.currency} ${f.fee} and a box to paste their reference. A pasted reference is only a CLAIM — every application arrives as "unverified" until you confirm it in the Applications panel.`
+            : feeDue
+              ? `A fee of ${f.currency} ${f.fee} is recorded on each application, but nothing gates submission (mode is Off, or Manual link with no link set).`
+              : 'The payment step is hidden right now. Set a fee above 0 and choose a collection mode to switch it on.'}
       </p>
     </GlassCard>
   );

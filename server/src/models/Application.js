@@ -130,6 +130,16 @@ const applicationSchema = new Schema(
       verifiedAt: { type: Date },
       verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
       note: { type: String, maxlength: 500 }, // why it was rejected/waived
+
+      /* ── Gateway (Cashfree) ─────────────────────────── */
+      provider: { type: String, trim: true }, // 'cashfree' when the gateway route was used
+      // Our order id, sent to Cashfree and echoed back on the webhook. Indexed
+      // because the webhook arrives knowing only this and must find the row.
+      orderId: { type: String, trim: true, index: true, sparse: true },
+      // The gateway's own payment id. Unique-per-payment, so it is what makes
+      // applying a webhook idempotent when Cashfree retries a delivery.
+      providerPaymentId: { type: String, trim: true },
+      paidAt: { type: Date },
     },
 
     /* ── Review ───────────────────────────────────────── */

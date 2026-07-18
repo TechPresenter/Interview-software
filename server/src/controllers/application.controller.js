@@ -2,10 +2,14 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok, created } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import { savePrivateBuffer, extractText, ExtractionError } from '../services/file.service.js';
-import { safeSendTemplated } from '../services/email.service.js';
-import { applicationConfig, createApplication } from '../services/application.service.js';
+import {
+  applicationConfig,
+  createApplication,
+  notifyApplicationReceived,
+  startApplicationCheckout,
+  reconcileApplicationPayment,
+} from '../services/application.service.js';
 import { Application } from '../models/Application.js';
-import { config } from '../config/index.js';
 import { logger } from '../config/logger.js';
 
 /**
@@ -19,31 +23,8 @@ import { logger } from '../config/logger.js';
  * becomes world-readable by default and nobody notices.
  */
 
-/**
- * Where new applications are announced.
- *
- * config/index.js has NO admin/support address: the closest things are
- * `config.mail.from` (an envelope sender, not an inbox) and CONTACT_TO, which
- * isn't in the zod env schema at all — controllers/contact.controller.js reads it
- * straight off process.env. This mirrors that idiom exactly rather than inventing
- * a second convention. APPLICATIONS_TO is offered first so applications can be
- * routed away from the sales inbox; the chain then degrades to the same defaults
- * the contact form already uses, so the notification always has somewhere to go.
- */
-const APPLICATIONS_TO =
-  process.env.APPLICATIONS_TO || process.env.CONTACT_TO || config.mail.from || 'support@aipl.online';
-
 /** A photo is a headshot, not a document. Rejected here because multer's size cap is per-instance, not per-field. */
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
-
-/**
- * Matches application.pdf.js's `dateOnly` deliberately: the email and the PDF
- * describe the same submission, and a reader comparing the two should not have to
- * work out whether "15 Jul 2026" and "7/15/2026" are the same day. A raw Date
- * interpolates as "Wed Jul 15 2026 22:31:07 GMT+0530 (India Standard Time)".
- */
-const fmtDate = (d) =>
-  d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
 /**
  * Store one upload the way the model wants it described.
@@ -87,6 +68,11 @@ export const getConfig = asyncHandler(async (_req, res) => {
   const cfg = await applicationConfig();
   return ok(res, {
     enabled: cfg.enabled,
+    paymentMode: cfg.paymentMode,
+    // The gateway is offered to the form only when it can actually take money.
+    // If the mode is `cashfree` but no credentials are set, fall the public form
+    // back to the manual link rather than dead-ending the applicant.
+    gatewayReady: cfg.gatewayReady,
     paymentUrl: cfg.paymentUrl,
     fee: cfg.fee,
     currency: cfg.currency,
@@ -178,65 +164,107 @@ export const submit = asyncHandler(async (req, res) => {
    * copy the capability that unlocks /apply/verify into a second collection for no
    * one's benefit. The QR code on the PDF is what carries it.
    */
-  const { payment } = application;
-  const common = {
-    applicationId: application.applicationId,
-    name: application.fullName,
-    submittedAt: fmtDate(application.submittedAt),
-    preferredJobRole: application.preferredJobRole || 'Not specified',
-    paymentStatus: payment.status,
-    paymentReference: payment.reference || 'None given',
-    // The fee frozen onto the document, not the live config: this email must still
-    // be true after an admin edits the configured fee tomorrow.
-    currency: payment.currency,
-    fee: payment.amount,
-  };
-
-  await Promise.all([
-    safeSendTemplated('application.received', { to: application.email, vars: common }),
-    safeSendTemplated('application.admin.new', {
-      to: APPLICATIONS_TO,
-      vars: {
-        ...common,
-        email: application.email,
-        mobile: application.mobile,
-        // The super admin's review queue. /dashboard/applications, not
-        // /admin/applications — the admin panel is mounted under /dashboard
-        // (see the client's nav.config.ts).
-        adminUrl: `${config.clientUrl}/dashboard/applications`,
-      },
-    }),
-  ]);
-
   /**
-   * What the applicant gets back.
+   * Two outcomes, decided by the payment route the service chose:
    *
-   * `verificationCode` is included deliberately. It is a capability, so the
-   * question is what it grants and to whom: it unlocks GET /apply/verify/:code,
-   * which returns this person's own name, status, submission time and payment
-   * state — four facts the person who just typed them already knows. Handing it to
-   * the submitter over their own TLS response therefore discloses nothing, while
-   * withholding it means the only copy travels by email, which is the weaker
-   * channel and the one that bounces. It is what lets an applicant with no account
-   * check on themselves and print the QR code, which is the feature.
+   *  - Gateway (`payment.status === 'pending'`): the application is filed but is
+   *    NOT yet a submission. Open a Cashfree order and hand the browser the
+   *    session to pay with; the "received" emails wait until the webhook confirms
+   *    the money (see markApplicationPaid). If opening the order fails, the row
+   *    is left pending — the applicant can retry from the status page rather than
+   *    losing everything they typed.
+   *  - Everything else (free / manual link / off): this already counts as a
+   *    submission, so notify now and return the receipt.
    *
-   * The code is NOT the applicationId for the reason the model gives: the id is
-   * quoted over the phone and printed on paper, so anyone who saw a printed
-   * application could otherwise look up its record.
-   *
-   * Everything else stays behind: no files, no declaration, no fee, no id — the
-   * response is a receipt, not the document.
+   * `verificationCode` is returned in both cases on purpose: it unlocks
+   * GET /apply/verify/:code, which discloses only this person's own name, status,
+   * submission time and payment state — facts they just typed. Over their own TLS
+   * response that reveals nothing, and it is what lets an account-less applicant
+   * check on themselves, print the QR code, and (gateway route) resume payment.
+   * It is NOT the applicationId, which is quoted aloud and printed on paper.
    */
+  if (application.payment.status === 'pending') {
+    const cfg = await applicationConfig();
+    const session = await startApplicationCheckout(application, cfg);
+    return created(
+      res,
+      {
+        applicationId: application.applicationId,
+        status: application.status,
+        payment: { status: 'pending' },
+        requiresPayment: true,
+        checkout: {
+          paymentSessionId: session.paymentSessionId,
+          orderId: session.orderId,
+          mode: session.mode,
+          amount: session.amount,
+          currency: session.currency,
+        },
+        verificationCode: application.verificationCode,
+      },
+      'Complete the payment to submit your application.',
+    );
+  }
+
+  await notifyApplicationReceived(application);
   return created(
     res,
     {
       applicationId: application.applicationId,
       status: application.status,
       payment: { status: application.payment.status },
+      requiresPayment: false,
       verificationCode: application.verificationCode,
     },
     'Your application has been received.',
   );
+});
+
+/**
+ * POST /apply/checkout/:code — mint a fresh checkout session for an application
+ * that is still awaiting payment. This is the resume/retry path: an applicant
+ * who closed the Cashfree tab comes back and pays without re-filling the form.
+ */
+export const checkout = asyncHandler(async (req, res) => {
+  const application = await Application.findOne({ verificationCode: req.params.code });
+  if (!application) throw ApiError.notFound('We could not find that application.');
+  if (application.payment.status === 'verified' || application.payment.status === 'waived') {
+    return ok(res, { paid: true }, 'This application is already paid.');
+  }
+  if (application.payment.provider !== 'cashfree' && application.payment.status !== 'pending') {
+    throw ApiError.badRequest('This application does not use online payment.');
+  }
+  const cfg = await applicationConfig();
+  const session = await startApplicationCheckout(application, cfg);
+  return ok(res, {
+    paymentSessionId: session.paymentSessionId,
+    orderId: session.orderId,
+    mode: session.mode,
+    amount: session.amount,
+    currency: session.currency,
+  });
+});
+
+/**
+ * GET /apply/status/:code — the page the applicant lands on returning from
+ * Cashfree. Reconciles a still-pending payment against the gateway directly, so
+ * a paid application shows as paid even if its webhook is late or lost.
+ */
+export const status = asyncHandler(async (req, res) => {
+  const found = await Application.findOne({ verificationCode: req.params.code });
+  if (!found) throw ApiError.notFound('We could not find that application.');
+  const application = await reconcileApplicationPayment(found);
+  return ok(res, {
+    applicationId: application.applicationId,
+    name: application.fullName,
+    status: application.status,
+    payment: {
+      status: application.payment.status,
+      amount: application.payment.amount,
+      currency: application.payment.currency,
+    },
+    submittedAt: application.submittedAt,
+  });
 });
 
 /**

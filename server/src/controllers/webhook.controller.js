@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { logger } from '../config/logger.js';
 import { config } from '../config/index.js';
 import { getProvider, applyPaidPlan } from '../services/payment/index.js';
+import { markApplicationPaid } from '../services/application.service.js';
 
 /**
  * Provider webhooks. These receive the RAW request body (mounted with
@@ -50,7 +51,14 @@ export const cashfree = asyncHandler(async (req, res) => {
 
   const parsed = provider.parseEvent(event);
   if (parsed?.kind === 'payment_succeeded') {
-    await applyPaidPlan({ ...parsed });
+    // Application-fee orders and subscription orders share this endpoint, so the
+    // order's own tag decides where the money lands. Routing an applicant's fee
+    // into applyPaidPlan would look up a company that does not exist.
+    if (parsed.orderKind === 'application') {
+      await markApplicationPaid(parsed);
+    } else {
+      await applyPaidPlan({ ...parsed });
+    }
   }
   return res.json({ received: true });
 });
