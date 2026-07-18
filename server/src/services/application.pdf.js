@@ -221,8 +221,11 @@ async function remoteLogo(url) {
  * Cached because this runs per generated PDF and the logo changes about never;
  * negative results are cached too, so a dead CDN costs one 3s timeout per five
  * minutes rather than one per applicant.
+ *
+ * Exported: export.service.js's invoice reuses this rather than growing its own
+ * copy of the fetch/magic-byte/cache machinery.
  */
-async function loadLogo(branding) {
+export async function loadLogo(branding) {
   const url = branding?.logoUrl;
   if (!url) return null;
 

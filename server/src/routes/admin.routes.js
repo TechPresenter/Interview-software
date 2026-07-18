@@ -47,6 +47,8 @@ import { uploadImage, uploadKnowledge, uploadEditorImage } from '../middleware/u
 import * as applications from '../controllers/admin/application.controller.js';
 import * as applicationConfig from '../controllers/admin/applicationConfig.controller.js';
 import { applicationConfigSchema } from '../validators/applicationConfig.validators.js';
+import * as billingConfig from '../controllers/admin/billingConfig.controller.js';
+import { billingConfigSchema } from '../validators/billingConfig.validators.js';
 import * as knowledgeBase from '../controllers/knowledgeBase.controller.js';
 import * as email from '../controllers/admin/email.controller.js';
 import {
@@ -105,7 +107,16 @@ router.get('/coupons', subs.listCoupons);
 router.post('/coupons', validate(createCouponSchema), subs.createCoupon);
 router.patch('/coupons/:id', subs.updateCoupon);
 router.delete('/coupons/:id', subs.deleteCoupon);
+// `/export` before `/:id/…`, or Express matches 'export' as an invoice id.
+router.get('/invoices/export', subs.exportInvoices);
+router.get('/invoices/:id/pdf', subs.invoicePdf);
+router.post('/invoices/:id/resend', subs.resendInvoice);
 router.get('/invoices', subs.listInvoices);
+// Gateway delivery trail — the payment-activation debugging surface.
+router.get('/webhook-logs', subs.listWebhookLogs);
+// Invoice seller identity + GST (printed on every invoice PDF).
+router.get('/billing/config', billingConfig.get);
+router.put('/billing/config', validate(billingConfigSchema), billingConfig.update);
 
 /* ── Question bank ─────────────────────────────────────── */
 router.get('/questions', questions.list);

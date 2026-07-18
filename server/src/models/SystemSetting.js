@@ -13,7 +13,12 @@ const systemSettingSchema = new Schema(
     key: { type: String, required: true, unique: true, index: true },
     group: {
       type: String,
-      enum: ['smtp', 'sms', 'payment', 'ai', 'security', 'general', 'feature_flag', 'integrations'],
+      // Every group actually written anywhere. This list had drifted — 'voice',
+      // 'proctoring', 'captcha', 'applications' and 'jobs' were being written for
+      // months and only survived because setMany uses bulkWrite, which skips
+      // mongoose validation. Keep it complete or the next .save()/create() on a
+      // settings doc starts throwing for a group that "always worked".
+      enum: ['smtp', 'sms', 'payment', 'ai', 'security', 'general', 'feature_flag', 'integrations', 'voice', 'proctoring', 'captcha', 'applications', 'jobs', 'billing'],
       default: 'general',
       index: true,
     },

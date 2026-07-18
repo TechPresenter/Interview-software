@@ -1,6 +1,8 @@
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import { config } from '../config/index.js';
+import { billingIdentity } from './billingConfig.service.js';
+import { loadLogo } from './application.pdf.js';
 
 /**
  * Report exporters. Each returns a Buffer + suggested filename + content type so
@@ -116,50 +118,226 @@ export async function rankingToExcel({ rows, jobTitle }) {
   };
 }
 
-/** Render a payment/invoice as a branded PDF buffer. */
+/* ── invoice ───────────────────────────────────────────── */
+
+/** Status pill tones — tinted background + readable ink, per payment.status. */
+const PILL_TONES = {
+  paid: { fg: '#15803d', bg: '#dcfce7' },
+  refunded: { fg: '#b45309', bg: '#fef3c7' },
+  failed: { fg: '#b91c1c', bg: '#fee2e2' },
+};
+const PILL_DEFAULT = { fg: '#666', bg: '#f3f4f6' };
+
+/** en-IN short date ("18 Jul 2026"), '' when absent. */
+const invDate = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+
+/** "18 Jul 2026 – 18 Aug 2026", or '' when the payment has no billing cycle. */
+function billingPeriod(payment) {
+  if (!payment.billingCycle) return '';
+  const start = new Date(payment.paidAt || payment.createdAt || Date.now());
+  if (Number.isNaN(start.getTime())) return '';
+  const end = new Date(start);
+  if (payment.billingCycle === 'yearly') end.setFullYear(end.getFullYear() + 1);
+  else end.setMonth(end.getMonth() + 1);
+  return `${invDate(start)} – ${invDate(end)}`;
+}
+
+/**
+ * Render a payment as a professional A4 GST invoice PDF buffer.
+ *
+ * Seller identity comes from the admin-editable billingIdentity(); tax figures
+ * prefer the payment.tax snapshot frozen at payment time (see Payment model) so
+ * a later rate change never rewrites a historical invoice. Amounts print with
+ * the currency CODE, never the ₹ glyph — Helvetica cannot encode it.
+ */
 export async function invoiceToPdf({ payment, company, branding }) {
-  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  // Identity + logo are best-effort: a Settings blip or a dead CDN must not
+  // turn an invoice download (or the receipt email that attaches it) into a 500.
+  let identity;
+  try {
+    identity = await billingIdentity();
+  } catch {
+    identity = {
+      legalName: '', address: '', gstin: config.billing.gstin,
+      gstPercent: config.billing.gstin ? config.billing.gstPercent : 0,
+      phone: '', email: '', website: '', terms: '',
+    };
+  }
+  const logo = await loadLogo(branding);
+
+  const sellerName = identity.legalName || branding?.platformName || 'AIPL Hire';
+  const sellerGstin = payment.tax?.gstin || identity.gstin || '';
+  const title = sellerGstin ? 'TAX INVOICE' : 'INVOICE';
+
+  const cur = (payment.currency || config.billing.currency || 'INR').toUpperCase();
+  const money = (n) => `${cur} ${n.toFixed(2)}`;
+  const total = (payment.amount || 0) / 100;
+
+  // Totals: the frozen snapshot when we have one; the legacy live-config
+  // derivation for rows minted before the snapshot existed; plain total if no GST.
+  let subtotal = null;
+  let gstAmt = null;
+  let gstPct = 0;
+  if (payment.tax && payment.tax.percent > 0) {
+    gstPct = payment.tax.percent;
+    subtotal = (payment.tax.taxable || 0) / 100;
+    gstAmt = (payment.tax.tax || 0) / 100;
+  } else if (config.billing.gstin && config.billing.gstPercent > 0) {
+    gstPct = config.billing.gstPercent;
+    subtotal = total / (1 + gstPct / 100);
+    gstAmt = total - subtotal;
+  }
+
+  const doc = new PDFDocument({
+    size: 'A4',
+    margins: { top: 50, left: 50, right: 50, bottom: 64 }, // footer draws inside the bottom margin
+    bufferPages: true, // page count for the footer is only known at the end
+    info: { Title: `Invoice ${payment.invoiceNumber || payment._id || ''}`.trim(), Author: sellerName, Subject: 'Payment invoice' },
+  });
   const chunks = [];
   doc.on('data', (c) => chunks.push(c));
   const done = new Promise((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
 
-  const name = branding?.platformName || 'HireSense';
-  const total = (payment.amount || 0) / 100;
-  const cur = payment.currency || config.billing.currency;
-  // GST is shown only when a GSTIN is configured; prices are GST-inclusive, so the
-  // total charged is unchanged — we just split out the tax component for the invoice.
-  const gstPercent = config.billing.gstin ? config.billing.gstPercent : 0;
-  const base = gstPercent > 0 ? total / (1 + gstPercent / 100) : total;
-  const gst = total - base;
+  const M = 50;
+  const W = doc.page.width - M * 2;
+  const R = M + W;
+  const rule = (y, color = '#e5e7eb', width = 0.5) =>
+    doc.moveTo(M, y).lineTo(R, y).lineWidth(width).strokeColor(color).stroke();
 
-  doc.fontSize(22).fillColor('#6366f1').text(name);
-  doc.fontSize(10).fillColor('#666').text('Invoice / Payment Receipt');
-  doc.moveDown();
-
-  doc.fillColor('#111').fontSize(12).text(`Invoice #: ${payment.invoiceNumber || payment._id}`);
-  doc.fontSize(10).fillColor('#666').text(`Date: ${new Date(payment.paidAt || payment.createdAt).toLocaleDateString()}`);
-  doc.text(`Status: ${formatRec(payment.status)}`);
-  doc.text(`Payment method: ${formatRec(payment.provider)}`);
-  doc.moveDown();
-
-  doc.fontSize(11).fillColor('#111').text('Billed to:');
-  doc.fontSize(10).fillColor('#666').text(company?.name || '—');
-  const billEmail = company?.billingEmail || company?.contactEmail;
-  if (billEmail) doc.text(billEmail);
-  doc.moveDown();
-
-  doc.fontSize(12).fillColor('#6366f1').text('Description');
-  doc.fontSize(10).fillColor('#111').text(`${payment.description || 'Subscription'}`);
-  doc.moveDown(0.5);
-  if (gstPercent > 0) {
-    doc.fontSize(10).fillColor('#111').text(`Subtotal (excl. GST): ${cur} ${base.toFixed(2)}`, { align: 'right' });
-    doc.text(`GST @ ${gstPercent}%: ${cur} ${gst.toFixed(2)}`, { align: 'right' });
-    doc.fontSize(8).fillColor('#666').text(`GSTIN: ${config.billing.gstin}`, { align: 'right' });
+  /* header — logo + seller block left, title + status pill right */
+  let leftY = M;
+  if (logo) {
+    try {
+      doc.image(logo, M, M, { fit: [110, 38], align: 'left', valign: 'top' });
+      leftY = M + 46;
+    } catch {
+      // passed the magic-byte check but would not embed (truncated upload) —
+      // the seller wordmark below still identifies the document.
+    }
   }
-  doc.fontSize(14).fillColor('#111').text(`Total: ${cur} ${total.toFixed(2)}${gstPercent > 0 ? ' (incl. GST)' : ''}`, { align: 'right' });
+  doc.font('Helvetica-Bold').fontSize(logo ? 11 : 15).fillColor('#111').text(sellerName, M, leftY, { width: 280 });
+  doc.font('Helvetica').fontSize(8.5).fillColor('#666');
+  if (identity.address) doc.text(identity.address, { width: 280 });
+  if (sellerGstin) doc.text(`GSTIN: ${sellerGstin}`, { width: 280 });
+  const contact = [identity.phone, identity.email].filter(Boolean).join('  ·  ');
+  if (contact) doc.text(contact, { width: 280 });
+  if (identity.website) doc.text(identity.website, { width: 280 });
+  leftY = doc.y;
 
-  doc.moveDown(2);
-  doc.fontSize(8).fillColor('#999').text(`${name} · Generated ${new Date().toLocaleString()}`, { align: 'center' });
+  doc.font('Helvetica-Bold').fontSize(20).fillColor('#111').text(title, M + 280, M, { width: W - 280, align: 'right' });
+  const tone = PILL_TONES[payment.status] || PILL_DEFAULT;
+  const pillLabel = String(payment.status || 'created').toUpperCase();
+  doc.font('Helvetica-Bold').fontSize(8);
+  const pillW = doc.widthOfString(pillLabel) + 16;
+  const pillY = doc.y + 6;
+  doc.roundedRect(R - pillW, pillY, pillW, 16, 8).fillColor(tone.bg).fill();
+  doc.fillColor(tone.fg).text(pillLabel, R - pillW, pillY + 4.5, { width: pillW, align: 'center', lineBreak: false });
+
+  doc.y = Math.max(leftY, pillY + 16) + 16;
+  rule(doc.y, '#6366f1', 1);
+  doc.y += 18;
+
+  /* billed-to (left) + invoice meta (right) */
+  const metaTop = doc.y;
+  doc.font('Helvetica-Bold').fontSize(8).fillColor('#666').text('BILLED TO', M, metaTop);
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('#111').text(company?.name || '—', M, doc.y + 3, { width: 250 });
+  const billEmail = company?.billingEmail || company?.contactEmail;
+  if (billEmail) doc.font('Helvetica').fontSize(9).fillColor('#666').text(billEmail, { width: 250 });
+  const billedEnd = doc.y;
+
+  const methodRaw = payment.method || payment.provider;
+  const methodLabel = methodRaw && methodRaw.toLowerCase() === 'upi' ? 'UPI' : formatRec(methodRaw);
+  const meta = [
+    ['Invoice #', String(payment.invoiceNumber || payment._id || '—')],
+    ['Invoice date', invDate(payment.paidAt || payment.createdAt) || '—'],
+    ['Payment method', methodLabel],
+    ['Transaction ID', payment.providerPaymentId || ''],
+    ['Order ID', payment.providerOrderId || ''],
+  ].filter(([, v]) => v);
+  const metaX = M + 265;
+  const metaW = W - 265;
+  let y = metaTop;
+  for (const [label, value] of meta) {
+    doc.font('Helvetica').fontSize(8.5).fillColor('#666').text(label, metaX, y, { width: 90, lineBreak: false });
+    doc.font('Helvetica').fontSize(8.5).fillColor('#111').text(value, metaX + 90, y, { width: metaW - 90, align: 'right' });
+    y = Math.max(doc.y, y + 12) + 2;
+  }
+  doc.y = Math.max(billedEnd, y) + 22;
+
+  /* line-item table — description | billing period | amount */
+  const period = billingPeriod(payment);
+  const amountW = 105;
+  const periodW = period ? 150 : 0;
+  const descW = W - amountW - periodW;
+
+  const th = doc.y;
+  doc.rect(M, th, W, 20).fillColor('#f3f4f6').fill();
+  doc.font('Helvetica-Bold').fontSize(8).fillColor('#666');
+  doc.text('DESCRIPTION', M + 10, th + 6, { width: descW - 20, lineBreak: false });
+  if (period) doc.text('BILLING PERIOD', M + descW, th + 6, { width: periodW, lineBreak: false });
+  doc.text('AMOUNT', M + descW + periodW, th + 6, { width: amountW - 10, align: 'right', lineBreak: false });
+
+  const rowY = th + 27;
+  doc.font('Helvetica').fontSize(10).fillColor('#111').text(payment.description || 'Subscription', M + 10, rowY, { width: descW - 20 });
+  if (payment.coupon?.code) {
+    const off = payment.coupon.discount > 0 ? ` — ${money(payment.coupon.discount / 100)} off` : ' applied';
+    doc.font('Helvetica').fontSize(8).fillColor('#666').text(`Coupon ${payment.coupon.code}${off}`, { width: descW - 20 });
+  }
+  const descEnd = doc.y;
+  if (period) doc.font('Helvetica').fontSize(9).fillColor('#666').text(period, M + descW, rowY + 1, { width: periodW });
+  doc.font('Helvetica').fontSize(10).fillColor('#111').text(money(total), M + descW + periodW, rowY, { width: amountW - 10, align: 'right' });
+  doc.y = Math.max(descEnd, doc.y) + 8;
+  rule(doc.y);
+  doc.y += 14;
+
+  /* totals — right-aligned block; prices are GST-inclusive so subtotal + GST = total */
+  const totX = R - 240;
+  const totRow = (label, value, opts = {}) => {
+    const ty = doc.y;
+    doc.font(opts.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(opts.size || 9.5);
+    doc.fillColor('#666').text(label, totX, ty, { width: 130, lineBreak: false });
+    doc.fillColor('#111').text(value, totX + 130, ty, { width: 110, align: 'right', lineBreak: false });
+    doc.y = ty + (opts.size || 9.5) + 7;
+  };
+  if (gstPct > 0) {
+    totRow('Subtotal', money(subtotal));
+    totRow(`GST @ ${gstPct}%`, money(gstAmt));
+    if (sellerGstin) {
+      doc.font('Helvetica').fontSize(7.5).fillColor('#999').text(`Seller GSTIN: ${sellerGstin}`, totX, doc.y, { width: 240, align: 'right', lineBreak: false });
+      doc.y += 12;
+    }
+    doc.moveTo(totX, doc.y).lineTo(R, doc.y).lineWidth(0.5).strokeColor('#e5e7eb').stroke();
+    doc.y += 7;
+    totRow('Total (incl. GST)', money(total), { bold: true, size: 12 });
+  } else {
+    totRow('Total', money(total), { bold: true, size: 12 });
+  }
+
+  /* terms & conditions */
+  if (identity.terms) {
+    doc.y += 16;
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#666').text('TERMS & CONDITIONS', M, doc.y);
+    doc.y += 4;
+    doc.font('Helvetica').fontSize(8).fillColor('#666').text(identity.terms, M, doc.y, { width: W, lineGap: 2 });
+  }
+
+  /* footer — stamped on every buffered page, drawn into the bottom margin */
+  const footLine = [sellerName, identity.website, 'This is a computer-generated invoice.'].filter(Boolean).join('  ·  ');
+  const range = doc.bufferedPageRange();
+  for (let i = range.start; i < range.start + range.count; i += 1) {
+    doc.switchToPage(i);
+    const saved = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0; // text below the margin would trigger auto-paginate
+    let fy = doc.page.height - saved + 14;
+    rule(fy);
+    fy += 6;
+    doc.font('Helvetica').fontSize(7.5).fillColor('#999').text(footLine, M, fy, { width: W, align: 'center', lineBreak: false });
+    if (range.count > 1) {
+      doc.font('Helvetica').fontSize(7).fillColor('#999').text(`Page ${i - range.start + 1} of ${range.count}`, M, fy + 11, { width: W, align: 'center', lineBreak: false });
+    }
+    doc.page.margins.bottom = saved;
+  }
+  doc.flushPages();
 
   doc.end();
   const buffer = await done;

@@ -38,7 +38,7 @@ export const cashfreeProvider = {
    * Create a Cashfree order. `amount` is in minor units (cents/paise) to match the
    * rest of the billing layer; Cashfree expects major units, so we convert.
    */
-  async createCheckout({ planName, amount, currency, billingCycle, company, customerEmail, successUrl }) {
+  async createCheckout({ planKey, planName, amount, currency, billingCycle, company, customerEmail, successUrl, couponCode }) {
     ensureEnabled();
     const orderId = `cf_${company}_${Date.now()}`;
     const res = await fetch(`${baseUrl()}/orders`, {
@@ -55,7 +55,11 @@ export const cashfreeProvider = {
         },
         order_meta: { return_url: `${successUrl}&cf_order_id={order_id}` },
         order_note: `${planName} (${billingCycle})`,
-        order_tags: { company: String(company), plan: planName, billingCycle },
+        // The KEY, not the display name: activation looks the plan up by key, and
+        // 'Professional' finding nothing while 'professional' exists was one half
+        // of the bug that stopped every webhook activation. planName rides along
+        // for humans reading the gateway dashboard.
+        order_tags: { company: String(company), plan: planKey || planName, planName, billingCycle, ...(couponCode ? { coupon: couponCode } : {}) },
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -118,8 +122,25 @@ export const cashfreeProvider = {
     ensureEnabled();
     const res = await fetch(`${baseUrl()}/orders/${encodeURIComponent(orderId)}`, { headers: authHeaders() });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw ApiError.badRequest(data?.message || 'Could not read the payment status.');
-    return data; // { order_status: 'PAID' | 'ACTIVE' | 'EXPIRED', ... }
+    // GATEWAY_READ_FAILED marks this as a read that may succeed on retry — the
+    // success page keeps polling instead of declaring the payment dead over a
+    // transient Cashfree 429/5xx.
+    if (!res.ok) throw ApiError.badRequest(data?.message || 'Could not read the payment status.', { code: 'GATEWAY_READ_FAILED' });
+    return data; // { order_status: 'PAID' | 'ACTIVE' | 'EXPIRED', order_tags, ... }
+  },
+
+  /**
+   * The payment attempts behind an order. Needed by the return-page verify: the
+   * order says PAID but the idempotency key is the cf_payment_id, which only
+   * this endpoint reveals — using it keeps the verify path and the webhook path
+   * deduplicating against the same identifier.
+   */
+  async fetchOrderPayments(orderId) {
+    ensureEnabled();
+    const res = await fetch(`${baseUrl()}/orders/${encodeURIComponent(orderId)}/payments`, { headers: authHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw ApiError.badRequest(data?.message || 'Could not read the payment attempts.');
+    return Array.isArray(data) ? data : []; // [{ cf_payment_id, payment_status: 'SUCCESS'|…, payment_group, payment_method }]
   },
 
   /**
@@ -131,7 +152,13 @@ export const cashfreeProvider = {
     const key = secret || config.payments.cashfree.secretKey;
     const payload = `${timestamp}${rawBody.toString()}`;
     const expected = crypto.createHmac('sha256', key).update(payload).digest('base64');
-    if (expected !== signature) throw ApiError.badRequest('Invalid Cashfree webhook signature');
+    // timingSafeEqual, not !== : a short-circuiting compare of a secret-derived
+    // MAC leaks how many leading bytes matched.
+    const a = Buffer.from(expected);
+    const b = Buffer.from(String(signature || ''));
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      throw ApiError.badRequest('Invalid Cashfree webhook signature');
+    }
     return JSON.parse(rawBody.toString());
   },
 
@@ -142,6 +169,7 @@ export const cashfreeProvider = {
       const tags = order.order_tags || {};
       return {
         kind: 'payment_succeeded',
+        provider: 'cashfree',
         /**
          * What the money was FOR. Subscription orders carry company/plan tags;
          * public application-fee orders carry kind:'application'. Both land on
@@ -150,6 +178,7 @@ export const cashfreeProvider = {
          */
         orderKind: tags.kind === 'application' ? 'application' : 'subscription',
         applicationId: tags.applicationId,
+        method: event.data?.payment?.payment_group || undefined,
         company: tags.company,
         plan: tags.plan,
         billingCycle: tags.billingCycle,

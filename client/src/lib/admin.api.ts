@@ -17,6 +17,22 @@ export interface Paged<T> {
   meta: { page: number; limit: number; total: number; pages: number };
 }
 
+/**
+ * Seller identity + GST printed on every invoice PDF (admin-editable).
+ * GST lines appear only when `gstin` is set; prices are GST-inclusive, so
+ * enabling GST never changes what a customer pays. Empty strings when unset.
+ */
+export interface BillingConfig {
+  legalName: string;
+  address: string;
+  gstin: string;
+  gstPercent: number;
+  phone: string;
+  email: string;
+  website: string;
+  terms: string;
+}
+
 /** GET that also returns the `meta` envelope (for paginated lists). */
 async function getPaged<T>(url: string, params?: object): Promise<Paged<T>> {
   const { data } = await api.get(url, { params });
@@ -68,7 +84,17 @@ export const adminApi = {
   coupons: (params?: object) => getPaged<any>('/admin/coupons', params),
   createCoupon: (body: object) => apiPost<any>('/admin/coupons', body),
   deleteCoupon: (id: string) => api.delete(`/admin/coupons/${id}`).then((r) => r.data),
-  invoices: (params?: object) => getPaged<any>('/admin/invoices', params),
+  invoices: (params?: { page?: number; limit?: number; q?: string; status?: string; provider?: string; company?: string; from?: string; to?: string }) =>
+    getPaged<any>('/admin/invoices', params),
+  invoicePdf: (id: string) => download(`/admin/invoices/${id}/pdf`, {}, `invoice-${id}.pdf`),
+  resendInvoice: (id: string, to?: string) => apiPost<any>(`/admin/invoices/${id}/resend`, to ? { to } : {}),
+  exportInvoices: (params: { q?: string; status?: string; provider?: string; company?: string; from?: string; to?: string }, format: 'csv' | 'xlsx') =>
+    download('/admin/invoices/export', { ...params, format }, format === 'xlsx' ? 'payments.xlsx' : 'payments.csv'),
+  // Gateway delivery trail — the payment-activation debugging surface.
+  webhookLogs: (params?: object) => getPaged<any>('/admin/webhook-logs', params),
+  billingConfig: () => apiGet<BillingConfig>('/admin/billing/config'),
+  updateBillingConfig: (patch: Partial<BillingConfig>) =>
+    api.put('/admin/billing/config', patch).then((r) => r.data.data as BillingConfig),
 
   // Questions
   questions: (params?: object) => getPaged<Question>('/admin/questions', params),

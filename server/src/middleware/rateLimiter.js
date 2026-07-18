@@ -83,4 +83,21 @@ export const authLimiter = rateLimit({
   message: { success: false, message: 'Too many failed attempts. Please wait a few minutes and try again.' },
 });
 
+/**
+ * Payment-gateway webhook endpoints. Unauthenticated by nature (a Bearer token
+ * cannot ride a gateway callback) and every delivery is now persisted to
+ * WebhookLog — so without a ceiling, anyone POSTing garbage grows the
+ * collection for free. Real gateways retry politely; 120/min per IP is far
+ * above any legitimate delivery rate.
+ */
+export const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: store('rl:webhook:'),
+  skip: () => !config.isProd,
+  message: { success: false, message: 'Too many requests' },
+});
+
 export default globalLimiter;

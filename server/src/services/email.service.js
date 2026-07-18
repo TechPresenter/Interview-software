@@ -153,7 +153,7 @@ export async function emailSignature(company) {
  * Low-level send. Returns { delivered, mocked?, messageId?, error? }.
  * @param {{ to:string, subject:string, html?:string, text?:string, from?:string, company?:string }} msg
  */
-export async function sendEmail({ to, subject, html, text, from, replyTo, company }) {
+export async function sendEmail({ to, subject, html, text, from, replyTo, company, attachments }) {
   const smtp = await resolveSmtp(company);
   if (!smtp.enabled) {
     logger.info({ to, subject }, '✉️  [dev] email (SMTP not configured — not sent)');
@@ -161,7 +161,9 @@ export async function sendEmail({ to, subject, html, text, from, replyTo, compan
   }
   try {
     const t = await getTransporter(smtp);
-    const info = await t.sendMail({ from: from || smtp.from, to, subject, html, text, replyTo });
+    // `attachments` is nodemailer's own shape ([{ filename, content, contentType }])
+    // — used to ride the PDF invoice along with the payment receipt.
+    const info = await t.sendMail({ from: from || smtp.from, to, subject, html, text, replyTo, attachments });
     return { delivered: true, messageId: info.messageId };
   } catch (err) {
     logger.error({ err: err.message, to }, 'email send failed');
@@ -242,7 +244,7 @@ export async function previewTemplate(key, vars = {}) {
  * @param {{ to:string, vars?:object, company?:string, relatedUser?:string, createdBy?:string, scheduledFor?:Date }} opts
  * @returns {Promise<import('../models/EmailLog.js').EmailLog>}
  */
-export async function sendTemplated(key, { to, vars = {}, company, relatedUser, createdBy, scheduledFor } = {}) {
+export async function sendTemplated(key, { to, vars = {}, company, relatedUser, createdBy, scheduledFor, attachments } = {}) {
   const branding = await safeBranding();
   const mergedVars = { platformName: branding.platformName, name: 'there', dashboardUrl: config.clientUrl, ...vars };
   const tpl = await resolveTemplate(key, mergedVars);
@@ -266,7 +268,7 @@ export async function sendTemplated(key, { to, vars = {}, company, relatedUser, 
 
   const pixel = `${API_BASE}/track/open/${log._id}`;
   const html = renderBranded({ branding, subject: tpl.subject, bodyHtml, preheader: tpl.preheader, assetBase: ASSET_BASE, trackingPixel: pixel });
-  const result = await sendEmail({ to, subject: tpl.subject, html, text: stripHtml(bodyHtml), company });
+  const result = await sendEmail({ to, subject: tpl.subject, html, text: stripHtml(bodyHtml), company, attachments });
   log.status = result.delivered ? 'sent' : result.mocked ? 'mocked' : 'failed';
   log.messageId = result.messageId;
   log.error = result.error;

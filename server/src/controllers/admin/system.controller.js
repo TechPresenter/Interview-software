@@ -14,7 +14,7 @@ import { config } from '../../config/index.js';
 // controllers/admin/applicationConfig.controller.js — but the generic settings
 // screen lists groups from here, so an omission would leave the group invisible
 // and every write to it rejected as "Unknown settings group".
-const ALLOWED_GROUPS = ['smtp', 'sms', 'payment', 'security', 'general', 'feature_flag', 'voice', 'proctoring', 'captcha', 'applications'];
+const ALLOWED_GROUPS = ['smtp', 'sms', 'payment', 'security', 'general', 'feature_flag', 'voice', 'proctoring', 'captcha', 'applications', 'billing'];
 
 /** GET /admin/system/:group — settings for a group (secrets masked). */
 export const getSettingsGroup = asyncHandler(async (req, res) => {

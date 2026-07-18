@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, CreditCard, Download } from 'lucide-react';
 import { companyApi } from '@/lib/company.api';
+import { openCashfreeCheckout } from '@/lib/cashfree';
 import { money, date, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -13,29 +15,23 @@ import { Badge, statusTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { toast } from '@/components/ui/toast';
 
-/** Load an external script once (returns when ready). */
-function loadScript(src: string, id: string) {
-  return new Promise<void>((resolve, reject) => {
-    if (document.getElementById(id)) return resolve();
-    const s = document.createElement('script');
-    s.id = id; s.src = src; s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('script load failed'));
-    document.head.appendChild(s);
-  });
-}
-
-/** Open Cashfree's hosted checkout for the payment session and redirect back on completion. */
-async function openCashfree(paymentSessionId: string, mode?: string) {
-  try {
-    await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js', 'cashfree-sdk-v3');
-    const Cashfree = (window as any).Cashfree;
-    if (!Cashfree) { toast.error('Could not load the Cashfree checkout.'); return; }
-    const cashfree = Cashfree({ mode: mode === 'production' ? 'production' : 'sandbox' });
-    await cashfree.checkout({ paymentSessionId, redirectTarget: '_self' });
-  } catch {
-    toast.error('Could not open the Cashfree checkout — please try again.');
-  }
+/**
+ * The ?status=cancelled return from a gateway the user backed out of. Its own
+ * component (inside Suspense) because useSearchParams demands a boundary, and
+ * the whole page should not de-opt into client-side rendering for one toast.
+ * Successful returns never land here — the gateway sends those to
+ * /dashboard/billing/success, which verifies server-side.
+ */
+function CancelledNotice() {
+  const status = useSearchParams().get('status');
+  const announced = useRef(false);
+  useEffect(() => {
+    if (status === 'cancelled' && !announced.current) {
+      announced.current = true;
+      toast.info('Payment cancelled — you have not been charged.');
+    }
+  }, [status]);
+  return null;
 }
 
 export default function BillingPage() {
@@ -52,7 +48,13 @@ export default function BillingPage() {
     mutationFn: (planKey: string) => companyApi.checkout({ provider, plan: planKey, billingCycle: cycle }),
     onSuccess: async (res: any) => {
       if (res?.provider === 'cashfree' && res?.paymentSessionId) {
-        await openCashfree(res.paymentSessionId, res.mode); // redirect to Cashfree checkout
+        try {
+          // Shared SDK loader (lib/cashfree) — full-tab redirect; the gateway
+          // returns the browser to /dashboard/billing/success for verification.
+          await openCashfreeCheckout(res.paymentSessionId, res.mode);
+        } catch (err: any) {
+          toast.error(err?.message || 'Could not open the Cashfree checkout — please try again.');
+        }
       } else if (res?.url) {
         window.location.href = res.url; // Stripe hosted checkout
       } else if (res?.orderId) {
@@ -68,7 +70,11 @@ export default function BillingPage() {
     mutationFn: () => companyApi.cancelBilling(),
     onSuccess: () => {
       toast.success('Subscription cancelled');
+      // All three surfaces that show the plan: billing page, invoice history,
+      // and the dashboard's usage meters/onboarding step.
       qc.invalidateQueries({ queryKey: ['billing'] });
+      qc.invalidateQueries({ queryKey: ['billing-invoices'] });
+      qc.invalidateQueries({ queryKey: ['company-overview'] });
     },
   });
 
@@ -92,6 +98,9 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-8">
+      <Suspense fallback={null}>
+        <CancelledNotice />
+      </Suspense>
       <PageHeader
         title="Billing"
         description="Manage your plan, usage, and invoices."

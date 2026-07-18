@@ -76,6 +76,10 @@ export const companyApi = {
   billing: () => apiGet<any>('/billing'),
   billingInvoices: () => apiGet<any[]>('/billing/invoices'),
   downloadInvoice: (id: string) => download(`/billing/invoices/${id}/pdf`, {}, `invoice-${id}.pdf`),
+  /** Reconcile a Cashfree order against the gateway (company_admin only). */
+  verifyCashfree: (orderId: string) => apiPost<any>('/billing/cashfree/verify', { orderId }),
+  /** Read-only receipt for a paid order — any billing:read role; 404 until the payment lands. */
+  billingReceipt: (orderId: string) => apiGet<any>('/billing/receipt', { orderId }),
 
   // Custom AI interviewer
   aiInterviewer: () => apiGet<any>('/company/ai-interviewer'),

@@ -228,6 +228,8 @@ router.get('/billing', requirePermission('billing', 'read'), billing.summary);
 router.get('/billing/invoices', requirePermission('billing', 'read'), billing.invoices);
 router.get('/billing/invoices/:id/pdf', requirePermission('billing', 'read'), billing.invoicePdf);
 router.post('/billing/checkout', rbac(ROLES.COMPANY_ADMIN), billing.checkout);
+router.post('/billing/cashfree/verify', rbac(ROLES.COMPANY_ADMIN), billing.verifyCashfree);
+router.get('/billing/receipt', requirePermission('billing', 'read'), billing.receipt);
 router.post('/billing/razorpay/verify', rbac(ROLES.COMPANY_ADMIN), billing.verifyRazorpay);
 router.post('/billing/cancel', rbac(ROLES.COMPANY_ADMIN), billing.cancel);
 

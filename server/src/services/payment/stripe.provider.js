@@ -23,7 +23,7 @@ export const stripeProvider = {
   enabled: () => config.payments.stripe.enabled,
 
   /** Create a hosted Checkout Session and return its URL. */
-  async createCheckout({ planName, amount, currency, billingCycle, company, customerEmail, successUrl, cancelUrl }) {
+  async createCheckout({ planKey, planName, amount, currency, billingCycle, company, customerEmail, successUrl, cancelUrl }) {
     const stripe = await getClient();
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -32,16 +32,19 @@ export const stripeProvider = {
         {
           price_data: {
             currency: (currency || 'usd').toLowerCase(),
-            product_data: { name: `HireSense ${planName}` },
+            product_data: { name: planName },
             recurring: { interval: billingCycle === 'yearly' ? 'year' : 'month' },
             unit_amount: amount,
           },
           quantity: 1,
         },
       ],
-      success_url: successUrl,
+      // {CHECKOUT_SESSION_ID} is substituted by Stripe on redirect, so the
+      // success page knows which session to reconcile if the webhook is late.
+      success_url: `${successUrl}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl,
-      metadata: { company: String(company), plan: planName, billingCycle },
+      // plan carries the KEY (activation looks plans up by key); planName is for humans.
+      metadata: { company: String(company), plan: planKey || planName, planName, billingCycle },
     });
     return { url: session.url, sessionId: session.id };
   },
@@ -61,6 +64,7 @@ export const stripeProvider = {
       const s = event.data.object;
       return {
         kind: 'payment_succeeded',
+        provider: 'stripe',
         company: s.metadata?.company,
         plan: s.metadata?.plan,
         billingCycle: s.metadata?.billingCycle,

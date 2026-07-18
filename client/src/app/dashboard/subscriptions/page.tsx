@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Sparkles, Pencil } from 'lucide-react';
+import { Plus, Trash2, Sparkles, Pencil, Search, Download, Send, FileDown } from 'lucide-react';
 import { adminApi } from '@/lib/admin.api';
-import { money, date } from '@/lib/format';
+import { money, date, dateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -17,7 +17,7 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { toast } from '@/components/ui/toast';
 
-const tabs = ['Plans', 'Coupons', 'Invoices'] as const;
+const tabs = ['Plans', 'Coupons', 'Invoices', 'Webhooks'] as const;
 type Tab = (typeof tabs)[number];
 
 export default function SubscriptionsPage() {
@@ -42,6 +42,7 @@ export default function SubscriptionsPage() {
       {tab === 'Plans' && <Plans />}
       {tab === 'Coupons' && <Coupons />}
       {tab === 'Invoices' && <Invoices />}
+      {tab === 'Webhooks' && <WebhookLogs />}
     </div>
   );
 }
@@ -289,33 +290,221 @@ function Coupons() {
   );
 }
 
+const INVOICE_STATUSES = ['created', 'pending', 'paid', 'failed', 'refunded'];
+const PROVIDERS = ['stripe', 'razorpay', 'cashfree', 'manual'];
+
 function Invoices() {
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState('');
+  const [provider, setProvider] = useState('');
+
+  // Same 300ms debounce as the other admin lists.
+  useEffect(() => {
+    const t = setTimeout(() => { setQ(search); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Shared by the list and the exports, so the file always matches the view.
+  const filters = { q: q || undefined, status: status || undefined, provider: provider || undefined };
+
   const { data, isLoading } = useQuery({
-    queryKey: ['invoices', page],
-    queryFn: () => adminApi.invoices({ page, limit: 10 }),
+    queryKey: ['invoices', page, q, status, provider],
+    queryFn: () => adminApi.invoices({ page, limit: 10, ...filters }),
+  });
+
+  const resend = useMutation({
+    mutationFn: (id: string) => adminApi.resendInvoice(id),
+    onSuccess: (r: any) => {
+      if (r?.sent) toast.success(`Invoice re-sent to ${r.to}`);
+      else toast.info('SMTP is not configured — the email was logged on the server, not delivered.');
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Resend failed'),
+  });
+
+  const exportFile = useMutation({
+    mutationFn: (format: 'csv' | 'xlsx') => adminApi.exportInvoices(filters, format),
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Export failed'),
   });
 
   const columns: Column<any>[] = [
     { key: 'invoiceNumber', header: 'Invoice', render: (r) => r.invoiceNumber || r.providerPaymentId || '—' },
     { key: 'company', header: 'Company', render: (r) => r.company?.name ?? '—' },
     { key: 'amount', header: 'Amount', render: (r) => money(r.amount, r.currency) },
+    {
+      key: 'planKey',
+      header: 'Plan',
+      render: (r) => (r.planKey ? <span className="capitalize">{r.planKey}{r.billingCycle ? ` · ${r.billingCycle}` : ''}</span> : '—'),
+    },
+    { key: 'method', header: 'Method', render: (r) => (r.method ? <span className="capitalize">{r.method}</span> : '—') },
     { key: 'provider', header: 'Provider', render: (r) => <Badge tone="info">{r.provider}</Badge> },
     { key: 'status', header: 'Status', render: (r) => <Badge tone={statusTone(r.status)}>{r.status}</Badge> },
     { key: 'createdAt', header: 'Date', render: (r) => date(r.createdAt) },
+    {
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (r) => (
+        <div className="flex items-center justify-end gap-3">
+          <button onClick={() => adminApi.invoicePdf(r._id)} title="Download PDF" className="text-muted-foreground hover:text-foreground">
+            <Download className="h-4 w-4" />
+          </button>
+          <button onClick={() => resend.mutate(r._id)} title="Re-send invoice email" className="text-muted-foreground hover:text-foreground">
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
-    <DataTable
-      columns={columns}
-      rows={data?.items ?? []}
-      loading={isLoading}
-      emptyText="No invoices yet"
-      rowKey={(r) => r._id}
-      page={data?.meta.page}
-      pages={data?.meta.pages}
-      total={data?.meta.total}
-      onPageChange={setPage}
-    />
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-background/60 px-4 py-2.5 sm:w-72">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Invoice #, txn / order id, company…"
+            className="w-full bg-transparent text-sm outline-none"
+          />
+        </div>
+        <div className="w-40">
+          <Select
+            value={status}
+            onChange={(v) => { setStatus(v); setPage(1); }}
+            options={[{ label: 'All statuses', value: '' }, ...INVOICE_STATUSES.map((s) => ({ label: s, value: s }))]}
+          />
+        </div>
+        <div className="w-40">
+          <Select
+            value={provider}
+            onChange={(v) => { setProvider(v); setPage(1); }}
+            options={[{ label: 'All providers', value: '' }, ...PROVIDERS.map((p) => ({ label: p, value: p }))]}
+          />
+        </div>
+        <div className="ml-auto flex gap-2">
+          <Button
+            variant="glass" size="sm" magnetic={false}
+            loading={exportFile.isPending && exportFile.variables === 'csv'}
+            onClick={() => exportFile.mutate('csv')}
+          >
+            <FileDown className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button
+            variant="glass" size="sm" magnetic={false}
+            loading={exportFile.isPending && exportFile.variables === 'xlsx'}
+            onClick={() => exportFile.mutate('xlsx')}
+          >
+            <FileDown className="h-4 w-4" /> Export XLSX
+          </Button>
+        </div>
+      </div>
+      <DataTable
+        columns={columns}
+        rows={data?.items ?? []}
+        loading={isLoading}
+        emptyText="No invoices yet"
+        rowKey={(r) => r._id}
+        page={data?.meta.page}
+        pages={data?.meta.pages}
+        total={data?.meta.total}
+        onPageChange={setPage}
+      />
+    </div>
+  );
+}
+
+const WEBHOOK_OUTCOMES = ['processed', 'duplicate', 'ignored', 'invalid_signature', 'error'];
+
+/** processed = the money did something; ignored/duplicate = harmless; the rest broke activation. */
+function outcomeTone(outcome?: string) {
+  if (outcome === 'processed') return 'success' as const;
+  if (outcome === 'error' || outcome === 'invalid_signature') return 'danger' as const;
+  return 'muted' as const;
+}
+
+function WebhookLogs() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [q, setQ] = useState('');
+  const [provider, setProvider] = useState('');
+  const [outcome, setOutcome] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => { setQ(search); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['webhook-logs', page, q, provider, outcome],
+    queryFn: () =>
+      adminApi.webhookLogs({ page, limit: 15, q: q || undefined, provider: provider || undefined, outcome: outcome || undefined }),
+  });
+
+  const columns: Column<any>[] = [
+    { key: 'createdAt', header: 'When', render: (r) => dateTime(r.createdAt) },
+    { key: 'provider', header: 'Provider', render: (r) => <Badge tone="info">{r.provider}</Badge> },
+    { key: 'event', header: 'Event', render: (r) => <span className="font-mono text-xs">{r.event || '—'}</span> },
+    { key: 'outcome', header: 'Outcome', render: (r) => <Badge tone={outcomeTone(r.outcome)}>{r.outcome}</Badge> },
+    { key: 'orderId', header: 'Order', render: (r) => <span className="font-mono text-xs">{r.orderId || '—'}</span> },
+    { key: 'paymentId', header: 'Payment', render: (r) => <span className="font-mono text-xs">{r.paymentId || '—'}</span> },
+    { key: 'company', header: 'Company', render: (r) => r.company?.name ?? '—' },
+    {
+      key: 'error',
+      header: 'Error',
+      render: (r) =>
+        r.error ? (
+          <span title={r.error} className="block max-w-[16rem] truncate text-xs text-destructive">{r.error}</span>
+        ) : (
+          '—'
+        ),
+    },
+  ];
+
+  return (
+    <div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Every gateway delivery and what became of it. When a customer paid but their plan didn&apos;t activate,
+        the answer is on this page — look for anything that isn&apos;t <Badge tone="success">processed</Badge>.
+      </p>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-background/60 px-4 py-2.5 sm:w-72">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Order id, payment id, event…"
+            className="w-full bg-transparent text-sm outline-none"
+          />
+        </div>
+        <div className="w-40">
+          <Select
+            value={provider}
+            onChange={(v) => { setProvider(v); setPage(1); }}
+            options={[{ label: 'All providers', value: '' }, ...PROVIDERS.map((p) => ({ label: p, value: p }))]}
+          />
+        </div>
+        <div className="w-44">
+          <Select
+            value={outcome}
+            onChange={(v) => { setOutcome(v); setPage(1); }}
+            options={[{ label: 'All outcomes', value: '' }, ...WEBHOOK_OUTCOMES.map((o) => ({ label: o.replace('_', ' '), value: o }))]}
+          />
+        </div>
+      </div>
+      <DataTable
+        columns={columns}
+        rows={data?.items ?? []}
+        loading={isLoading}
+        emptyText="No webhook deliveries yet"
+        rowKey={(r) => r._id}
+        page={data?.meta.page}
+        pages={data?.meta.pages}
+        total={data?.meta.total}
+        onPageChange={setPage}
+      />
+    </div>
   );
 }

@@ -6,12 +6,14 @@ import { logger } from '../config/logger.js';
  * Append a security/compliance audit entry. Never throws into the caller — audit
  * failures are logged but must not break the primary operation.
  */
-export async function audit({ req, action, status = 'success', entityType, entityId, changes, meta }) {
+export async function audit({ req, action, status = 'success', entityType, entityId, changes, meta, company }) {
   try {
     await AuditLog.create({
       actor: req?.user?._id,
       actorRole: req?.user?.role,
-      company: req?.user?.company,
+      // Explicit company wins: webhook/system contexts have no req.user but the
+      // entry still belongs to a tenant (e.g. a payment activation).
+      company: company || req?.user?.company,
       action,
       status,
       entityType,

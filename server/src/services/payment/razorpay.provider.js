@@ -7,6 +7,13 @@ import { ApiError } from '../../utils/ApiError.js';
  * Razorpay uses an Order → client checkout → signature verification flow.
  */
 
+/** Constant-time MAC comparison — a short-circuiting !== leaks matched-prefix length. */
+function safeEqual(expected, given) {
+  const a = Buffer.from(String(expected));
+  const b = Buffer.from(String(given || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 let client = null;
 async function getClient() {
   if (!config.payments.razorpay.enabled) {
@@ -24,14 +31,27 @@ export const razorpayProvider = {
   enabled: () => config.payments.razorpay.enabled,
 
   /** Create an order; the client opens Razorpay Checkout with this order id. */
-  async createCheckout({ planName, amount, currency, billingCycle, company }) {
+  async createCheckout({ planKey, planName, amount, currency, billingCycle, company, couponCode }) {
     const rzp = await getClient();
     const order = await rzp.orders.create({
       amount,
       currency: currency || 'INR',
-      notes: { company: String(company), plan: planName, billingCycle },
+      // plan carries the KEY (activation looks plans up by key); planName is for humans.
+      notes: { company: String(company), plan: planKey || planName, planName, billingCycle, ...(couponCode ? { coupon: couponCode } : {}) },
     });
     return { orderId: order.id, keyId: config.payments.razorpay.keyId, amount, currency: order.currency };
+  },
+
+  /** Read a payment back from Razorpay — lets the verify endpoint check the real amount. */
+  async fetchPayment(paymentId) {
+    const rzp = await getClient();
+    return rzp.payments.fetch(paymentId); // { amount, currency, status, order_id, method, ... }
+  },
+
+  /** Read an order back — its notes carry the plan/cycle WE stamped at checkout. */
+  async fetchOrder(orderId) {
+    const rzp = await getClient();
+    return rzp.orders.fetch(orderId); // { amount, currency, status, notes: { company, plan, billingCycle } }
   },
 
   /**
@@ -43,14 +63,14 @@ export const razorpayProvider = {
       .createHmac('sha256', config.payments.razorpay.keySecret)
       .update(`${orderId}|${paymentId}`)
       .digest('hex');
-    if (expected !== signature) throw ApiError.badRequest('Invalid payment signature');
+    if (!safeEqual(expected, signature)) throw ApiError.badRequest('Invalid payment signature');
     return true;
   },
 
   /** Verify webhook signature (X-Razorpay-Signature) against the raw body. */
   verifyWebhook(rawBody, signature, secret) {
     const expected = crypto.createHmac('sha256', secret || config.payments.razorpay.keySecret).update(rawBody).digest('hex');
-    if (expected !== signature) throw ApiError.badRequest('Invalid webhook signature');
+    if (!safeEqual(expected, signature)) throw ApiError.badRequest('Invalid webhook signature');
     return JSON.parse(rawBody.toString());
   },
 
@@ -59,6 +79,7 @@ export const razorpayProvider = {
       const payment = event.payload?.payment?.entity || {};
       return {
         kind: 'payment_succeeded',
+        provider: 'razorpay',
         company: payment.notes?.company,
         plan: payment.notes?.plan,
         billingCycle: payment.notes?.billingCycle,
@@ -66,6 +87,7 @@ export const razorpayProvider = {
         currency: payment.currency,
         providerPaymentId: payment.id,
         providerOrderId: payment.order_id,
+        method: payment.method,
         raw: payment,
       };
     }

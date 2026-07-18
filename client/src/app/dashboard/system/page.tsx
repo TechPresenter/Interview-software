@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, DatabaseBackup, ShieldCheck, Activity, Mail, Trash2, Volume2, Play, ShieldAlert, ClipboardList } from 'lucide-react';
-import { adminApi, type ApplicationConfig } from '@/lib/admin.api';
+import { Save, DatabaseBackup, ShieldCheck, Activity, Mail, Trash2, Volume2, Play, ShieldAlert, ClipboardList, ReceiptText } from 'lucide-react';
+import { adminApi, type ApplicationConfig, type BillingConfig } from '@/lib/admin.api';
 import { dateTime, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { playAudios } from '@/lib/voice';
@@ -14,6 +14,7 @@ import { Badge, statusTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
 import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
 import { toast } from '@/components/ui/toast';
 
 const FEMALE_SPEAKERS = [
@@ -50,6 +51,7 @@ export default function SystemPage() {
       </div>
       <VoiceSettings />
       <ApplicationSettings />
+      <BillingSettings />
       <SpamProtection />
       <SettingsEditor />
       <AuditLogs />
@@ -193,6 +195,75 @@ function ApplicationSettings() {
               ? `A fee of ${f.currency} ${f.fee} is recorded on each application, but nothing gates submission (mode is Off, or Manual link with no link set).`
               : 'The payment step is hidden right now. Set a fee above 0 and choose a collection mode to switch it on.'}
       </p>
+    </GlassCard>
+  );
+}
+
+/**
+ * The seller identity printed on every invoice PDF.
+ *
+ * A typed panel for the same reason ApplicationSettings is one: these values
+ * have consequences a generic key/value row cannot show. The GSTIN is the
+ * switch — GST lines appear on invoices only while one is set — and because
+ * prices are stored GST-inclusive, the tax is carved out of the price rather
+ * than added on top, so enabling GST never changes what a customer pays.
+ */
+function BillingSettings() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['billing-config'], queryFn: () => adminApi.billingConfig() });
+  const [f, setF] = useState<BillingConfig | null>(null);
+
+  useEffect(() => { if (data) setF(data); }, [data]);
+
+  const set = <K extends keyof BillingConfig>(k: K, v: BillingConfig[K]) =>
+    setF((p) => (p ? { ...p, [k]: v } : p));
+
+  const save = useMutation({
+    mutationFn: () => adminApi.updateBillingConfig(f ?? {}),
+    onSuccess: (saved) => {
+      setF(saved);
+      toast.success('Invoice settings saved');
+      qc.invalidateQueries({ queryKey: ['billing-config'] });
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Save failed'),
+  });
+
+  if (!f) return null;
+
+  return (
+    <GlassCard>
+      <div className="mb-4 flex items-center gap-2">
+        <ReceiptText className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold">Invoices &amp; GST</h2>
+        <Badge tone={f.gstin ? 'success' : 'muted'}>{f.gstin ? 'GST on' : 'GST off'}</Badge>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Printed on every invoice PDF. GST lines appear only when a GSTIN is set; prices are GST-inclusive
+        so enabling GST never changes what customers pay.
+      </p>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <Field label="Legal name" value={f.legalName} onChange={(v) => set('legalName', v)} placeholder="Acme Technologies Pvt. Ltd." />
+        <Field label="Website" value={f.website} onChange={(v) => set('website', v)} placeholder="https://example.com" />
+        <div className="sm:col-span-2">
+          <Textarea label="Registered address" value={f.address} onChange={(v) => set('address', v)} rows={2} placeholder={'2nd Floor, Tower B\nBengaluru, Karnataka 560001'} />
+        </div>
+        <Hint text="Leave blank to print invoices without any GST lines.">
+          <Field label="GSTIN" value={f.gstin} onChange={(v) => set('gstin', v.toUpperCase())} placeholder="29ABCDE1234F1Z5" autoComplete="off" />
+        </Hint>
+        <Hint text="Used to back-calculate the tax portion inside the GST-inclusive price.">
+          <Field label="GST rate (%)" type="number" value={String(f.gstPercent ?? 0)} onChange={(v) => set('gstPercent', Number(v) || 0)} placeholder="18" />
+        </Hint>
+        <Field label="Billing phone" value={f.phone} onChange={(v) => set('phone', v)} placeholder="+91 98765 43210" />
+        <Field label="Billing email" type="email" value={f.email} onChange={(v) => set('email', v)} placeholder="billing@example.com" />
+        <div className="sm:col-span-2">
+          <Textarea label="Invoice terms / footer note" value={f.terms} onChange={(v) => set('terms', v)} rows={3} placeholder="This is a computer-generated invoice. All amounts are inclusive of GST." />
+        </div>
+      </div>
+
+      <Button className="mt-5" magnetic={false} loading={save.isPending} onClick={() => save.mutate()}>
+        <Save className="h-4 w-4" /> Save invoice settings
+      </Button>
     </GlassCard>
   );
 }
