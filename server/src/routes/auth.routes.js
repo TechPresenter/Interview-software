@@ -7,6 +7,7 @@ import { uploadImage } from '../middleware/upload.js';
 import { updateProfileSchema } from '../validators/profile.validators.js';
 import {
   registerSchema,
+  registerVerifySchema,
   loginSchema,
   refreshSchema,
   verifyEmailSchema,
@@ -23,12 +24,14 @@ export const router = Router();
 
 // Public (rate-limited) auth endpoints
 router.post('/register', authLimiter, validate(registerSchema), auth.register);
+// Phase 2: the emailed code creates the account (register only stages it).
+router.post('/register/verify', authLimiter, validate(registerVerifySchema), auth.registerVerify);
 router.post('/login', authLimiter, validate(loginSchema), auth.login);
 router.post('/google', authLimiter, validate(googleLoginSchema), auth.googleLogin);
 router.post('/refresh', validate(refreshSchema), auth.refresh);
 router.post('/logout', auth.logout);
 
-router.post('/verify-email', validate(verifyEmailSchema), auth.verifyEmail);
+router.post('/verify-email', authLimiter, validate(verifyEmailSchema), auth.verifyEmail);
 router.post('/otp/request', authLimiter, validate(requestOtpSchema), auth.requestOtp);
 router.post('/otp/verify', authLimiter, validate(otpLoginSchema), auth.otpLogin);
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), auth.forgotPassword);

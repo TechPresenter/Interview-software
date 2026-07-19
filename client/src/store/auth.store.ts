@@ -21,6 +21,7 @@ interface AuthState {
   login: (email: string, password: string, otp?: string) => Promise<void>;
   googleLogin: (credential: string, role?: 'company_admin' | 'candidate') => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  verifyRegistration: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
   setSession: (user: AuthUser, accessToken: string) => void;
@@ -48,20 +49,45 @@ export const useAuth = create<AuthState>()(
 
       login: async (email, password, otp) => {
         set({ status: 'loading' });
-        const { data } = await api.post('/auth/login', { email, password, otp });
-        get().setSession(data.data.user, data.data.accessToken);
+        try {
+          const { data } = await api.post('/auth/login', { email, password, otp });
+          get().setSession(data.data.user, data.data.accessToken);
+        } catch (err) {
+          // A failed attempt must not strand status on 'loading' — protected
+          // layouts render an infinite spinner for that state.
+          set({ status: get().user ? 'authenticated' : 'unauthenticated' });
+          throw err;
+        }
       },
 
       googleLogin: async (credential, role) => {
         set({ status: 'loading' });
-        const { data } = await api.post('/auth/google', { credential, role });
-        get().setSession(data.data.user, data.data.accessToken);
+        try {
+          const { data } = await api.post('/auth/google', { credential, role });
+          get().setSession(data.data.user, data.data.accessToken);
+        } catch (err) {
+          set({ status: get().user ? 'authenticated' : 'unauthenticated' });
+          throw err;
+        }
       },
 
+      // Phase 1: stages the signup server-side and emails a 6-digit code.
+      // No session yet — verifyRegistration is what creates the account.
       register: async (payload) => {
+        await api.post('/auth/register', payload);
+      },
+
+      // Phase 2: the emailed code creates the account and signs the user in.
+      verifyRegistration: async (email, code) => {
         set({ status: 'loading' });
-        const { data } = await api.post('/auth/register', payload);
-        get().setSession(data.data.user, data.data.accessToken);
+        try {
+          const { data } = await api.post('/auth/register/verify', { email, code });
+          get().setSession(data.data.user, data.data.accessToken);
+        } catch (err) {
+          // Wrong codes are a routine path — recover the status every time.
+          set({ status: get().user ? 'authenticated' : 'unauthenticated' });
+          throw err;
+        }
       },
 
       logout: async () => {

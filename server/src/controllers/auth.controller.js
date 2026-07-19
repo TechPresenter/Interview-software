@@ -18,8 +18,14 @@ import {
   generateNumericCode,
   setCode,
   verifyCode,
+  setPending,
+  getPending,
+  clearPending,
+  claimSendWindow,
+  hasCode,
 } from '../utils/otp.js';
-import { emails } from '../services/email.service.js';
+import { encryptSecret, decryptSecret } from '../utils/crypto.js';
+import { emails, safeSendTemplated } from '../services/email.service.js';
 import { audit } from '../services/audit.service.js';
 import { saveBuffer } from '../services/file.service.js';
 import { ROLES } from '../constants/enums.js';
@@ -47,37 +53,119 @@ async function sendAuth(res, user, statusFn = ok) {
   return statusFn(res, { user, accessToken, refreshToken }, 'Authenticated');
 }
 
-/** POST /auth/register */
+/** How long a started registration may wait for its email code. */
+const REGISTER_TTL = 900; // 15 minutes — matches what the email tells the user
+
+/**
+ * POST /auth/register — phase 1 of 2.
+ *
+ * Nothing is created here. The validated signup is staged in Redis and a
+ * 6-digit code goes to the email; only /auth/register/verify — proof the
+ * inbox is theirs — turns it into a real account. Creating the User first
+ * and gating later leaves half-accounts squatting on email addresses and
+ * hands out sessions for inboxes the caller may not own.
+ *
+ * The password is AES-encrypted (not bcrypt-hashed) inside the staged
+ * payload: the User pre-save hook bcrypts whatever it is given, so staging
+ * a bcrypt hash would get double-hashed and never match at login again.
+ */
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, password, role, companyName } = req.body;
+  const { name, password, role, companyName } = req.body;
+  const email = String(req.body.email).toLowerCase().trim();
 
   if (await User.exists({ email })) throw ApiError.conflict('Email already registered');
-
-  let company = null;
-  if (role === ROLES.COMPANY_ADMIN) {
-    if (!companyName) throw ApiError.badRequest('companyName is required to create a workspace');
-    company = await Company.create({ name: companyName, slug: slugify(companyName) });
+  if (role === ROLES.COMPANY_ADMIN && !companyName) {
+    throw ApiError.badRequest('companyName is required to create a workspace');
   }
 
-  const user = await User.create({
-    name,
-    email,
-    password,
-    role,
-    company: company?._id,
-  });
+  // The staged details always update — a resubmit with a corrected name or
+  // password must not verify into the stale payload.
+  await setPending('register', email, { name, email, password: encryptSecret(password), role, companyName }, REGISTER_TTL);
+
+  // One code email per address per minute — the auth limiter only counts
+  // failures, so without this a stranger could pump codes at any inbox. Inside
+  // the window the earlier code is still valid, so this is a 200 pointing the
+  // user at their inbox, not an error stranding them on the form.
+  const maySend = await claimSendWindow('register', email);
+  if (maySend || !(await hasCode('register', email))) {
+    const code = generateNumericCode();
+    await setCode('register', email, code, REGISTER_TTL);
+    await emails.verification(email, code, undefined, name);
+  }
+
+  await audit({ req, action: 'auth.register.start', meta: { email, role } });
+  return ok(
+    res,
+    { pendingVerification: true, email },
+    maySend
+      ? 'We sent a 6-digit code to your email. Enter it to create your account.'
+      : 'A code was already sent to your email — enter it below.',
+  );
+});
+
+/**
+ * POST /auth/register/verify — phase 2: the code proves inbox ownership,
+ * so NOW the account (and workspace) is created and a session issued.
+ */
+export const registerVerify = asyncHandler(async (req, res) => {
+  const email = String(req.body.email).toLowerCase().trim();
+  const { code } = req.body;
+
+  const pending = await getPending('register', email);
+  if (!pending) {
+    throw ApiError.badRequest('This signup has expired — please register again.', { code: 'REGISTRATION_EXPIRED' });
+  }
+  if (!(await verifyCode('register', email, code))) {
+    // The pending payload survives a mistyped code; only the right code (or
+    // the TTL) consumes it.
+    throw ApiError.badRequest('That code is incorrect or has expired.', { code: 'INVALID_CODE' });
+  }
+
+  // The address may have been registered (e.g. via Google) while the code sat
+  // in the inbox.
+  if (await User.exists({ email })) {
+    await clearPending('register', email);
+    throw ApiError.conflict('Email already registered');
+  }
+
+  // A null decrypt (the AES key rotated mid-window) MUST abort: the pre-save
+  // hook skips falsy passwords, so letting it through would mint an account
+  // that can never log in with the password its owner just chose.
+  const password = decryptSecret(pending.password);
+  if (!password) {
+    await clearPending('register', email);
+    throw ApiError.badRequest('This signup has expired — please register again.', { code: 'REGISTRATION_EXPIRED' });
+  }
+
+  let company = null;
+  if (pending.role === ROLES.COMPANY_ADMIN) {
+    company = await Company.create({ name: pending.companyName, slug: slugify(pending.companyName) });
+  }
+
+  let user;
+  try {
+    user = await User.create({
+      name: pending.name,
+      email,
+      password, // pre-save hook bcrypts it
+      role: pending.role,
+      company: company?._id,
+      isEmailVerified: true, // the whole point of phase 2
+    });
+  } catch (err) {
+    // Don't leave an ownerless workspace behind (e.g. a concurrent
+    // double-submit losing to the unique email index).
+    if (company) await Company.deleteOne({ _id: company._id, owner: null }).catch(() => {});
+    throw err;
+  }
+  await clearPending('register', email);
 
   if (company) {
     company.owner = user._id;
     await company.save();
+    // Branded welcome/onboarding email for new workspace owners.
+    await emails.welcome(email, pending.name).catch(() => {});
   }
-
-  // Fire-and-forget email verification code.
-  const code = generateNumericCode();
-  await setCode('verify', String(user._id), code, 600);
-  await emails.verification(email, code, undefined, name);
-  // Branded welcome/onboarding email for new workspace owners.
-  if (company) await emails.welcome(email, name).catch(() => {});
 
   await audit({ req, action: 'auth.register', entityType: 'User', entityId: user._id });
   return sendAuth(res, user, created);
@@ -227,8 +315,11 @@ export const otpLogin = asyncHandler(async (req, res) => {
 
 /** POST /auth/forgot-password */
 export const forgotPassword = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
+  const email = String(req.body.email).toLowerCase().trim();
+  // The cooldown answer is identical whether or not the account exists —
+  // otherwise its 429 vs 200 would itself leak which emails are registered.
+  const maySend = await claimSendWindow('reset', email);
+  const user = maySend ? await User.findOne({ email }) : null;
   if (user) {
     const code = generateNumericCode();
     await setCode('reset', String(user._id), code, 900);
@@ -239,7 +330,8 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
 /** POST /auth/reset-password */
 export const resetPassword = asyncHandler(async (req, res) => {
-  const { email, code, password } = req.body;
+  const { code, password } = req.body;
+  const email = String(req.body.email).toLowerCase().trim();
   const user = await User.findOne({ email });
   if (!user) throw ApiError.badRequest('Invalid or expired code');
   const valid = await verifyCode('reset', String(user._id), code);
@@ -248,6 +340,12 @@ export const resetPassword = asyncHandler(async (req, res) => {
   user.tokenVersion += 1; // force re-login everywhere
   await user.save();
   await revokeAllRefreshTokens(String(user._id));
+  // "Your password was changed" — the alert that matters when it WASN'T them.
+  await safeSendTemplated('password_changed', {
+    to: email,
+    vars: { name: user.name, time: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) },
+    relatedUser: user._id,
+  });
   await audit({ req, action: 'auth.password_reset', entityType: 'User', entityId: user._id });
   return ok(res, null, 'Password updated, please log in again');
 });

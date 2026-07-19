@@ -1,14 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Field } from '@/components/ui/Field';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { useAuth } from '@/store/auth.store';
+
+/**
+ * The ?reset=1 arrival from a completed password reset. Its own component
+ * inside <Suspense> because useSearchParams requires a boundary and one banner
+ * shouldn't de-opt the whole login page.
+ */
+function ResetNotice() {
+  const reset = useSearchParams().get('reset');
+  if (reset !== '1') return null;
+  return (
+    <div className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-accent/10 px-3 py-2.5 text-sm text-foreground">
+      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+      Your password has been updated — sign in with the new one.
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,6 +70,10 @@ export default function LoginPage() {
         <GlassCard className="p-8">
           <h1 className="text-2xl font-bold">Welcome back</h1>
           <p className="mt-1 text-sm text-muted-foreground">Sign in to your account</p>
+
+          <Suspense fallback={null}>
+            <ResetNotice />
+          </Suspense>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <Field

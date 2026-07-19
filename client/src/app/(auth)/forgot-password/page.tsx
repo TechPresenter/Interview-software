@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MailCheck } from 'lucide-react';
@@ -8,9 +8,12 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Field } from '@/components/ui/Field';
+import { OtpInput } from '@/components/ui/OtpInput';
 import { AuthShell } from '@/components/auth/AuthShell';
 
 type Step = 'request' | 'reset';
+
+const RESEND_SECONDS = 60;
 
 /**
  * Forgot / reset password flow.
@@ -27,9 +30,17 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
-  const requestCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Ticks the "Resend in Ns" counter down to zero.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => c - 1), 1000);
+    return () => clearInterval(t);
+  }, [cooldown > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const requestCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setError('');
     setInfo('');
     setLoading(true);
@@ -37,6 +48,7 @@ export default function ForgotPasswordPage() {
       await api.post('/auth/forgot-password', { email });
       setInfo('If that email exists, a 6-digit reset code is on its way. Check your inbox.');
       setStep('reset');
+      setCooldown(RESEND_SECONDS);
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Could not send the reset code. Please try again.');
     } finally {
@@ -55,6 +67,7 @@ export default function ForgotPasswordPage() {
       router.push('/login?reset=1');
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Invalid or expired code. Please try again.');
+      setCode(''); // a stale wrong code left in the boxes only invites a mixed retype
     } finally {
       setLoading(false);
     }
@@ -84,18 +97,28 @@ export default function ForgotPasswordPage() {
             </form>
           ) : (
             <form onSubmit={resetPassword} className="mt-6 space-y-4">
-              <Field label="Reset code" value={code} onChange={setCode} placeholder="123456" inputMode="numeric" required />
+              <div>
+                <p className="mb-2 text-sm font-medium">Reset code</p>
+                <OtpInput value={code} onChange={setCode} disabled={loading} />
+              </div>
               <Field label="New password" type="password" value={password} onChange={setPassword} placeholder="••••••••" required autoComplete="new-password" />
               <Field label="Confirm new password" type="password" value={confirm} onChange={setConfirm} placeholder="••••••••" required autoComplete="new-password" />
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" loading={loading} className="w-full" magnetic={false}>Update password</Button>
-              <button
-                type="button"
-                onClick={() => { setStep('request'); setError(''); }}
-                className="w-full text-center text-sm text-muted-foreground transition hover:text-foreground"
-              >
-                Didn’t get a code? Send again
-              </button>
+              <Button type="submit" loading={loading} disabled={code.trim().length !== 6} className="w-full" magnetic={false}>Update password</Button>
+              <div className="text-center text-sm text-muted-foreground">
+                {cooldown > 0 ? (
+                  <span>Didn&apos;t get a code? Resend in {cooldown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void requestCode()}
+                    disabled={loading}
+                    className="transition hover:text-foreground hover:underline"
+                  >
+                    Didn&apos;t get a code? Send again
+                  </button>
+                )}
+              </div>
             </form>
           )}
 

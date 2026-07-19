@@ -13,6 +13,12 @@ export const registerSchema = z.object({
   companyName: z.string().min(2).max(160).optional(),
 });
 
+/** Phase 2 of registration: the emailed 6-digit code. */
+export const registerVerifySchema = z.object({
+  email,
+  code: z.string().length(6),
+});
+
 export const loginSchema = z.object({
   email,
   password,
