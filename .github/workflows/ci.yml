@@ -5,27 +5,42 @@ on:
     branches: [main]
   pull_request:
 
+# The token never needs write access — checkout + status checks only.
+permissions:
+  contents: read
+
+# A newer push on the same ref supersedes the run in flight.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  # Node 22 = Active LTS (Node 20 reached end-of-life in April 2026).
+  NODE_VERSION: 22
 
 jobs:
   server:
     name: Server · lint & test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: server/package-lock.json
-      - run: npm ci
-      - run: npm run lint --if-present
-      - run: npm test
+      - name: Install
+        run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
         env:
           JWT_ACCESS_SECRET: ci-access-secret-0123456789
           JWT_REFRESH_SECRET: ci-refresh-secret-0123456789
@@ -35,19 +50,25 @@ jobs:
   client:
     name: Web · lint & build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: client
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: client/package-lock.json
-      - run: npm ci
-      - run: npm run lint --if-present
-      - run: npm run build
+      - name: Install
+        run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
           NEXT_TELEMETRY_DISABLED: '1'
@@ -55,10 +76,12 @@ jobs:
   docker:
     name: Docker build
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: [server, client]
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Build API image
         run: docker build -t aipl-hire-api ./server
       - name: Build Web image

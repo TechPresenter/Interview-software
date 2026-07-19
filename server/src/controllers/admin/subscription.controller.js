@@ -155,7 +155,9 @@ export const exportInvoices = asyncHandler(async (req, res) => {
   const csv = [HEAD, ...rows.map(line)].map((r) => r.map(esc).join(',')).join('\n');
   res.set('Content-Type', 'text/csv; charset=utf-8');
   res.set('Content-Disposition', 'attachment; filename="payments.csv"');
-  return res.send(`﻿${csv}`);
+  // A UTF-8 BOM ('\ufeff' spelled as an escape — a literal one trips
+  // no-irregular-whitespace) so Excel decodes Unicode company names correctly.
+  return res.send('\ufeff' + csv);
 });
 
 /** GET /admin/invoices/:id/pdf — any company's invoice, admin-side. */
